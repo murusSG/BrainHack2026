@@ -11,8 +11,7 @@ Desktop.ini
 
 # Environment and secrets
 .env
-.env.*
-!.env.example
+.env.local.*
 
 # Logs
 *.log

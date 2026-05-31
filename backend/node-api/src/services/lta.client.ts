@@ -7,7 +7,7 @@ export const ltaClient = axios.create({
   baseURL: BASE_URL,
   timeout: 10_000,
   headers: {
-    AccountKey: env.LTA_API_KEY,
+    AccountKey: env.LTA_API_KEY ?? "",
     Accept: "application/json",
   },
 });
