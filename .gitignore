@@ -59,5 +59,9 @@ tmp/
 temp/
 *.tmp
 
+# Claude Code
+CLAUDE.md
+.claude/
+
 # Keep folder placeholders
 !.gitkeep
