@@ -1,11 +1,11 @@
 export const navigationItems = [
-  'Overview',
-  'Incident Map',
-  'Resources',
-  'Hospitals',
-  'Volunteers',
-  'Alerts',
-  'Incident Detail'
+  { id: 'overview', label: 'Overview' },
+  { id: 'incident-map', label: 'Incident Map' },
+  { id: 'resources', label: 'Resources' },
+  { id: 'hospitals', label: 'Hospitals' },
+  { id: 'volunteers', label: 'Volunteers' },
+  { id: 'alerts', label: 'Alerts' },
+  { id: 'incident-detail', label: 'Incident Detail' }
 ];
 
 export const topStats = [
@@ -155,4 +155,456 @@ export const predictiveSignals = [
     value: '91%',
     note: 'North-west district has fastest activation response based on the last 12 major incidents.'
   }
+];
+
+export const incidentMapSummary = {
+  searchPlaceholder: 'Search coordinates, zone names, or incident tags...',
+  activeFiltersLabel: '2 active filters',
+  personaFilter: 'Communities in radius',
+  lastSynced: 'Synced 45 sec ago'
+};
+
+export const geospatialIncidents = [
+  {
+    id: 'INC-1024',
+    title: 'Flash Flooding',
+    hazardType: 'Flood',
+    severity: 'Critical',
+    location: 'Orchard Road',
+    coordinates: { x: 68, y: 41 },
+    vicinityRadius: '900m hyperlocal',
+    radiusSize: 10,
+    colorTone: 'critical',
+    icon: 'flood',
+    advisory:
+      'Drainage overflow likely within 20 minutes. Broadcast diversion routes and avoid basement access.',
+    personaImpact: 'Communities within 900m receive evacuation and route alerts.'
+  },
+  {
+    id: 'INC-1025',
+    title: 'Industrial Fire',
+    hazardType: 'Fire',
+    severity: 'High',
+    location: 'Jurong East Industrial',
+    coordinates: { x: 27, y: 58 },
+    vicinityRadius: '1.4km localised plume',
+    radiusSize: 12,
+    colorTone: 'high',
+    icon: 'fire',
+    advisory:
+      'SCDF units are containing smoke spread. Nearby residents should shelter indoors and avoid service roads.',
+    personaImpact: 'Responders and nearby businesses flagged for access control.'
+  },
+  {
+    id: 'INC-1026',
+    title: 'Dengue Cluster',
+    hazardType: 'Outbreak',
+    severity: 'Medium',
+    location: 'Tampines Hub',
+    coordinates: { x: 77, y: 60 },
+    vicinityRadius: '320m street-level',
+    radiusSize: 7,
+    colorTone: 'medium',
+    icon: 'outbreak',
+    advisory:
+      'Vector surveillance cluster detected. Residents receive street-by-street cleanup and inspection guidance.',
+    personaImpact: 'Households inside the block cluster get hyperlocal source reduction instructions.'
+  },
+  {
+    id: 'INC-1027',
+    title: 'Medical Surge',
+    hazardType: 'Medical',
+    severity: 'Low',
+    location: 'Woodlands Checkpoint',
+    coordinates: { x: 46, y: 22 },
+    vicinityRadius: '2.2km operational catchment',
+    radiusSize: 11,
+    colorTone: 'support',
+    icon: 'medical',
+    advisory:
+      'Checkpoint screening volumes exceeded baseline. Redirect standby medics and prep overflow triage.',
+    personaImpact: 'Healthcare operators see bed and medic reallocation prompts.'
+  },
+  {
+    id: 'INC-1028',
+    title: 'Canal Water Rise',
+    hazardType: 'Flood',
+    severity: 'High',
+    location: 'Bedok Canal',
+    coordinates: { x: 82, y: 47 },
+    vicinityRadius: '700m hyperlocal',
+    radiusSize: 9,
+    colorTone: 'high',
+    icon: 'flood',
+    advisory:
+      'PUB sensors show rapid water rise. Push visual alert overlays for nearby underpasses and bus stops.',
+    personaImpact: 'Pedestrians and drivers inside the radius receive route guidance.'
+  }
+];
+
+export const incidentMapLegend = [
+  { label: 'Critical incident', tone: 'critical' },
+  { label: 'High severity', tone: 'high' },
+  { label: 'Flood / water hazard', tone: 'flood' },
+  { label: 'Medical / support', tone: 'support' },
+  { label: 'Vicinity radius overlay', tone: 'radius' }
+];
+
+export const quickActionLogs = [
+  'OneMap broadcast tiles prepared for Orchard diversion advisory.',
+  'Jurong industrial perimeter updated with a 1.4km exclusion radius.',
+  'Community-safe visual instructions sent to Bedok residents in affected blocks.'
+];
+
+export const resourceSummaryCards = [
+  {
+    label: 'Hospital Beds',
+    value: '1,242',
+    detail: '84% occupancy (avg)',
+    icon: 'beds',
+    change: '-2.4%',
+    tone: 'down'
+  },
+  {
+    label: 'Available Fleet',
+    value: '42 / 65',
+    detail: 'Ambulances across sectors',
+    icon: 'fleet',
+    change: '+12%',
+    tone: 'up'
+  },
+  {
+    label: 'Water Reserves',
+    value: '845k L',
+    detail: '92% of target capacity',
+    icon: 'water',
+    change: '+0.5%',
+    tone: 'up'
+  },
+  {
+    label: 'Shelter Vacancy',
+    value: '3,210',
+    detail: 'Available slots islandwide',
+    icon: 'shelter',
+    change: '-15.2%',
+    tone: 'down'
+  }
+];
+
+export const resourceTrend = {
+  title: 'Supply Consumption Trend',
+  subtitle: 'Aggregate PPE and medication stock level vs. projected demand (Last 24h)',
+  timeframe: '24 Hours',
+  labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:59'],
+  currentStock: [4500, 4300, 4100, 5200, 5000, 4800, 4700],
+  projectedDemand: [3200, 3400, 3900, 4100, 4250, 4600, 4200],
+  yMax: 6000
+};
+
+export const interAgencyRequestForm = {
+  title: 'Inter-Agency Request',
+  subtitle: 'Allocate resources across departments',
+  resourceTypes: [
+    'Personal Protective Equipment',
+    'Portable Ventilators',
+    'O-negative Blood Packs',
+    'Mobile Water Pumps'
+  ],
+  priorities: ['Medium', 'High', 'Critical']
+};
+
+export const resourceLedgerTabs = [
+  { id: 'fleet', label: 'Fleet Availability' },
+  { id: 'supplies', label: 'Critical Supplies' },
+  { id: 'shelters', label: 'Shelter Network' }
+];
+
+export const resourceLedgerEntries = [
+  {
+    unitId: 'AMB-201',
+    type: 'ALS (Advanced)',
+    baseStation: 'Central Fire Stn',
+    crew: 'Lee/Siva',
+    capacity: 92,
+    status: 'Available',
+    statusTone: 'available'
+  },
+  {
+    unitId: 'AMB-154',
+    type: 'BLS (Basic)',
+    baseStation: 'Jurong West Hub',
+    crew: 'Wong/Tan',
+    capacity: 45,
+    status: 'Dispatched',
+    statusTone: 'dispatched'
+  },
+  {
+    unitId: 'AMB-098',
+    type: 'Critical Care',
+    baseStation: 'Changi Depot',
+    crew: 'Kumar/Aziz',
+    capacity: 88,
+    status: 'Available',
+    statusTone: 'available'
+  },
+  {
+    unitId: 'AMB-312',
+    type: 'ALS (Advanced)',
+    baseStation: 'Sengkang Stn',
+    crew: 'N.A.',
+    capacity: 12,
+    status: 'Maintenance',
+    statusTone: 'maintenance'
+  },
+  {
+    unitId: 'AMB-112',
+    type: 'BLS (Basic)',
+    baseStation: 'Woodlands Depot',
+    crew: 'Singh/Lim',
+    capacity: 98,
+    status: 'Available',
+    statusTone: 'available'
+  }
+];
+
+export const resourceLedgerMeta = {
+  title: 'Inventory & Capacity Ledger',
+  subtitle: 'Detailed tracking across primary response pillars.',
+  searchPlaceholder: 'Search ledger...',
+  syncStatus: 'Last full system sync: 2 mins ago',
+  auditLabel: 'View audit logs'
+};
+
+export const resourceShortageAlert = {
+  title: 'Critical Resource Shortage Alert',
+  message:
+    'Blood Type O- and surgical grade oxygen levels are below 25% at Changi General Hospital. Immediate reallocation from Sengkang General is recommended.'
+};
+
+export const hospitalSummaryCards = [
+  {
+    label: 'Total Beds Occupied',
+    value: '84.2%',
+    icon: 'beds',
+    tone: 'neutral'
+  },
+  {
+    label: 'ICU Load Alert',
+    value: '92.1%',
+    icon: 'alert',
+    tone: 'critical'
+  },
+  {
+    label: 'Ventilator Surplus',
+    value: '142 Units',
+    icon: 'ventilator',
+    tone: 'neutral'
+  },
+  {
+    label: 'Critical Facilities',
+    value: '02 / 14',
+    icon: 'facility',
+    tone: 'neutral'
+  }
+];
+
+export const hospitalTrackerMeta = {
+  title: 'Hospital Capacity Tracker',
+  subtitle: 'Real-time occupancy and specialized resource monitoring across Singapore.',
+  filterLabel: 'Filter Region',
+  broadcastLabel: 'Capacity Broadcast',
+  searchPlaceholder: 'Search by facility name, region, or status...',
+  pendingTransfers: '3 Pending Transfers',
+  exportLabel: 'Export Data',
+  registryTitle: 'Specialized Facilities Registry',
+  registryAction: 'View Full Registry'
+};
+
+export const hospitalFacilityCards = [
+  {
+    name: 'Singapore General Hospital',
+    region: 'Central (Outram)',
+    status: 'Critical',
+    tone: 'critical',
+    generalBeds: { used: 1690, total: 1785, percent: 95, tone: 'critical' },
+    icuUnits: { used: 89, total: 94, percent: 95, tone: 'critical' },
+    ventilators: '105 / 120',
+    directLine: '+65 6222 3322'
+  },
+  {
+    name: 'Tan Tock Seng Hospital',
+    region: 'Central (Novena)',
+    status: 'Normal',
+    tone: 'normal',
+    generalBeds: { used: 1250, total: 1540, percent: 81, tone: 'normal' },
+    icuUnits: { used: 42, total: 60, percent: 70, tone: 'normal' },
+    ventilators: '38 / 80',
+    directLine: '+65 6256 6011'
+  },
+  {
+    name: 'National University Hospital',
+    region: 'West (Kent Ridge)',
+    status: 'Warning',
+    tone: 'warning',
+    generalBeds: { used: 1080, total: 1160, percent: 93, tone: 'critical' },
+    icuUnits: { used: 41, total: 45, percent: 91, tone: 'critical' },
+    ventilators: '44 / 60',
+    directLine: '+65 6779 5555'
+  },
+  {
+    name: 'Changi General Hospital',
+    region: 'East (Simei)',
+    status: 'Normal',
+    tone: 'normal',
+    generalBeds: { used: 820, total: 1000, percent: 82, tone: 'normal' },
+    icuUnits: { used: 22, total: 36, percent: 61, tone: 'normal' },
+    ventilators: '18 / 45',
+    directLine: '+65 6788 8833'
+  },
+  {
+    name: 'Khoo Teck Puat Hospital',
+    region: 'North (Yishun)',
+    status: 'Critical',
+    tone: 'critical',
+    generalBeds: { used: 760, total: 795, percent: 96, tone: 'critical' },
+    icuUnits: { used: 27, total: 28, percent: 96, tone: 'critical' },
+    ventilators: '29 / 35',
+    directLine: '+65 6555 8000'
+  },
+  {
+    name: 'Ng Teng Fong General',
+    region: 'West (Jurong)',
+    status: 'Normal',
+    tone: 'normal',
+    generalBeds: { used: 510, total: 700, percent: 73, tone: 'normal' },
+    icuUnits: { used: 14, total: 24, percent: 58, tone: 'normal' },
+    ventilators: '10 / 30',
+    directLine: '+65 6716 2000'
+  }
+];
+
+export const specializedFacilitiesRegistry = [
+  {
+    name: "KK Women's and Children's",
+    type: 'Pediatric/Maternity',
+    isolationUnits: '12/15',
+    dialysisStations: '8/10',
+    traumaCenter: 'Level 1'
+  },
+  {
+    name: 'Bright Vision Hospital',
+    type: 'Community',
+    isolationUnits: '0/40',
+    dialysisStations: 'N/A',
+    traumaCenter: 'N/A'
+  },
+  {
+    name: 'Mount Elizabeth Orchard',
+    type: 'Private',
+    isolationUnits: '5/20',
+    dialysisStations: '12/20',
+    traumaCenter: 'Level 2'
+  },
+  {
+    name: 'Raffles Hospital',
+    type: 'Private',
+    isolationUnits: '3/10',
+    dialysisStations: '5/8',
+    traumaCenter: 'Level 2'
+  },
+  {
+    name: 'Alexandra Hospital',
+    type: 'Acute',
+    isolationUnits: '8/15',
+    dialysisStations: '10/10',
+    traumaCenter: 'Level 3'
+  }
+];
+
+export const alertsPageMeta = {
+  title: 'Alerts & Notifications',
+  criticalActive: '2 critical active',
+  filterPlaceholder: 'Filter alert feed...',
+  filterLabel: 'Filters',
+  advisoryLabel: 'New Advisory',
+  tabs: ['All Alerts', 'Critical Only', 'By Region', 'Unacknowledged'],
+  caseLabel: 'CASE ID: AL-9021',
+  registryTitle: 'Broadcast Center',
+  smartTemplate: 'Apply Smart Template'
+};
+
+export const alertsFeed = [
+  {
+    id: 'AL-9021',
+    title: 'Flash Flood Warning: Orchard Rd',
+    region: 'Central, Singapore',
+    timeAgo: '2 mins ago',
+    source: 'PUB Water Sensor #42',
+    severity: 'critical',
+    status: 'unacknowledged',
+    active: true
+  },
+  {
+    id: 'AL-8955',
+    title: 'Smoke Haze Detected: Jurong East',
+    region: 'West, Singapore',
+    timeAgo: '14 mins ago',
+    source: 'NEA Air Quality Station',
+    severity: 'warning',
+    status: 'acknowledged'
+  },
+  {
+    id: 'AL-8942',
+    title: 'Mass Transit Delay: North-South Line',
+    region: 'Toa Payoh - Novena',
+    timeAgo: '45 mins ago',
+    source: 'SMRT Operations Control',
+    severity: 'info',
+    status: 'broadcasted'
+  },
+  {
+    id: 'AL-8930',
+    title: 'Unidentified Drone Activity: Tuas Port',
+    region: 'West, Singapore',
+    timeAgo: '1 hour ago',
+    source: 'MPA Surveillance AI',
+    severity: 'warning',
+    status: 'acknowledged'
+  },
+  {
+    id: 'AL-8912',
+    title: 'Hospital Capacity Alert: NUH',
+    region: 'West, Singapore',
+    timeAgo: '2 hours ago',
+    source: 'Integrated Health Portal',
+    severity: 'critical',
+    status: 'unacknowledged'
+  }
+];
+
+export const alertDetail = {
+  severity: 'critical',
+  caseId: 'AL-9021',
+  title: 'Flash Flood Warning: Orchard Rd',
+  summary:
+    'Water levels have exceeded 90% capacity at the Stamford Diversion Canal. High risk of road submersion in the next 15 minutes.',
+  facts: [
+    { label: 'Incident location', value: 'Central, Singapore' },
+    { label: 'Time detected', value: '2 mins ago' },
+    { label: 'At-risk pop.', value: '~15,000 commuters' },
+    { label: 'Data source', value: 'Verified Sensor' }
+  ],
+  mapLabel: "Live coordinates: 1.3521° N, 103.8198° E"
+};
+
+export const alertResponders = [
+  { team: 'SCDF Alpha 4', role: 'Fire/Rescue', eta: 'ETA 3 mins' },
+  { team: 'Police Patrol 92', role: 'Security', eta: 'ETA 5 mins' },
+  { team: 'PUB Maintenance', role: 'Technical', eta: 'ETA 12 mins' }
+];
+
+export const broadcastSteps = [
+  '1. Select Channels',
+  '2. Broadcast Instructions & Map Data',
+  '3. Confirm Audience Radius'
 ];
