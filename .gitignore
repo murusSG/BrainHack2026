@@ -10,7 +10,6 @@ Desktop.ini
 *.swo
 
 # Environment and secrets
-.env
 .env.local.*
 
 # Logs
