@@ -1,14 +1,13 @@
-/** Raw shape returned by NEA /psi and /pm25 endpoints */
-export interface NeaRegionReading {
-  region: string;
-  readings: Record<string, number>;
-}
-
+/**
+ * Raw shape returned by NEA /psi and /pm25 endpoints.
+ * `readings` is an object keyed by metric (e.g. "psi_twenty_four_hourly"),
+ * and each metric maps regions ("north"/"east"/...) to numeric values.
+ */
 export interface NeaReadingsResponse {
   items: Array<{
     timestamp: string;
-    readings: NeaRegionReading[];
     update_timestamp: string;
+    readings: Record<string, Record<string, number>>;
   }>;
   api_info: { status: string };
 }

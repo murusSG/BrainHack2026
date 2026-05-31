@@ -1,0 +1,12 @@
+# Use this workspace to collaborate
+workspace:
+  id: b06686eb-c090-4cda-8cab-100f5d3cb15e
+
+localResources:
+  docs:
+    - ..\README.md
+    - ..\BrainHack\Submissions\BrainHack prompts_ideas.md
+    - ..\server\README.md
+    - ..\frontend\README.md
+    - ..\backend\README.md
+    - ..\CLAUDE.md

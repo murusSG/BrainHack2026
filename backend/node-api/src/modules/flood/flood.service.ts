@@ -1,36 +1,40 @@
-import { datastoreSearch } from "../../services/dataGovSg.client";
+import { getRealtimeV2 } from "../../services/dataGovSg.client";
 import { floodRepo } from "../../repositories/flood.repo";
-import type { DatastoreResponse, RawFloodAlertRecord, RawSensorRecord } from "./flood.types";
+import type { FloodAlertReading, FloodAlertsV2Data } from "./flood.types";
 import type { FloodAlert, WaterSensorLocation } from "../../../../shared/types/flood";
 
-const FLOOD_ALERTS_RESOURCE_ID = "d_f1404e08587ce555b9ea3f565e2eb9a3";
-const WATER_SENSORS_RESOURCE_ID = "d_31333fa5cf0834f012d840365b336610";
+function pick(reading: FloodAlertReading, keys: string[], fallback: string): string {
+  for (const key of keys) {
+    const value = reading[key];
+    if (value !== undefined && value !== null) return String(value);
+  }
+  return fallback;
+}
 
 export async function getFloodAlerts(): Promise<FloodAlert[]> {
-  const raw = (await datastoreSearch(FLOOD_ALERTS_RESOURCE_ID, { limit: 100 })) as DatastoreResponse<RawFloodAlertRecord>;
+  const data = await getRealtimeV2<FloodAlertsV2Data>("weather/flood-alerts");
 
-  const alerts: FloodAlert[] = raw.result.records.map((record) => ({
-    id: String(record._id),
-    location: String(record["location"] ?? record["LOCATION"] ?? "Unknown"),
-    severity: String(record["severity"] ?? record["SEVERITY"] ?? "Unknown"),
-    source: "PUB",
-    timestamp: String(record["timestamp"] ?? record["TIMESTAMP"] ?? new Date().toISOString()),
-    raw: record as Record<string, unknown>,
-  }));
+  const alerts: FloodAlert[] = [];
+  for (const record of data.records ?? []) {
+    for (const reading of record.item?.readings ?? []) {
+      alerts.push({
+        id: pick(reading, ["id", "stationId", "station_id"], `${record.datetime}-${alerts.length}`),
+        location: pick(reading, ["label", "location", "name"], "Unknown"),
+        severity: pick(reading, ["level", "severity", "value"], "alert"),
+        source: "PUB",
+        timestamp: record.datetime,
+        raw: reading as Record<string, unknown>,
+      });
+    }
+  }
 
   floodRepo.saveAlerts(alerts).catch(console.error);
   return alerts;
 }
 
 export async function getWaterSensors(): Promise<WaterSensorLocation[]> {
-  const raw = (await datastoreSearch(WATER_SENSORS_RESOURCE_ID, { limit: 500 })) as DatastoreResponse<RawSensorRecord>;
-
-  const sensors: WaterSensorLocation[] = raw.result.records.map((record) => ({
-    sensorId: String(record["sensor_id"] ?? record["SENSOR_ID"] ?? record._id),
-    name: String(record["name"] ?? record["NAME"] ?? `Sensor ${record._id}`),
-    latitude: Number(record["latitude"] ?? record["LATITUDE"] ?? 0),
-    longitude: Number(record["longitude"] ?? record["LONGITUDE"] ?? 0),
-  }));
-
-  return sensors;
+  // The PUB water-level sensor dataset is published as a zipped shapefile/KML
+  // rather than GeoJSON, so it needs a zip + shapefile parsing step we have not
+  // built yet. Returning an empty list until that pipeline exists.
+  return [];
 }

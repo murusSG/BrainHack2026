@@ -15,6 +15,14 @@ export function createApp() {
   app.use(express.json());
   app.use(requestLogger);
 
+  app.get("/", (_req, res) => {
+    res.json({
+      service: "murusSG Node API",
+      status: "ok",
+      docs: "/api/v1/health",
+    });
+  });
+
   app.get("/api/v1/health", (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });

@@ -12,9 +12,10 @@ export async function getPsi(): Promise<PsiRegionReading[]> {
   const item = data.items[0];
   if (!item) return [];
 
-  const readings: PsiRegionReading[] = item.readings.map((r) => ({
-    region: r.region as PsiRegionReading["region"],
-    psi: r.readings["psi_twenty_four_hourly"] ?? 0,
+  const psiByRegion = item.readings["psi_twenty_four_hourly"] ?? {};
+  const readings: PsiRegionReading[] = Object.entries(psiByRegion).map(([region, psi]) => ({
+    region: region as PsiRegionReading["region"],
+    psi,
     timestamp: item.timestamp,
   }));
 
@@ -27,9 +28,10 @@ export async function getPm25(): Promise<Pm25RegionReading[]> {
   const item = data.items[0];
   if (!item) return [];
 
-  const readings: Pm25RegionReading[] = item.readings.map((r) => ({
-    region: r.region as Pm25RegionReading["region"],
-    pm25: r.readings["pm25_one_hourly"] ?? 0,
+  const pm25ByRegion = item.readings["pm25_one_hourly"] ?? {};
+  const readings: Pm25RegionReading[] = Object.entries(pm25ByRegion).map(([region, pm25]) => ({
+    region: region as Pm25RegionReading["region"],
+    pm25,
     timestamp: item.timestamp,
   }));
 

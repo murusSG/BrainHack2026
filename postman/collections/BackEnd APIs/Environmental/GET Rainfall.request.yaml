@@ -1,0 +1,4 @@
+$kind: http-request
+name: GET Rainfall
+url: '{{baseUrl}}/environmental/rainfall'
+method: GET

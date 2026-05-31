@@ -1,0 +1,4 @@
+$kind: http-request
+name: GET Train Alerts
+url: '{{baseUrl}}/transport/train-alerts'
+method: GET
