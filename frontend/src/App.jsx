@@ -4,12 +4,17 @@ import { DashboardLayout } from './layouts/DashboardLayout';
 import { HospitalsPage } from './pages/HospitalsPage';
 import { IncidentMapPage } from './pages/IncidentMapPage';
 import { OverviewPage } from './pages/OverviewPage';
+import { PublicDashboardPage } from './pages/PublicDashboardPage';
 import { ResourcesPage } from './pages/ResourcesPage';
 
 export default function App() {
   const [activePage, setActivePage] = useState('overview');
 
-  let pageContent = <OverviewPage />;
+  if (activePage === 'public-dashboard') {
+    return <PublicDashboardPage onReturnToOps={() => setActivePage('overview')} />;
+  }
+
+  let pageContent = <OverviewPage onOpenPublicDashboard={() => setActivePage('public-dashboard')} />;
 
   if (activePage === 'incident-map') {
     pageContent = <IncidentMapPage />;

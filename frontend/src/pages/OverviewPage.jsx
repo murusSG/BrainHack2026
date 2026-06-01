@@ -12,7 +12,7 @@ import {
   topStats
 } from '../data/dashboardData';
 
-export function OverviewPage() {
+export function OverviewPage({ onOpenPublicDashboard }) {
   return (
     <div className="overview-page">
       <section className="hero-panel">
@@ -26,6 +26,13 @@ export function OverviewPage() {
           </p>
         </div>
         <div className="hero-actions">
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={() => onOpenPublicDashboard?.()}
+          >
+            Public Dashboard
+          </button>
           <button type="button" className="ghost-button">
             Filter
           </button>

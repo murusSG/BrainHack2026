@@ -1,7 +1,14 @@
 import { navigationItems } from '../data/dashboardData';
 
 export function SidebarNav({ activePage, onSelectPage }) {
-  const implementedPages = new Set(['overview', 'incident-map', 'resources', 'hospitals', 'alerts']);
+  const implementedPages = new Set([
+    'overview',
+    'public-dashboard',
+    'incident-map',
+    'resources',
+    'hospitals',
+    'alerts'
+  ]);
 
   return (
     <aside className="sidebar">
