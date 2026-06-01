@@ -1,0 +1,4 @@
+$kind: http-request
+name: GET PSI
+url: '{{baseUrl}}/environmental/psi'
+method: GET

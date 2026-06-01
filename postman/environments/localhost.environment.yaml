@@ -1,0 +1,5 @@
+name: localhost
+values:
+  - key: baseUrl
+    value: ' http://localhost:3000/api/v1'
+color: 0

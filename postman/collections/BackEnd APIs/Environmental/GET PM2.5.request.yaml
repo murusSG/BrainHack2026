@@ -1,0 +1,4 @@
+$kind: http-request
+name: GET PM2.5
+url: '{{baseUrl}}/environmental/pm25'
+method: GET

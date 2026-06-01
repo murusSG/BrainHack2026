@@ -1,0 +1,4 @@
+$kind: http-request
+name: GET Flood Alerts
+url: '{{baseUrl}}/flood/alerts'
+method: GET
