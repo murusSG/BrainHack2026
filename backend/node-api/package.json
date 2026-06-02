@@ -9,19 +9,24 @@
     "start": "node dist/index.js",
     "test": "jest",
     "lint": "eslint src",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "smoke:integrations": "tsx scripts/smoke-integrations.ts",
+    "onemap:token": "tsx scripts/onemap-token.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.9",
     "@types/compression": "^1.7.5",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.3",
+    "@types/ws": "^8.18.1",
     "axios": "^1.9.0",
     "compression": "^1.8.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
+    "ws": "^8.21.0",
+    "xlsx": "^0.18.5",
     "zod": "^3.24.4"
   },
   "devDependencies": {

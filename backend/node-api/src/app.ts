@@ -5,6 +5,11 @@ import compression from "compression";
 import { requestLogger } from "./middlewares/requestLogger";
 import { errorHandler } from "./middlewares/errorHandler";
 import { v1Router } from "./routes/v1";
+import { scdfRouter } from "./modules/scdf/scdf.routes";
+import { mohRouter } from "./modules/moh/moh.routes";
+import { oneMapRouter } from "./modules/onemap/onemap.routes";
+import { hdbRouter, populationRouter } from "./modules/population/population.routes";
+import { hospitalsRouter } from "./modules/hospitals/hospitals.routes";
 
 export function createApp() {
   const app = express();
@@ -28,6 +33,12 @@ export function createApp() {
   });
 
   app.use("/api/v1", v1Router);
+  app.use("/api/scdf", scdfRouter);
+  app.use("/api/moh", mohRouter);
+  app.use("/api/onemap", oneMapRouter);
+  app.use("/api/hdb", hdbRouter);
+  app.use("/api/population", populationRouter);
+  app.use("/api/hospitals", hospitalsRouter);
 
   app.use(errorHandler);
 

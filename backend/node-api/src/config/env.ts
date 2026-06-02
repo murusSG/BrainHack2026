@@ -1,19 +1,71 @@
 import { z } from "zod";
 import dotenv from "dotenv";
 
-// Load .env.local first (takes precedence), then fall back to .env.
+// Load .env.local outside tests, then fall back to .env.
 // dotenv does not overwrite already-set vars, so the earlier call wins.
-dotenv.config({ path: ".env.local" });
+if (process.env.NODE_ENV !== "test") {
+  dotenv.config({ path: ".env.local" });
+}
 dotenv.config();
+
+const blankToUndefined = (value: unknown) => (value === "" ? undefined : value);
+const optionalString = z.preprocess(blankToUndefined, z.string().min(1).optional());
+const optionalUrl = z.preprocess(blankToUndefined, z.string().url().optional());
+const fetchMode = (defaultValue: "datastore" | "download") =>
+  z.preprocess(blankToUndefined, z.enum(["datastore", "download"]).default(defaultValue));
+const envBoolean = (defaultValue: boolean) =>
+  z.preprocess((value) => {
+    if (value === undefined || value === "") return defaultValue;
+    if (typeof value === "string") return ["1", "true", "yes", "on"].includes(value.toLowerCase());
+    return value;
+  }, z.boolean());
 
 const schema = z.object({
   PORT: z.coerce.number().default(3000),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-  SUPABASE_URL: z.string().url(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  SUPABASE_URL: optionalUrl,
+  SUPABASE_SERVICE_ROLE_KEY: optionalString,
   // Optional so the API can boot with only Supabase configured.
   // LTA transport endpoints will fail until a key is supplied.
-  LTA_API_KEY: z.string().min(1).optional(),
+  LTA_API_KEY: optionalString,
+  DATA_GOV_BASE_URL: z.string().url().default("https://api-open.data.gov.sg"),
+  DATA_GOV_LEGACY_BASE_URL: z.string().url().default("https://api.data.gov.sg/v1"),
+  ONEMAP_API_BASE_URL: z.string().url().default("https://www.onemap.gov.sg"),
+  ONEMAP_EMAIL: optionalString,
+  ONEMAP_PASSWORD: optionalString,
+  ONEMAP_TOKEN_CACHE_PATH: z.string().min(1).default(".cache/onemap-token.json"),
+  EXTERNAL_API_TIMEOUT_SECONDS: z.coerce.number().positive().default(10),
+  CACHE_TTL_SECONDS: z.coerce.number().positive().default(3600),
+  ENABLE_MOCK_SCDF_INCIDENTS: envBoolean(false),
+  ENABLE_MOCK_DORSCON: envBoolean(true),
+  SCDF_FIRE_STATIONS_RESOURCE_ID: optionalString,
+  SCDF_FIRE_STATIONS_FETCH_MODE: fetchMode("download"),
+  SCDF_SHELTERS_RESOURCE_ID: optionalString,
+  SCDF_SHELTERS_FETCH_MODE: fetchMode("datastore"),
+  SCDF_AEDS_RESOURCE_ID: optionalString,
+  SCDF_AEDS_FETCH_MODE: fetchMode("datastore"),
+  MOH_INFECTIOUS_DISEASES_RESOURCE_ID: optionalString,
+  MOH_INFECTIOUS_DISEASES_FETCH_MODE: fetchMode("datastore"),
+  MOH_COVID_WEEKLY_RESOURCE_ID: optionalString,
+  MOH_COVID_WEEKLY_FETCH_MODE: fetchMode("datastore"),
+  MOH_HEALTH_CAPACITY_RESOURCE_ID: optionalString,
+  MOH_HEALTH_CAPACITY_FETCH_MODE: fetchMode("datastore"),
+  MOH_BEDS_OCCUPANCY_URL: z
+    .string()
+    .url()
+    .default("https://www.moh.gov.sg/others/resources-and-statistics/healthcare-institution-statistics-beds-occupancy-rate-(bor)/"),
+  MOH_WAITING_TIME_ADMISSION_URL: z
+    .string()
+    .url()
+    .default("https://www.moh.gov.sg/others/resources-and-statistics/healthcare-institution-statistics-waiting-time-for-admission-to-ward/"),
+  DATA_GOV_ED_WAITING_TIMES_RESOURCE_ID: optionalString,
+  DATA_GOV_ED_WAITING_TIMES_FETCH_MODE: fetchMode("datastore"),
+  HDB_BUILDINGS_RESOURCE_ID: optionalString,
+  HDB_BUILDINGS_FETCH_MODE: fetchMode("datastore"),
+  POPULATION_PLANNING_AREAS_RESOURCE_ID: optionalString,
+  POPULATION_PLANNING_AREAS_FETCH_MODE: fetchMode("datastore"),
+  POPULATION_HOUSEHOLDS_RESOURCE_ID: optionalString,
+  POPULATION_HOUSEHOLDS_FETCH_MODE: fetchMode("datastore"),
 });
 
 const parsed = schema.safeParse(process.env);

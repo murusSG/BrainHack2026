@@ -3,6 +3,7 @@ import type { DengueCluster } from "../../../shared/types/dengue";
 
 export const dengueRepo = {
   async saveClusters(clusters: DengueCluster[]) {
+    if (!supabase) return;
     const rows = clusters.map((c) => ({
       fetched_at: new Date().toISOString(),
       locality: c.locality,

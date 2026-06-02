@@ -3,6 +3,7 @@ import type { FloodAlert } from "../../../shared/types/flood";
 
 export const floodRepo = {
   async saveAlerts(alerts: FloodAlert[]) {
+    if (!supabase) return;
     const rows = alerts.map((a) => ({
       fetched_at: new Date().toISOString(),
       location: a.location,
