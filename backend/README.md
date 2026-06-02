@@ -67,6 +67,15 @@ Purpose:
 
 Expected files:
 - Files such as `incidentService.ts`, `notificationService.ts`.
+- Provider clients such as `dataGovSg.client.ts` and `oneMap.client.ts`.
+
+Current integration modules:
+
+- `src/modules/scdf/` normalises SCDF public fire station, shelter, and AED resources.
+- `src/modules/moh/` normalises MOH/CDA infectious disease and health-capacity signals.
+- `src/modules/hospitals/` returns public MOH/data.gov.sg hospital statistics and reference bed-capacity data without mock operational capacity values.
+- `src/modules/onemap/` proxies OneMap geocoding, reverse geocoding, and routing without exposing JWTs.
+- `src/modules/population/` normalises HDB and population planning context.
 
 ### `node-api/src/types/`
 Purpose:

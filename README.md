@@ -167,6 +167,49 @@ npm install
 npm run dev
 ```
 
+The Node API now includes SCDF, MOH/CDA, public hospital statistics, OneMap, HDB, and population context integrations. New endpoints are exposed under both the existing versioned prefix and the prototype-friendly paths, for example `/api/v1/scdf/resources` and `/api/scdf/resources`.
+
+Key integration endpoints:
+
+- `GET /api/scdf/resources`
+- `GET /api/scdf/nearest?lat=<lat>&lng=<lng>&type=shelter`
+- `GET /api/moh/infectious-diseases?disease=dengue`
+- `GET /api/moh/covid-weekly`
+- `GET /api/moh/health-capacity`
+- `GET /api/moh/signals/summary`
+- `GET /api/hospitals/occupancy`
+- `GET /api/hospitals/waiting-times`
+- `GET /api/hospitals/reference`
+- `GET /api/hospitals/sources`
+- `GET /api/onemap/search?query=<address>`
+- `GET /api/onemap/reverse-geocode?lat=<lat>&lng=<lng>`
+- `GET /api/onemap/route?startLat=<lat>&startLng=<lng>&endLat=<lat>&endLng=<lng>&mode=drive`
+- `GET /api/hdb/buildings`
+- `GET /api/population/planning-areas`
+- `GET /api/population/impact-context?area=<planning_area>`
+- `GET /api/population/nearby-context?lat=<lat>&lng=<lng>`
+
+The API starts without Supabase, LTA, data.gov.sg dataset IDs, or OneMap credentials. Supabase persistence is skipped when database credentials are absent. OneMap routes return a `CONFIGURATION_ERROR` until `ONEMAP_EMAIL` and `ONEMAP_PASSWORD` are configured. Public dataset integrations return explicit configuration or upstream errors until the relevant `*_RESOURCE_ID` values are set.
+
+Useful integration test commands:
+
+```bash
+cd backend/node-api
+npm run onemap:token
+npm run smoke:integrations
+npm run smoke:integrations -- --list
+npm run smoke:integrations -- --only=scdf-nearest-fire-station,moh-covid-weekly
+```
+
+`npm run onemap:token` follows OneMap authentication by reusing `.cache/onemap-token.json` until its Unix `expiry_timestamp` has passed, then re-authenticates with `ONEMAP_EMAIL` and `ONEMAP_PASSWORD`. The smoke script prints a short result sample for SCDF, MOH, OneMap, HDB, and population services.
+Use `--only=<case-id>` to test one or a few sources without triggering data.gov.sg rate limits across every dataset.
+
+data.gov.sg datasets use two fetch modes: CSV/tabular datasets use `datastore_search`, while GeoJSON/static datasets such as SCDF Fire Stations use `poll-download` followed by the returned file URL.
+
+To run the smoke script against live data.gov.sg datasets, copy the public `*_RESOURCE_ID` values from `backend/node-api/.env.example` into `backend/node-api/.env.local`. Leaving them blank reports `not-configured` or an API error instead of returning mock data.
+Each dataset also has a `*_FETCH_MODE` setting. Keep CSV/tabular datasets as `datastore`; set GeoJSON/static datasets to `download`.
+The hospital endpoints use public MOH workbook downloads for BOR and admission waiting-time statistics, plus data.gov.sg for static/reference bed-capacity data. They return `success`, `partial`, or `unavailable` envelopes and never generate mock hospital capacity values.
+
 Flask service (Python):
 
 ```bash

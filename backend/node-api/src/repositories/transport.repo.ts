@@ -3,6 +3,7 @@ import type { TrafficIncident } from "../../../shared/types/transport";
 
 export const transportRepo = {
   async saveIncidents(incidents: TrafficIncident[]) {
+    if (!supabase) return;
     const rows = incidents.map((i) => ({
       fetched_at: new Date().toISOString(),
       type: i.type,

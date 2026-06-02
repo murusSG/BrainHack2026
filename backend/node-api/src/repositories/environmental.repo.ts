@@ -3,6 +3,7 @@ import type { PsiRegionReading, Pm25RegionReading } from "../../../shared/types/
 
 export const environmentalRepo = {
   async savePsi(readings: PsiRegionReading[]) {
+    if (!supabase) return;
     const rows = readings.map((r) => ({
       fetched_at: r.timestamp,
       region: r.region,
@@ -14,6 +15,7 @@ export const environmentalRepo = {
   },
 
   async savePm25(readings: Pm25RegionReading[]) {
+    if (!supabase) return;
     const rows = readings.map((r) => ({
       fetched_at: r.timestamp,
       region: r.region,
