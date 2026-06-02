@@ -36,3 +36,66 @@ export async function getWeatherForecast(req: Request, res: Response, next: Next
     next(err);
   }
 }
+
+export async function getAirTemperature(req: Request, res: Response, next: NextFunction) {
+  try {
+    const data = await environmentalService.getAirTemperature();
+    res.json({ data, source: "NEA /environment/air-temperature", fetchedAt: new Date().toISOString() });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getHumidity(req: Request, res: Response, next: NextFunction) {
+  try {
+    const data = await environmentalService.getHumidity();
+    res.json({ data, source: "NEA /environment/relative-humidity", fetchedAt: new Date().toISOString() });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getWindDirection(req: Request, res: Response, next: NextFunction) {
+  try {
+    const data = await environmentalService.getWindDirection();
+    res.json({ data, source: "NEA /environment/wind-direction", fetchedAt: new Date().toISOString() });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getWindSpeed(req: Request, res: Response, next: NextFunction) {
+  try {
+    const data = await environmentalService.getWindSpeed();
+    res.json({ data, source: "NEA /environment/wind-speed", fetchedAt: new Date().toISOString() });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getUvIndex(req: Request, res: Response, next: NextFunction) {
+  try {
+    const data = await environmentalService.getUvIndex();
+    res.json({ data, source: "NEA /environment/uv-index", fetchedAt: new Date().toISOString() });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getWeatherForecast24h(req: Request, res: Response, next: NextFunction) {
+  try {
+    const data = await environmentalService.getWeatherForecast24h();
+    res.json({ data, source: "NEA /environment/24-hour-weather-forecast", fetchedAt: new Date().toISOString() });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getWeatherForecast4Day(req: Request, res: Response, next: NextFunction) {
+  try {
+    const data = await environmentalService.getWeatherForecast4Day();
+    res.json({ data, source: "NEA /environment/4-day-weather-forecast", fetchedAt: new Date().toISOString() });
+  } catch (err) {
+    next(err);
+  }
+}

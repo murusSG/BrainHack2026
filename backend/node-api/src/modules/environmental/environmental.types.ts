@@ -48,3 +48,49 @@ export interface NeaWeatherForecastResponse {
     label_location: { latitude: number; longitude: number };
   }>;
 }
+
+/** Raw shape returned by NEA /uv-index */
+export interface NeaUvIndexResponse {
+  items: Array<{
+    timestamp: string;
+    index: Array<{ value: number; timestamp: string }>;
+  }>;
+  api_info: { status: string };
+}
+
+/** Raw shape returned by NEA /24-hour-weather-forecast */
+export interface NeaWeatherForecast24hResponse {
+  items: Array<{
+    update_timestamp: string;
+    timestamp: string;
+    valid_period: { start: string; end: string };
+    general: {
+      forecast: string;
+      relative_humidity: { low: number; high: number };
+      temperature: { low: number; high: number };
+      wind: { speed: { low: number; high: number }; direction: string };
+    };
+    periods: Array<{
+      time: { start: string; end: string };
+      regions: Record<string, string>;
+    }>;
+  }>;
+  api_info: { status: string };
+}
+
+/** Raw shape returned by NEA /4-day-weather-forecast */
+export interface NeaWeatherForecast4DayResponse {
+  items: Array<{
+    update_timestamp: string;
+    timestamp: string;
+    forecasts: Array<{
+      timestamp: string;
+      date: string;
+      forecast: string;
+      relative_humidity: { low: number; high: number };
+      temperature: { low: number; high: number };
+      wind: { speed: { low: number; high: number }; direction: string };
+    }>;
+  }>;
+  api_info: { status: string };
+}

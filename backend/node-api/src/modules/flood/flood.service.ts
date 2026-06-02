@@ -1,7 +1,9 @@
-import { getRealtimeV2 } from "../../services/dataGovSg.client";
+import { downloadDatasetJson, getRealtimeV2 } from "../../services/dataGovSg.client";
 import { floodRepo } from "../../repositories/flood.repo";
-import type { FloodAlertReading, FloodAlertsV2Data } from "./flood.types";
+import type { FloodAlertReading, FloodAlertsV2Data, WaterSensorFeatureCollection } from "./flood.types";
 import type { FloodAlert, WaterSensorLocation } from "../../../../shared/types/flood";
+
+const WATER_SENSORS_DATASET_ID = "d_31333fa5cf0834f012d840365b336610";
 
 function pick(reading: FloodAlertReading, keys: string[], fallback: string): string {
   for (const key of keys) {
@@ -33,8 +35,18 @@ export async function getFloodAlerts(): Promise<FloodAlert[]> {
 }
 
 export async function getWaterSensors(): Promise<WaterSensorLocation[]> {
-  // The PUB water-level sensor dataset is published as a zipped shapefile/KML
-  // rather than GeoJSON, so it needs a zip + shapefile parsing step we have not
-  // built yet. Returning an empty list until that pipeline exists.
-  return [];
+  const fc = await downloadDatasetJson<WaterSensorFeatureCollection>(WATER_SENSORS_DATASET_ID);
+
+  return (fc.features ?? [])
+    .filter((f) => f.geometry?.type === "Point")
+    .map((f, i) => {
+      const p = f.properties;
+      const [lon, lat] = f.geometry.coordinates;
+      return {
+        sensorId: String(p["SENSOR_ID"] ?? p["ID"] ?? p["id"] ?? i),
+        name: String(p["SENSOR_NAME"] ?? p["NAME"] ?? p["name"] ?? p["LOCATION"] ?? "Unknown"),
+        latitude: lat,
+        longitude: lon,
+      };
+    });
 }

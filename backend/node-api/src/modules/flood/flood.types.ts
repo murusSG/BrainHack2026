@@ -17,3 +17,18 @@ export interface FloodAlertRecord {
 export interface FloodAlertsV2Data {
   records: FloodAlertRecord[];
 }
+
+/** GeoJSON feature from the PUB water-level sensor locations dataset. */
+export interface WaterSensorFeature {
+  type: "Feature";
+  properties: Record<string, unknown>;
+  geometry: {
+    type: "Point";
+    coordinates: [number, number]; // [longitude, latitude]
+  };
+}
+
+export interface WaterSensorFeatureCollection {
+  type: "FeatureCollection";
+  features: WaterSensorFeature[];
+}
