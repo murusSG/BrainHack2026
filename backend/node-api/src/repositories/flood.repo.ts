@@ -12,6 +12,6 @@ export const floodRepo = {
       raw_data: a.raw,
     }));
     const { error } = await supabase.from("flood_alerts").insert(rows);
-    if (error) console.error("[floodRepo.saveAlerts]", error.message);
+    if (error) console.warn("[floodRepo.saveAlerts]", error.message);
   },
 };

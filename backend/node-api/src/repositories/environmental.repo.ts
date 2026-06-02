@@ -11,7 +11,7 @@ export const environmentalRepo = {
       raw_data: r,
     }));
     const { error } = await supabase.from("environmental_readings").insert(rows);
-    if (error) console.error("[environmentalRepo.savePsi]", error.message);
+    if (error) console.warn("[environmentalRepo.savePsi]", error.message);
   },
 
   async savePm25(readings: Pm25RegionReading[]) {
@@ -23,6 +23,6 @@ export const environmentalRepo = {
       raw_data: r,
     }));
     const { error } = await supabase.from("environmental_readings").insert(rows);
-    if (error) console.error("[environmentalRepo.savePm25]", error.message);
+    if (error) console.warn("[environmentalRepo.savePm25]", error.message);
   },
 };

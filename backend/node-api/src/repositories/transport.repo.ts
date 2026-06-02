@@ -13,6 +13,6 @@ export const transportRepo = {
       raw_data: i,
     }));
     const { error } = await supabase.from("transport_incidents").insert(rows);
-    if (error) console.error("[transportRepo.saveIncidents]", error.message);
+    if (error) console.warn("[transportRepo.saveIncidents]", error.message);
   },
 };

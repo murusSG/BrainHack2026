@@ -12,6 +12,6 @@ export const dengueRepo = {
       raw_data: c,
     }));
     const { error } = await supabase.from("dengue_clusters").insert(rows);
-    if (error) console.error("[dengueRepo.saveClusters]", error.message);
+    if (error) console.warn("[dengueRepo.saveClusters]", error.message);
   },
 };

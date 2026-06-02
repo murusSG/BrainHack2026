@@ -8,9 +8,13 @@ import { mohRouter } from "../modules/moh/moh.routes";
 import { oneMapRouter } from "../modules/onemap/onemap.routes";
 import { hdbRouter, populationRouter } from "../modules/population/population.routes";
 import { hospitalsRouter } from "../modules/hospitals/hospitals.routes";
+import { crisisRouter } from "../modules/crisis/crisis.routes";
+import { authRouter } from "../modules/auth/auth.routes";
 
 export const v1Router = Router();
 
+v1Router.use("/auth", authRouter);
+v1Router.use("/crisis", crisisRouter);
 v1Router.use("/environmental", environmentalRouter);
 v1Router.use("/dengue", dengueRouter);
 v1Router.use("/flood", floodRouter);

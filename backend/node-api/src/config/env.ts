@@ -25,6 +25,7 @@ const schema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   SUPABASE_URL: optionalUrl,
   SUPABASE_SERVICE_ROLE_KEY: optionalString,
+  SUPABASE_ANON_KEY: optionalString,
   // Optional so the API can boot with only Supabase configured.
   // LTA transport endpoints will fail until a key is supplied.
   LTA_API_KEY: optionalString,

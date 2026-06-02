@@ -10,6 +10,7 @@ import { mohRouter } from "./modules/moh/moh.routes";
 import { oneMapRouter } from "./modules/onemap/onemap.routes";
 import { hdbRouter, populationRouter } from "./modules/population/population.routes";
 import { hospitalsRouter } from "./modules/hospitals/hospitals.routes";
+import { crisisRouter } from "./modules/crisis/crisis.routes";
 
 export function createApp() {
   const app = express();
@@ -33,6 +34,7 @@ export function createApp() {
   });
 
   app.use("/api/v1", v1Router);
+  app.use("/api/crisis", crisisRouter);
   app.use("/api/scdf", scdfRouter);
   app.use("/api/moh", mohRouter);
   app.use("/api/onemap", oneMapRouter);

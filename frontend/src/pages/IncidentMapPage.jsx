@@ -5,13 +5,37 @@ import {
   quickActionLogs
 } from '../data/dashboardData';
 import { IncidentMapCanvas } from '../components/IncidentMapCanvas';
+import { useCrisisEvents } from '../hooks/useCrisisEvents';
+import { toMapMarker } from '../utils/crisisView';
+
+function syncedLabel(status, count) {
+  if (status === 'connected') return `Live · ${count} events`;
+  if (status === 'connecting') return 'Connecting to live feed…';
+  return 'Live feed offline · showing last data';
+}
 
 export function IncidentMapPage() {
+  const { events, status } = useCrisisEvents();
+
+  const usingLive = events.length > 0;
+  const liveMarkers = events.map(toMapMarker);
+
+  // The stylised canvas needs projected coordinates; the list can show all events.
+  const canvasIncidents = usingLive
+    ? liveMarkers.filter((marker) => marker.coordinates)
+    : geospatialIncidents;
+  const listIncidents = usingLive ? liveMarkers : geospatialIncidents;
+
+  const summary = {
+    ...incidentMapSummary,
+    lastSynced: usingLive ? syncedLabel(status, events.length) : incidentMapSummary.lastSynced
+  };
+
   return (
     <div className="incident-map-page">
       <section className="incident-map-layout">
         <div className="incident-map-main">
-          <IncidentMapCanvas incidents={geospatialIncidents} summary={incidentMapSummary} />
+          <IncidentMapCanvas incidents={canvasIncidents} summary={summary} />
 
           <div className="incident-map-bottom">
             <section className="panel">
@@ -64,9 +88,9 @@ export function IncidentMapPage() {
             <div className="section-heading incident-list-heading">
               <div>
                 <p className="eyebrow">Active incidents</p>
-                <h2>{geospatialIncidents.length} live map events</h2>
+                <h2>{listIncidents.length} live map events</h2>
               </div>
-              <span className="pill">{incidentMapSummary.lastSynced}</span>
+              <span className="pill">{summary.lastSynced}</span>
             </div>
 
             <div className="incident-filter-row">
@@ -86,7 +110,7 @@ export function IncidentMapPage() {
             </label>
 
             <div className="incident-list">
-              {geospatialIncidents.map((incident) => (
+              {listIncidents.map((incident) => (
                 <article key={incident.id} className="incident-list-card">
                   <div className="incident-list-top">
                     <p className="incident-code">{incident.id}</p>
