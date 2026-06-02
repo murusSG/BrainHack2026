@@ -1,6 +1,6 @@
 import { timelineItems } from '../data/dashboardData';
 
-export function TimelinePanel() {
+export function TimelinePanel({ items = timelineItems }) {
   return (
     <section className="panel">
       <div className="section-heading">
@@ -9,7 +9,7 @@ export function TimelinePanel() {
       </div>
 
       <div className="timeline-list">
-        {timelineItems.map((item) => (
+        {items.map((item) => (
           <article key={`${item.time}-${item.title}`} className="timeline-item">
             <div className={`timeline-dot severity-${item.severity}`} />
             <div className="timeline-body">
