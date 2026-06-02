@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CrisisMap } from '../components/CrisisMap';
+import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
+import { MapErrorBoundary } from '../components/MapErrorBoundary';
 import { useEvents } from '../hooks/useEvents';
 
-// Distance in metres between two lat/lng points (Haversine)
 function distanceMeters(a, b) {
   const R = 6371000;
   const dLat = ((b.lat - a.lat) * Math.PI) / 180;
@@ -15,7 +16,6 @@ function distanceMeters(a, b) {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
-// Demo watch points — in a full build these come from user onboarding
 const WATCH_POINTS = [
   { id: 'home', label: 'Home', sublabel: 'Tampines St 21', lat: 1.3536, lng: 103.9450 },
   { id: 'parents', label: "Mum's place", sublabel: 'Woodlands', lat: 1.4382, lng: 103.7890 },
@@ -24,124 +24,120 @@ const WATCH_POINTS = [
 
 const SEVERITY_RANK = { info: 0, low: 1, medium: 2, high: 3, critical: 4 };
 
-export function ResidentPage() {
-  const { events, status } = useEvents();
-  const [activePoint, setActivePoint] = useState(WATCH_POINTS[0].id);
+function statusTone(severity) {
+  if (!severity) return 'clear';
+  return (SEVERITY_RANK[severity] ?? 0) >= 3 ? 'critical' : 'warning';
+}
 
-  // For each watch point, find events whose vicinity radius covers it
+export function ResidentPage() {
+  const { events, status, error } = useEvents();
+  const [activePoint, setActivePoint] = useState(WATCH_POINTS[0].id);
+  const isLoading = status === 'loading';
+
   const statusByPoint = useMemo(() => {
     return WATCH_POINTS.map((point) => {
-      const affecting = events.filter((e) => {
-        if (e.lat == null || e.lng == null) return false;
-        const d = distanceMeters(point, e);
-        return d <= (e.vicinityRadiusMeters ?? 500);
+      const affecting = events.filter((event) => {
+        if (event.lat == null || event.lng == null) return false;
+        const distance = distanceMeters(point, event);
+        return distance <= (event.vicinityRadiusMeters ?? 500);
       });
-      affecting.sort((a, b) => (SEVERITY_RANK[b.severity] ?? 0) - (SEVERITY_RANK[a.severity] ?? 0));
+      affecting.sort(
+        (a, b) => (SEVERITY_RANK[b.severity] ?? 0) - (SEVERITY_RANK[a.severity] ?? 0)
+      );
       return { point, affecting };
     });
   }, [events]);
 
-  const active = statusByPoint.find((s) => s.point.id === activePoint);
+  const active = statusByPoint.find((statusItem) => statusItem.point.id === activePoint);
+  const activeSeverity = active?.affecting[0]?.severity;
+  const activeTone = isLoading ? 'loading' : statusTone(activeSeverity);
 
   return (
-    <div style={{ maxWidth: 480, margin: '0 auto', minHeight: '100vh', padding: 16, color: '#f5f7fb' }}>
-      {/* Header */}
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+    <div className="resident-page">
+      <header className="resident-header">
         <div>
-          <p style={{ margin: 0, fontSize: 12, letterSpacing: 1, opacity: 0.6, textTransform: 'uppercase' }}>
-            MURUS SG
-          </p>
-          <h1 style={{ margin: 0, fontSize: 22 }}>Your safety brief</h1>
+          <p className="resident-kicker">MURUS SG</p>
+          <h1>Your safety brief</h1>
         </div>
-        <Link to="/" style={{ fontSize: 13, color: '#55a7ff' }}>Command view ↗</Link>
+        <Link to="/" className="resident-command-link">
+          Command view
+        </Link>
       </header>
 
-      {/* Watch point selector */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {WATCH_POINTS.map((p) => {
-          const s = statusByPoint.find((x) => x.point.id === p.id);
-          const worst = s?.affecting[0]?.severity;
-          const dot = worst ? (SEVERITY_RANK[worst] >= 3 ? '#ff7676' : '#ffb554') : '#19d39a';
+      <div className="resident-watch-grid" aria-label="Saved locations">
+        {WATCH_POINTS.map((point) => {
+          const pointStatus = statusByPoint.find((item) => item.point.id === point.id);
+          const worstSeverity = pointStatus?.affecting[0]?.severity;
+          const pointTone = isLoading ? 'loading' : statusTone(worstSeverity);
+
           return (
             <button
-              key={p.id}
-              onClick={() => setActivePoint(p.id)}
-              style={{
-                flex: 1,
-                padding: '10px 8px',
-                borderRadius: 12,
-                border: activePoint === p.id ? '1px solid #55a7ff' : '1px solid rgba(255,255,255,0.12)',
-                background: activePoint === p.id ? 'rgba(85,167,255,0.12)' : '#231d1a',
-                color: '#f5f7fb',
-                textAlign: 'left',
-              }}
+              key={point.id}
+              type="button"
+              onClick={() => setActivePoint(point.id)}
+              className={`resident-watch-button ${activePoint === point.id ? 'is-active' : ''}`}
             >
-              <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 4, background: dot, marginRight: 6 }} />
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{p.label}</span>
-              <p style={{ margin: '2px 0 0', fontSize: 11, opacity: 0.6 }}>{p.sublabel}</p>
+              <span className={`resident-status-dot is-${pointTone}`} aria-hidden="true" />
+              <span className="resident-watch-label">{point.label}</span>
+              <span className="resident-watch-sublabel">{point.sublabel}</span>
             </button>
           );
         })}
       </div>
 
-      {/* The Crisis Card */}
-      {active && (
-        <div
-          style={{
-            borderRadius: 16,
-            padding: 20,
-            marginBottom: 16,
-            background: active.affecting.length === 0
-              ? 'rgba(25,211,154,0.10)'
-              : SEVERITY_RANK[active.affecting[0].severity] >= 3
-              ? 'rgba(255,118,118,0.10)'
-              : 'rgba(255,181,84,0.10)',
-            border: '1px solid rgba(255,255,255,0.10)',
-          }}
-        >
-          {active.affecting.length === 0 ? (
-            <>
-              <p style={{ fontSize: 40, margin: 0 }}>✅</p>
-              <h2 style={{ margin: '8px 0 4px' }}>All clear at {active.point.label}</h2>
-              <p style={{ margin: 0, opacity: 0.8 }}>No active hazards in your area right now.</p>
-            </>
-          ) : (
-            <>
-              <p style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.7, margin: 0 }}>
-                {active.affecting.length} alert{active.affecting.length > 1 ? 's' : ''} near {active.point.label}
-              </p>
-              {active.affecting.map((e) => (
-                <div key={e.id} style={{ marginTop: 14 }}>
-                  <h2 style={{ margin: '0 0 4px', fontSize: 18 }}>{e.title}</h2>
-                  <p style={{ margin: '0 0 10px', fontWeight: 600, fontSize: 15 }}>
-                    👉 {e.publicAction}
-                  </p>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button style={btnPrimary}>View on map</button>
-                    <button style={btnGhost}>Nearest shelter</button>
+      <section className={`resident-crisis-card is-${activeTone}`}>
+        {isLoading ? (
+          <>
+            <p className="resident-alert-count">Syncing live data</p>
+            <LoadingSkeleton rows={2} compact />
+          </>
+        ) : active?.affecting.length === 0 ? (
+          <>
+            <span className="resident-clear-badge">CLEAR</span>
+            <h2>All clear at {active.point.label}</h2>
+            <p>No active hazards in your area right now.</p>
+          </>
+        ) : (
+          <>
+            <p className="resident-alert-count">
+              {active.affecting.length} alert{active.affecting.length > 1 ? 's' : ''} near{' '}
+              {active.point.label}
+            </p>
+            <div className="resident-alert-list">
+              {active.affecting.map((event) => (
+                <article key={event.id} className="resident-alert-card">
+                  <h2>{event.title}</h2>
+                  <p className="resident-action-copy">Action: {event.publicAction}</p>
+                  <div className="resident-card-actions">
+                    <button type="button" className="resident-primary-button">
+                      View on map
+                    </button>
+                    <button type="button" className="resident-secondary-button">
+                      Nearest shelter
+                    </button>
                   </div>
-                </div>
+                </article>
               ))}
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
+      </section>
+
+      {status === 'error' && (
+        <p className="resident-feed-warning">
+          Live feed unavailable ({error}). Showing demo scenarios only.
+        </p>
       )}
 
-      {/* Map showing the active point's surroundings */}
-      <div style={{ height: 280, borderRadius: 16, overflow: 'hidden', marginBottom: 16 }}>
-        <CrisisMap events={events} />
-      </div>
-
-      {status === 'loading' && <p style={{ opacity: 0.6 }}>Syncing live data…</p>}
+      <section className="resident-map-shell" aria-label="Nearby crisis map">
+        {isLoading ? (
+          <MapLoadingSkeleton label="Syncing nearby hazards" />
+        ) : (
+          <MapErrorBoundary resetKey={events.length}>
+            <CrisisMap events={events} />
+          </MapErrorBoundary>
+        )}
+      </section>
     </div>
   );
 }
-
-const btnPrimary = {
-  flex: 1, padding: '10px', borderRadius: 10, border: 'none',
-  background: '#55a7ff', color: '#0b0d11', fontWeight: 600,
-};
-const btnGhost = {
-  flex: 1, padding: '10px', borderRadius: 10,
-  border: '1px solid rgba(255,255,255,0.18)', background: 'transparent', color: '#f5f7fb',
-};

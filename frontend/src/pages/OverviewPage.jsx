@@ -1,4 +1,5 @@
 import { AgencyFeedPanel } from '../components/AgencyFeedPanel';
+import { ForesightEngine } from '../components/ForesightEngine';
 import { MetricCard } from '../components/MetricCard';
 import { QuickActionsPanel } from '../components/QuickActionsPanel';
 import { RecommendationPanel } from '../components/RecommendationPanel';
@@ -11,8 +12,29 @@ import {
   roleViews,
   topStats
 } from '../data/dashboardData';
+import { useEvents } from '../hooks/useEvents';
 
 export function OverviewPage() {
+  const { events, status } = useEvents();
+  const demoEventCount = events.filter((event) => event.isDemo).length;
+  const liveEventCount = events.length - demoEventCount;
+  const activeIncidentDelta =
+    status === 'loading'
+      ? 'Syncing live feeds'
+      : status === 'error'
+        ? 'Demo fallback active'
+        : `${liveEventCount} live + ${demoEventCount} demo`;
+  const overviewStats = topStats.map((stat) =>
+    stat.label === 'Active incidents'
+      ? {
+          ...stat,
+          value: String(events.length),
+          delta: activeIncidentDelta,
+          loading: status === 'loading',
+        }
+      : stat
+  );
+
   return (
     <div className="overview-page">
       <section className="hero-panel">
@@ -53,10 +75,12 @@ export function OverviewPage() {
       </section>
 
       <section className="stats-grid">
-        {topStats.map((stat) => (
+        {overviewStats.map((stat) => (
           <MetricCard key={stat.label} {...stat} />
         ))}
       </section>
+
+      <ForesightEngine />
 
       <section className="content-grid">
         <div className="left-column">

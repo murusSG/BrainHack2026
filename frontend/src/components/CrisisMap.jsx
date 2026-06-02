@@ -12,6 +12,8 @@ const SEVERITY_COLOR = {
 };
 
 // Hazard → emoji marker label (simple, no icon assets needed)
+const HYPERLOCAL_HAZARDS = new Set(['flood', 'fire', 'dengue']);
+
 const HAZARD_ICON = {
   flood: '🌊',
   haze: '🌫️',
@@ -38,7 +40,7 @@ function FitBounds({ events }) {
   return null;
 }
 
-export function CrisisMap({ events = [], onSelect, height = '100%' }) {
+export function CrisisMap({ events = [], onSelect, selectedId, height = '100%' }) {
   return (
     <div style={{ height, width: '100%', borderRadius: 16, overflow: 'hidden' }}>
       <MapContainer
@@ -60,14 +62,17 @@ export function CrisisMap({ events = [], onSelect, height = '100%' }) {
         {events.map((e) => {
           if (e.lat == null || e.lng == null) return null;
           const color = SEVERITY_COLOR[e.severity] ?? '#55a7ff';
+          const isSelected = e.id === selectedId;
+          const showCircle = isSelected && HYPERLOCAL_HAZARDS.has(e.hazardType);
           return (
             <div key={e.id}>
-              {/* Vicinity radius circle */}
-              <Circle
-                center={[e.lat, e.lng]}
-                radius={e.vicinityRadiusMeters ?? 500}
-                pathOptions={{ color, fillColor: color, fillOpacity: 0.08, weight: 1 }}
-              />
+              {showCircle && (
+                <Circle
+                  center={[e.lat, e.lng]}
+                  radius={e.vicinityRadiusMeters ?? 500}
+                  pathOptions={{ color, fillColor: color, fillOpacity: 0.12, weight: 1.5 }}
+                />
+              )}
               {/* Event marker */}
               <CircleMarker
                 center={[e.lat, e.lng]}

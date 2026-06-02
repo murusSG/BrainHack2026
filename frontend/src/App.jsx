@@ -6,6 +6,7 @@ import { IncidentMapPage } from './pages/IncidentMapPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { ResourcesPage } from './pages/ResourcesPage';
 import { ResidentPage } from './pages/ResidentPage';
+import { ResponderPage } from './pages/ResponderPage';
 
 // Wraps the command dashboard pages in the existing sidebar layout
 function CommandShell({ page }) {
@@ -25,6 +26,7 @@ export default function App() {
       <Routes>
         {/* Resident view — standalone, mobile-first, no command sidebar */}
         <Route path="/resident" element={<ResidentPage />} />
+        <Route path="/responder" element={<ResponderPage />} />
 
         {/* Command (leader) views — wrapped in the dashboard sidebar */}
         <Route path="/" element={<CommandShell page="overview" />} />
