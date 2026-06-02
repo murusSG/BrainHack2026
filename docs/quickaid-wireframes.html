@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuickAid — Wireframe Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #080E1A;
+  --surface:  #0D1525;
+  --surface2: #111D30;
+  --border:   #1A2B45;
+  --blue:     #3B7EF6;
+  --cyan:     #0EC4D8;
+  --red:      #F04747;
+  --amber:    #F5A623;
+  --green:    #18D98B;
+  --purple:   #8B5CF6;
+  --text:     #E8EEF8;
+  --muted:    #5A6E8A;
+  --muted2:   #3A4E68;
+  --font:     'DM Sans', sans-serif;
+  --mono:     'DM Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; background: #020609; font-family: var(--font); color: var(--text); overflow: hidden; }
+
+/* ── NAV STRIP ──────────────────────────────────────────────────── */
+#nav-strip {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  background: #020609; border-bottom: 1px solid var(--border);
+  padding: 10px 20px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+}
+#nav-strip span { font-size: 13px; color: var(--muted); margin-right: 8px; font-weight: 600; letter-spacing: .05em; }
+.nav-btn {
+  padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--muted); font-size: 11px; font-family: var(--font);
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.nav-btn:hover { border-color: var(--blue); color: var(--text); }
+.nav-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
+
+/* ── SCREEN CONTAINER ───────────────────────────────────────────── */
+#screen-wrap {
+  position: fixed; top: 52px; left: 0; right: 0; bottom: 0;
+  overflow: auto; background: #020609;
+}
+.screen { display: none; width: 1280px; min-height: 832px; margin: 0 auto; position: relative; background: var(--bg); }
+.screen.active { display: block; }
+
+/* ── COMMON COMPONENTS ──────────────────────────────────────────── */
+.topbar {
+  height: 56px; background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 24px; gap: 0; position: relative;
+}
+.logo { font-size: 18px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.logo-icon { width: 30px; height: 30px; background: var(--blue); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.logo-sub { font-size: 10px; color: var(--muted); font-weight: 400; margin-left: 2px; }
+.topnav { display: flex; gap: 0; margin-left: 40px; }
+.topnav a { padding: 0 20px; height: 56px; display: flex; align-items: center; font-size: 13px; color: var(--muted); text-decoration: none; border-bottom: 3px solid transparent; cursor: pointer; transition: color .15s; }
+.topnav a.active { color: var(--cyan); border-bottom-color: var(--cyan); font-weight: 600; }
+.topnav a:hover { color: var(--text); }
+.spacer { flex: 1; }
+.badge { padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: .06em; }
+.badge-pub { background: rgba(14,196,216,.15); color: var(--cyan); }
+.badge-resp { background: rgba(245,166,35,.15); color: var(--amber); }
+.badge-gov { background: rgba(59,126,246,.15); color: var(--blue); }
+.avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-left: 12px; }
+.accent-bar { position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+
+/* cards / panels */
+.card { background: var(--surface); border-radius: 10px; border: 1px solid var(--border); }
+.card-inner { background: var(--surface2); border-radius: 8px; border: 1px solid var(--border); }
+
+/* status ticker */
+.ticker { background: var(--surface); border-top: 1px solid var(--border); height: 44px; display: flex; align-items: center; padding: 0 24px; gap: 40px; position: absolute; bottom: 0; left: 0; right: 0; }
+.tick-item { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.pulse { width: 7px; height: 7px; border-radius: 50%; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+
+/* annotation sticky */
+.anno {
+  position: absolute; background: rgba(255,220,50,.08); border: 1px solid rgba(255,220,50,.35);
+  border-radius: 6px; padding: 8px 11px; font-size: 10.5px; color: #FFD84A; line-height: 1.5;
+  max-width: 210px;
+}
+.anno::before { content: '📝 '; }
+
+/* sidebar */
+.sidebar {
+  width: 60px; background: var(--surface); border-right: 1px solid var(--border);
+  position: absolute; top: 0; left: 0; bottom: 0; display: flex; flex-direction: column;
+  align-items: center; padding-top: 16px; gap: 4px;
+}
+.sb-icon {
+  width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center;
+  justify-content: center; font-size: 18px; cursor: pointer; transition: background .15s;
+}
+.sb-icon:hover { background: var(--surface2); }
+.sb-icon.active { background: rgba(59,126,246,.2); }
+.sb-logo { font-size: 20px; margin-bottom: 12px; }
+
+/* buttons */
+.btn { padding: 10px 20px; border-radius: 8px; font-family: var(--font); font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all .15s; }
+.btn-primary { background: var(--blue); color: #fff; }
+.btn-primary:hover { background: #5090FF; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+.btn-outline:hover { border-color: var(--blue); color: var(--text); }
+
+/* form */
+.form-field { display: flex; flex-direction: column; gap: 6px; }
+.form-field label { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; }
+.form-field input, .form-field select {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); font-family: var(--font); font-size: 13px; padding: 11px 14px;
+  outline: none; transition: border .15s;
+}
+.form-field input:focus, .form-field select:focus { border-color: var(--blue); }
+.form-field input::placeholder { color: var(--muted); }
+
+/* severity chips */
+.sev { padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; letter-spacing: .05em; }
+.sev-high { background: rgba(240,71,71,.2); color: var(--red); }
+.sev-med  { background: rgba(245,166,35,.2); color: var(--amber); }
+.sev-low  { background: rgba(24,217,139,.2); color: var(--green); }
+.sev-info { background: rgba(59,126,246,.2); color: var(--blue); }
+
+/* section label */
+.section-label { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.screen-label { position: absolute; bottom: 10px; left: 24px; font-size: 10px; color: var(--muted2); font-family: var(--mono); }
+
+/* progress bar */
+.prog-wrap { width: 100%; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.prog-fill { height: 100%; border-radius: 3px; }
+
+/* map placeholder */
+.map-ph {
+  background: var(--surface2); border-radius: 10px; border: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; color: var(--muted); position: relative; overflow: hidden;
+}
+.map-ph::before {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 39px, var(--border) 40px),
+              repeating-linear-gradient(90deg, transparent, transparent 39px, var(--border) 40px);
+  opacity: .4;
+}
+.map-ph-inner { position: relative; z-index: 1; text-align: center; }
+.map-unit { position: absolute; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.map-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); }
+.map-label { font-size: 9px; font-weight: 700; background: var(--surface); padding: 1px 5px; border-radius: 4px; white-space: nowrap; }
+
+/* timeline */
+.tl-item { display: flex; gap: 12px; padding-bottom: 20px; position: relative; }
+.tl-item::before { content: ''; position: absolute; left: 15px; top: 20px; bottom: 0; width: 1px; background: var(--border); }
+.tl-item:last-child::before { display: none; }
+.tl-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; border: 2px solid rgba(255,255,255,.2); }
+.tl-content { flex: 1; }
+.tl-time { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+.tl-text { font-size: 12px; color: var(--text); margin-top: 2px; line-height: 1.4; }
+
+/* alert feed item */
+.alert-item { padding: 10px 14px; border-radius: 8px; background: var(--surface2); border-left: 3px solid; margin-bottom: 6px; }
+.alert-time { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+.alert-msg { font-size: 12px; color: var(--text); margin-top: 3px; line-height: 1.4; }
+
+/* incident row */
+.inc-row { display: flex; align-items: center; padding: 10px 14px; border-radius: 8px; background: var(--surface2); border-left: 3px solid; margin-bottom: 6px; gap: 12px; }
+.inc-id { font-size: 10px; color: var(--muted); font-family: var(--mono); width: 64px; flex-shrink: 0; }
+.inc-info { flex: 1; }
+.inc-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.inc-loc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.inc-status { font-size: 11px; color: var(--muted); width: 100px; flex-shrink: 0; }
+.inc-units { font-size: 11px; color: var(--muted); width: 130px; flex-shrink: 0; }
+.inc-action { padding: 5px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; background: rgba(59,126,246,.15); color: var(--blue); border: 1px solid rgba(59,126,246,.3); cursor: pointer; white-space: nowrap; }
+
+/* PSI zone card */
+.psi-card { background: var(--surface2); border-radius: 8px; border-top: 3px solid; padding: 12px; }
+.psi-val { font-size: 32px; font-weight: 700; line-height: 1; margin-top: 4px; }
+.psi-lvl { font-size: 11px; font-weight: 600; margin-top: 6px; }
+
+/* resource row */
+.res-row { margin-bottom: 18px; }
+.res-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.res-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.res-val { font-size: 12px; font-weight: 700; }
+
+/* comm bubble */
+.comm-bubble { background: var(--surface2); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; border: 1px solid var(--border); }
+.comm-from { font-size: 10px; font-weight: 700; color: var(--cyan); font-family: var(--mono); }
+.comm-time { font-size: 10px; color: var(--muted); font-family: var(--mono); float: right; }
+.comm-msg { font-size: 12px; color: var(--text); margin-top: 4px; line-height: 1.4; }
+
+/* skill pill */
+.skill-pill { padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; border: 1px solid; cursor: pointer; transition: all .15s; display: inline-block; }
+
+/* stat card */
+.stat-card { background: var(--surface2); border-radius: 8px; padding: 16px; text-align: center; }
+.stat-val { font-size: 28px; font-weight: 700; line-height: 1; }
+.stat-label { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.3; }
+
+/* need card */
+.need-card { background: var(--surface2); border-radius: 8px; border-left: 3px solid; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+.need-info { flex: 1; }
+.need-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.need-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.need-req { font-size: 11px; font-weight: 600; margin-top: 3px; }
+.need-signup { padding: 5px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; border: 1px solid; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+
+/* kpi card */
+.kpi-card { background: var(--surface2); border-radius: 10px; border: 1px solid var(--border); padding: 16px 20px; }
+.kpi-label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.kpi-val { font-size: 36px; font-weight: 700; line-height: 1; }
+.kpi-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+.kpi-change { font-size: 11px; font-weight: 600; margin-top: 4px; }
+
+/* flow arrows on nav */
+.flow-section { display: flex; align-items: center; gap: 4px; margin-right: 16px; }
+.flow-arrow { color: var(--muted2); font-size: 12px; }
+
+/* scrollable panel */
+.scroll-panel { overflow-y: auto; }
+.scroll-panel::-webkit-scrollbar { width: 4px; }
+.scroll-panel::-webkit-scrollbar-track { background: transparent; }
+.scroll-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* role card */
+.role-card {
+  background: var(--surface); border-radius: 14px; border: 1.5px solid var(--border);
+  padding: 28px 24px; cursor: pointer; transition: all .2s; position: relative; overflow: hidden;
+}
+.role-card:hover { transform: translateY(-3px); border-color: var(--blue); }
+.role-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.role-card .role-icon { font-size: 36px; margin-bottom: 14px; }
+.role-card .role-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.role-card .role-sub { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 20px; }
+.role-card .role-btn { padding: 10px 0; border-radius: 8px; text-align: center; font-size: 13px; font-weight: 600; border: 1px solid; }
+
+/* govt escalation */
+.esc-card { background: var(--surface2); border-radius: 10px; border: 1px solid var(--border); padding: 16px; }
+.dorscon-bar { display: flex; gap: 4px; margin-top: 10px; }
+.dorscon-level { flex: 1; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; letter-spacing: .05em; opacity: .4; transition: opacity .2s; }
+.dorscon-level.active { opacity: 1; }
+
+/* nav flow indicator */
+.flow-indicator {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 12px; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px;
+}
+
+/* loading anim */
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+.screen.active { animation: fadeIn .25s ease; }
+</style>
+</head>
+<body>
+
+<!-- NAV STRIP -->
+<div id="nav-strip">
+  <span>QuickAid Wireframes</span>
+
+  <div class="flow-section">
+    <span style="font-size:10px;color:var(--muted);letter-spacing:.08em;font-weight:700">PUBLIC</span>
+    <span class="flow-arrow">›</span>
+    <button class="nav-btn active" onclick="show('s1')">1 · Landing</button>
+    <span class="flow-arrow">›</span>
+    <button class="nav-btn" onclick="show('s2')">2 · Dashboard</button>
+    <span class="flow-arrow">›</span>
+    <button class="nav-btn" onclick="show('s3')">3 · Haze Detail</button>
+    <span class="flow-arrow">›</span>
+    <button class="nav-btn" onclick="show('s4')">4 · Volunteer</button>
+    <span class="flow-arrow">›</span>
+    <button class="nav-btn" onclick="show('s4b')">5 · Report</button>
+  </div>
+
+  <div class="flow-section" style="margin-left:8px">
+    <span style="font-size:10px;color:var(--amber);letter-spacing:.08em;font-weight:700">RESPONDER</span>
+    <span class="flow-arrow">›</span>
+    <button class="nav-btn" onclick="show('s5')">6 · Login</button>
+    <span class="flow-arrow">›</span>
+    <button class="nav-btn" onclick="show('s6')">7 · Ops Dashboard</button>
+    <span class="flow-arrow">›</span>
+    <button class="nav-btn" onclick="show('s7')">8 · Incident Detail</button>
+  </div>
+
+  <div class="flow-section" style="margin-left:8px">
+    <span style="font-size:10px;color:var(--blue);letter-spacing:.08em;font-weight:700">GOVERNMENT</span>
+    <span class="flow-arrow">›</span>
+    <button class="nav-btn" onclick="show('s8')">9 · Gov Dashboard</button>
+    <span class="flow-arrow">›</span>
+    <button class="nav-btn" onclick="show('s9')">10 · Resources</button>
+    <span class="flow-arrow">›</span>
+    <button class="nav-btn" onclick="show('s10')">11 · Flow Map</button>
+  </div>
+</div>
+
+<div id="screen-wrap">
+
+<!-- ══════════════════════════════════════════════════════════════
+     S1 · LANDING / ROLE SELECTION
+══════════════════════════════════════════════════════════════ -->
+<div id="s1" class="screen active">
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse 900px 600px at 50% 30%, rgba(59,126,246,.08) 0%, transparent 70%)"></div>
+
+  <!-- Logo top -->
+  <div style="position:absolute;top:32px;left:40px;display:flex;align-items:center;gap:10px">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <div style="font-size:20px;font-weight:700">QuickAid</div>
+      <div style="font-size:10px;color:var(--muted)">Singapore Emergency Response Platform</div>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div style="position:absolute;top:130px;left:0;right:0;text-align:center">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.2em;color:var(--blue);text-transform:uppercase;margin-bottom:16px">CODE_EXP 2026 · Mission: Quick Aid</div>
+    <div style="font-size:52px;font-weight:700;line-height:1.1;letter-spacing:-.02em">Respond Faster.<br><span style="color:var(--cyan)">Save Lives.</span></div>
+    <div style="font-size:15px;color:var(--muted);margin-top:20px;max-width:680px;margin-left:auto;margin-right:auto;line-height:1.6">
+      Singapore's unified crisis intelligence platform — aggregating live data from NEA, MOH, PUB,<br>SCDF and community sources to empower every layer of emergency response.
+    </div>
+  </div>
+
+  <!-- Role Cards -->
+  <div style="position:absolute;top:360px;left:0;right:0;display:flex;justify-content:center;gap:24px;padding:0 60px">
+
+    <div class="role-card" style="flex:1;border-color:rgba(14,196,216,.3)" onclick="show('s2')">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--cyan);border-radius:14px 14px 0 0"></div>
+      <div class="role-icon">🏙️</div>
+      <div class="role-title">General Public</div>
+      <div class="role-sub">View live crisis alerts, find shelters, report incidents on the ground, and sign up as a community volunteer.</div>
+      <div class="role-btn" style="border-color:var(--cyan);color:var(--cyan);background:rgba(14,196,216,.1)">Enter Public View →</div>
+    </div>
+
+    <div class="role-card" style="flex:1;border-color:rgba(245,166,35,.3)" onclick="show('s5')">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--amber);border-radius:14px 14px 0 0"></div>
+      <div class="role-icon">🚒</div>
+      <div class="role-title">Responder Agency</div>
+      <div class="role-sub">SCDF · SPF · MOH · PUB · NEA<br>Operational maps, incident management, unit deployment & inter-agency comms.</div>
+      <div class="role-btn" style="border-color:var(--amber);color:var(--amber);background:rgba(245,166,35,.1)">🔒 Agency Login →</div>
+    </div>
+
+    <div class="role-card" style="flex:1;border-color:rgba(59,126,246,.3)" onclick="show('s8')">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:var(--blue);border-radius:14px 14px 0 0"></div>
+      <div class="role-icon">🏛️</div>
+      <div class="role-title">Government Official</div>
+      <div class="role-sub">Strategic overview, cross-agency resource allocation, DORSCON escalation controls, and national crisis intelligence.</div>
+      <div class="role-btn" style="border-color:var(--blue);color:var(--blue);background:rgba(59,126,246,.1)">🔒 Secure Login →</div>
+    </div>
+
+  </div>
+
+  <!-- Lock note -->
+  <div style="position:absolute;top:660px;left:0;right:0;text-align:center;font-size:12px;color:var(--muted)">
+    🔒 Responder & Government access requires agency credentials via CorpPass / SingPass for Business · MFA enforced
+  </div>
+
+  <!-- Status ticker -->
+  <div class="ticker">
+    <div class="tick-item"><div class="pulse" style="background:var(--amber)"></div><span style="color:var(--amber)">🌫️ Haze PSI: 87 — Moderate</span></div>
+    <div class="tick-item"><div class="pulse" style="background:var(--red)"></div><span style="color:var(--red)">🦟 Dengue: 312 active clusters</span></div>
+    <div class="tick-item"><div class="pulse" style="background:var(--cyan)"></div><span style="color:var(--cyan)">🌧️ Flood Watch: Bukit Timah</span></div>
+    <div class="tick-item"><div class="pulse" style="background:var(--green)"></div><span style="color:var(--green)">🏥 Hospital beds: 78% capacity</span></div>
+    <div style="margin-left:auto;font-size:11px;color:var(--green);font-weight:700;font-family:var(--mono)">● LIVE</div>
+  </div>
+
+  <div class="anno" style="right:30px;top:380px">Role-based entry: no login required for General Public. Responders + Gov use CorpPass SSO.</div>
+  <div class="anno" style="right:30px;top:530px">Live status ticker pulls real-time from NEA (PSI), MOH (dengue), PUB (floods) APIs.</div>
+  <div class="screen-label">01 / Landing — Role Selection</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     S2 · PUBLIC DASHBOARD
+══════════════════════════════════════════════════════════════ -->
+<div id="s2" class="screen">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="logo"><div class="logo-icon">⚡</div>QuickAid</div>
+    <nav class="topnav">
+      <a class="active">Dashboard</a><a onclick="show('s3')">Alerts</a><a>Shelters</a><a onclick="show('s4')">Volunteer</a><a onclick="show('s4b')">Report</a>
+    </nav>
+    <div class="spacer"></div>
+    <div class="badge badge-pub">PUBLIC</div>
+    <div class="avatar">SG</div>
+  </div>
+
+  <!-- Crisis Summary Row -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px 24px 0">
+    <div class="card" style="padding:14px 16px;border-top:3px solid var(--amber)">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--amber);text-transform:uppercase">🌫️ Haze</div>
+      <div style="font-size:22px;font-weight:700;margin-top:4px">PSI 87</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">Moderate — Mask up outdoors</div>
+    </div>
+    <div class="card" style="padding:14px 16px;border-top:3px solid var(--red)">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--red);text-transform:uppercase">🦟 Dengue</div>
+      <div style="font-size:22px;font-weight:700;margin-top:4px">312 Clusters</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">+18 new this week · Tampines hotspot</div>
+    </div>
+    <div class="card" style="padding:14px 16px;border-top:3px solid var(--cyan)">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--cyan);text-transform:uppercase">🌧️ Flash Flood</div>
+      <div style="font-size:22px;font-weight:700;margin-top:4px">Watch Active</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">Bukit Timah Rd — avoid area</div>
+    </div>
+    <div class="card" style="padding:14px 16px;border-top:3px solid var(--blue)">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--blue);text-transform:uppercase">🏥 Health Alert</div>
+      <div style="font-size:22px;font-weight:700;margin-top:4px">Advisory</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">HFMD elevated in childcare centres</div>
+    </div>
+  </div>
+
+  <!-- Main content: Map + Alerts -->
+  <div style="display:grid;grid-template-columns:1fr 380px;gap:12px;padding:12px 24px;height:530px">
+
+    <!-- Map -->
+    <div class="map-ph" style="border-radius:10px;position:relative">
+      <div style="position:absolute;top:14px;left:14px;z-index:3;display:flex;gap:6px;flex-wrap:wrap">
+        <span style="padding:4px 10px;background:rgba(245,166,35,.2);border:1px solid var(--amber);border-radius:20px;font-size:10px;font-weight:700;color:var(--amber)">🌫️ Haze Zones</span>
+        <span style="padding:4px 10px;background:rgba(240,71,71,.2);border:1px solid var(--red);border-radius:20px;font-size:10px;font-weight:700;color:var(--red)">🦟 Dengue Clusters</span>
+        <span style="padding:4px 10px;background:rgba(14,196,216,.2);border:1px solid var(--cyan);border-radius:20px;font-size:10px;font-weight:700;color:var(--cyan)">🌧️ Flood Risk</span>
+        <span style="padding:4px 10px;background:rgba(24,217,139,.2);border:1px solid var(--green);border-radius:20px;font-size:10px;font-weight:700;color:var(--green)">🟢 Shelters</span>
+      </div>
+      <!-- Simulated map units -->
+      <div class="map-unit" style="top:38%;left:25%"><div class="map-dot" style="background:var(--amber)"></div><div class="map-label" style="color:var(--amber)">PSI West 103</div></div>
+      <div class="map-unit" style="top:55%;left:48%"><div class="map-dot" style="background:var(--red)"></div><div class="map-label" style="color:var(--red)">Dengue Cluster</div></div>
+      <div class="map-unit" style="top:32%;left:62%"><div class="map-dot" style="background:var(--cyan)"></div><div class="map-label" style="color:var(--cyan)">Flood Watch</div></div>
+      <div class="map-unit" style="top:65%;left:35%"><div class="map-dot" style="background:var(--green)"></div><div class="map-label" style="color:var(--green)">Shelter Open</div></div>
+      <div class="map-unit" style="top:44%;left:75%"><div class="map-dot" style="background:var(--blue)"></div><div class="map-label" style="color:var(--blue)">Hospital</div></div>
+      <div class="map-ph-inner">
+        <div style="font-size:36px">🗺️</div>
+        <div style="font-size:14px;font-weight:600;margin-top:8px">OneMap SG — Live Crisis Overlay</div>
+        <div style="font-size:11px;margin-top:4px;opacity:.7">Haze zones · Dengue clusters · Flood risk roads · Shelters</div>
+      </div>
+      <!-- Legend bottom -->
+      <div style="position:absolute;bottom:14px;left:14px;z-index:3;display:flex;gap:14px">
+        <span style="font-size:10px;color:var(--amber)">● Haze</span>
+        <span style="font-size:10px;color:var(--red)">● Dengue</span>
+        <span style="font-size:10px;color:var(--cyan)">● Flood</span>
+        <span style="font-size:10px;color:var(--green)">● Shelter</span>
+        <span style="font-size:10px;color:var(--blue)">● Hospital</span>
+      </div>
+    </div>
+
+    <!-- Alerts panel -->
+    <div class="card" style="padding:16px;display:flex;flex-direction:column;overflow:hidden">
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px">Live Alerts</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:12px;font-family:var(--mono)">Auto-refreshing every 60s · Source: SG-Alert, NEA, MOH, PUB</div>
+      <div class="scroll-panel" style="flex:1;overflow-y:auto">
+        <div class="alert-item" style="border-color:var(--amber)"><div class="alert-time">14:32</div><div class="alert-msg">⚠️ PSI reached 87 in Western region — wear N95 if going outdoors</div></div>
+        <div class="alert-item" style="border-color:var(--red)"><div class="alert-time">14:15</div><div class="alert-msg">🚨 New dengue cluster: Blk 234 Tampines St 21 (NEA confirmed)</div></div>
+        <div class="alert-item" style="border-color:var(--cyan)"><div class="alert-time">13:58</div><div class="alert-msg">🌧️ Flash flood risk: Bukit Timah Rd from 3pm — avoid low-lying roads</div></div>
+        <div class="alert-item" style="border-color:var(--green)"><div class="alert-time">13:40</div><div class="alert-msg">✅ Toa Payoh flood receded — roads now clear, traffic resuming</div></div>
+        <div class="alert-item" style="border-color:var(--blue)"><div class="alert-time">12:55</div><div class="alert-msg">ℹ️ Free N95 masks: Woodlands CC, Jurong East CC (4pm–8pm today)</div></div>
+        <div class="alert-item" style="border-color:var(--amber)"><div class="alert-time">12:20</div><div class="alert-msg">⚠️ HFMD cases elevated — enhanced cleaning at childcare centres islandwide</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom actions -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:0 24px">
+    <button class="btn" onclick="show('s3')" style="background:rgba(14,196,216,.1);border:1px solid var(--cyan);color:var(--cyan);padding:13px">📍 Find Nearest Shelter</button>
+    <button class="btn" onclick="show('s4b')" style="background:rgba(240,71,71,.1);border:1px solid var(--red);color:var(--red);padding:13px">🚨 Report an Incident</button>
+    <button class="btn" onclick="show('s4')" style="background:rgba(59,126,246,.1);border:1px solid var(--blue);color:var(--blue);padding:13px">🙋 Register as Volunteer</button>
+    <button class="btn" style="background:rgba(245,166,35,.1);border:1px solid var(--amber);color:var(--amber);padding:13px">📞 Emergency Contacts</button>
+  </div>
+
+  <div class="anno" style="right:14px;top:160px">Crisis cards are clickable — each drills into a dedicated emergency detail page.</div>
+  <div class="anno" style="right:14px;top:440px">Alert feed sourced from SG-Alert API, NEA, MOH, PUB — sorted by severity.</div>
+  <div class="screen-label">02 / Public — Dashboard</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     S3 · HAZE EMERGENCY DETAIL
+══════════════════════════════════════════════════════════════ -->
+<div id="s3" class="screen">
+  <div class="topbar">
+    <div style="font-size:12px;color:var(--cyan);cursor:pointer;margin-right:24px" onclick="show('s2')">← Dashboard</div>
+    <div class="logo"><div class="logo-icon" style="background:var(--amber)">🌫️</div>Haze Emergency Brief</div>
+    <div class="spacer"></div>
+    <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">Last updated: 14:35 SGT · Source: NEA</div>
+  </div>
+
+  <!-- Amber alert banner -->
+  <div style="background:rgba(245,166,35,.1);border-bottom:1px solid rgba(245,166,35,.3);padding:12px 24px;display:flex;align-items:center;gap:16px">
+    <div style="font-size:20px">⚠️</div>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:var(--amber)">PSI MODERATE — Limit prolonged outdoor activity. Wear N95/KN95 mask when outdoors.</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">3-hr PSI: 87 · 24-hr PSI: 79 · PM2.5: 55 μg/m³ · Wind: SW (Sumatra peat fire smoke)</div>
+    </div>
+  </div>
+
+  <!-- PSI Zone Cards -->
+  <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;padding:16px 24px 0">
+    <div class="psi-card" style="border-color:var(--amber)"><div style="font-size:12px;font-weight:700">North</div><div class="psi-val" style="color:var(--amber)">91</div><div class="psi-lvl" style="color:var(--amber)">Moderate</div></div>
+    <div class="psi-card" style="border-color:var(--amber)"><div style="font-size:12px;font-weight:700">South</div><div class="psi-val" style="color:var(--amber)">74</div><div class="psi-lvl" style="color:var(--amber)">Moderate</div></div>
+    <div class="psi-card" style="border-color:var(--amber)"><div style="font-size:12px;font-weight:700">East</div><div class="psi-val" style="color:var(--amber)">62</div><div class="psi-lvl" style="color:var(--amber)">Moderate</div></div>
+    <div class="psi-card" style="border-color:var(--red)"><div style="font-size:12px;font-weight:700">West</div><div class="psi-val" style="color:var(--red)">103</div><div class="psi-lvl" style="color:var(--red)">Unhealthy</div></div>
+    <div class="psi-card" style="border-color:var(--amber)"><div style="font-size:12px;font-weight:700">Central</div><div class="psi-val" style="color:var(--amber)">87</div><div class="psi-lvl" style="color:var(--amber)">Moderate</div></div>
+    <div class="psi-card" style="border-color:var(--amber)"><div style="font-size:12px;font-weight:700">North-East</div><div class="psi-val" style="color:var(--amber)">58</div><div class="psi-lvl" style="color:var(--amber)">Moderate</div></div>
+  </div>
+
+  <!-- 3 column content -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:12px 24px">
+
+    <!-- PSI trend chart -->
+    <div class="card" style="padding:16px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">PSI Trend — 24 Hours</div>
+      <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:14px">Source: NEA real-time API</div>
+      <div style="display:flex;align-items:flex-end;gap:6px;height:120px">
+        <div style="display:flex;flex-direction:column;gap:4px;padding-right:4px;font-size:9px;color:var(--muted);text-align:right;padding-bottom:20px">
+          <span style="margin-bottom:auto">100</span><span style="margin:auto 0">75</span><span>50</span>
+        </div>
+        ${[48,55,60,58,72,79,82,87,91,88,84,79].map((v,i)=>`
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+            <div style="width:100%;background:${v>80?'var(--red)':'var(--amber)'};height:${v*1.1}px;border-radius:3px 3px 0 0;opacity:.85"></div>
+            <span style="font-size:8px;color:var(--muted)">${v}</span>
+            <span style="font-size:7px;color:var(--muted2)">${i*2+2}h</span>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Mask distribution -->
+    <div class="card" style="padding:16px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">🧢 Free N95 Mask Points</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:12px">Valid ID required · While stocks last</div>
+      ${[
+        {name:'Woodlands CC',addr:'1 Woodlands St 81',time:'4pm–8pm',qty:'2,000 masks'},
+        {name:'Jurong East CC',addr:'21 Jurong East St 31',time:'4pm–8pm',qty:'1,500 masks'},
+        {name:'Tampines Hub',addr:'1 Tampines Walk',time:'2pm–9pm',qty:'3,000 masks'},
+        {name:'Toa Payoh Hub',addr:'480 Lor 6 Toa Payoh',time:'4pm–8pm',qty:'1,200 masks'},
+      ].map(m=>`
+        <div style="padding:9px 12px;background:var(--surface2);border-radius:7px;margin-bottom:6px">
+          <div style="font-size:12px;font-weight:600">📍 ${m.name}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">${m.addr} · ${m.time} · <span style="color:var(--green)">${m.qty}</span></div>
+        </div>`).join('')}
+      <button class="btn" style="width:100%;background:rgba(59,126,246,.1);border:1px solid var(--blue);color:var(--blue);margin-top:4px;padding:9px">🗺️ View All on Map →</button>
+    </div>
+
+    <!-- Health advisory -->
+    <div class="card" style="padding:16px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:12px">Health Advisory</div>
+      ${[
+        {ico:'😷',text:'Wear N95/KN95 mask outdoors if PSI > 100',col:'var(--amber)'},
+        {ico:'🏠',text:'Stay indoors with windows closed when possible',col:'var(--amber)'},
+        {ico:'🏃',text:'Cancel/postpone strenuous outdoor exercise',col:'var(--text)'},
+        {ico:'👶',text:'Children, elderly & respiratory patients: stay indoors',col:'var(--text)'},
+        {ico:'💊',text:'Asthma patients: keep rescue inhaler close at all times',col:'var(--text)'},
+        {ico:'📞',text:'Seek medical help if: chest pain or difficulty breathing',col:'var(--red)'},
+      ].map(a=>`<div style="padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;color:${a.col}">${a.ico}  ${a.text}</div>`).join('')}
+      <div style="margin-top:12px;padding:10px;background:rgba(24,217,139,.08);border-radius:8px;border:1px solid rgba(24,217,139,.2)">
+        <div style="font-size:11px;font-weight:700;color:var(--green)">🌬️ NEA Forecast</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5">Wind: SW → smoke from Sumatra peat fires. PSI expected to improve after 6pm as sea breeze strengthens. Tomorrow: 50–70 (Good–Moderate).</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="anno" style="right:14px;top:160px">6 NEA regions displayed separately — West at 103 triggers "Unhealthy" threshold warning.</div>
+  <div class="anno" style="right:14px;top:380px">Mask distribution points are crowdsourced + verified. Users can flag if stock runs out.</div>
+  <div class="screen-label">03 / Public — Haze Emergency Detail</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     S4 · VOLUNTEER SIGN-UP
+══════════════════════════════════════════════════════════════ -->
+<div id="s4" class="screen">
+  <div class="topbar">
+    <div style="font-size:12px;color:var(--cyan);cursor:pointer;margin-right:24px" onclick="show('s2')">← Dashboard</div>
+    <div class="logo"><div class="logo-icon" style="background:var(--green)">🙋</div>Volunteer Registration</div>
+    <div class="spacer"></div>
+    <div class="badge badge-pub">PUBLIC</div>
+  </div>
+  <div style="display:grid;grid-template-columns:580px 1fr;gap:16px;padding:16px 24px;height:776px">
+
+    <!-- Form -->
+    <div class="card" style="padding:28px;overflow-y:auto">
+      <div style="font-size:20px;font-weight:700;margin-bottom:6px">Register as a Quick Aid Volunteer</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.5">Help your community during emergencies. Your skills will be matched to real-time needs nearest to you.</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="form-field"><label>Full Name</label><input placeholder="e.g. Tan Wei Ming"></div>
+        <div class="form-field"><label>NRIC (Last 4)</label><input placeholder="e.g. 567A"></div>
+        <div class="form-field"><label>Mobile Number</label><input placeholder="+65 9XXX XXXX"></div>
+        <div class="form-field"><label>Residential Zone</label><input placeholder="Select Town / Region ▾"></div>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <div class="section-label">Skills & Certifications (select all that apply)</div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px">
+          ${['First Aid (FA)','CPR Certified','Medical / Nursing','Firefighting','Mandarin Speaker','Malay Speaker','Tamil Speaker','Class 3 Driving','Flood Rescue','Counselling'].map((sk,i)=>`
+            <span class="skill-pill" style="${i<4?'border-color:var(--green);color:var(--green);background:rgba(24,217,139,.1)':'border-color:var(--border);color:var(--muted);background:var(--surface2)'}">${sk}</span>`).join('')}
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:8px">✓ Green = selected · tap to toggle</div>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <div class="section-label">Availability</div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px">
+          ${['Weekdays 9am–6pm','Weekday Evenings','Weekends','On-Call / Emergency Only'].map((av,i)=>`
+            <span class="skill-pill" style="${i===3?'border-color:var(--blue);color:var(--blue);background:rgba(59,126,246,.1)':'border-color:var(--border);color:var(--muted);background:var(--surface2)'}">${av}</span>`).join('')}
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;padding:14px;font-size:14px">Submit Registration →</button>
+      <div style="font-size:10px;color:var(--muted);margin-top:10px;line-height:1.5;text-align:center">Your data is stored securely and only shared with authorised agencies during declared emergencies.</div>
+    </div>
+
+    <!-- Needs panel -->
+    <div class="card" style="padding:20px;overflow-y:auto">
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px">🔴 Active Volunteer Needs</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Matched to your zone · Updated live</div>
+
+      ${[
+        {title:'Haze Relief Distribution',loc:'Woodlands CC',time:'Today 4–8pm',need:'General helpers · 12 more needed',col:'var(--amber)'},
+        {title:'Dengue Fogging Assist',loc:'Tampines Blk 234',time:'Tomorrow 9am',need:'Biohazard trained · 3 more needed',col:'var(--red)'},
+        {title:'Flood Sandbag Deployment',loc:'Bukit Timah Zone',time:'On standby',need:'Physical fitness required · 20 needed',col:'var(--cyan)'},
+        {title:'Medical Post — Jurong East',loc:'Jurong East CC',time:'Weekends',need:'Medical/nursing trained · 5 needed',col:'var(--green)'},
+        {title:'Elderly Evacuation Support',loc:'Toa Payoh Town',time:'As needed',need:'Mandarin / dialect speaker · 8 needed',col:'var(--purple)'},
+      ].map(n=>`
+        <div class="need-card" style="border-color:${n.col}">
+          <div class="need-info">
+            <div class="need-title">${n.title}</div>
+            <div class="need-meta">📍 ${n.loc} · 🕐 ${n.time}</div>
+            <div class="need-req" style="color:${n.col}">👥 ${n.need}</div>
+          </div>
+          <button class="need-signup" style="border-color:${n.col};color:${n.col};background:transparent">Sign Up</button>
+        </div>`).join('')}
+
+      <div style="margin-top:12px;padding:12px;background:rgba(59,126,246,.08);border-radius:8px;border:1px solid rgba(59,126,246,.2)">
+        <div style="font-size:12px;font-weight:700;color:var(--blue)">🤝 Powered by NVPC & SGSecure Volunteer Network</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5">Volunteer hours tracked and reflected in NS reservist records where applicable.</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px">
+        <div class="stat-card"><div class="stat-val" style="color:var(--green)">4,280</div><div class="stat-label">Volunteers Registered</div></div>
+        <div class="stat-card"><div class="stat-val" style="color:var(--green)">312</div><div class="stat-label">Active Deployments</div></div>
+        <div class="stat-card"><div class="stat-val" style="color:var(--green)">18</div><div class="stat-label">Zones Covered</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="anno" style="right:14px;top:200px">Skill matching engine routes volunteers to nearest needs based on skills + location proximity.</div>
+  <div class="anno" style="right:14px;top:500px">NRIC partial only — stored encrypted, shared only during declared emergency activations.</div>
+  <div class="screen-label">04 / Public — Volunteer Sign-Up</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     S4b · INCIDENT REPORT (PUBLIC)
+══════════════════════════════════════════════════════════════ -->
+<div id="s4b" class="screen">
+  <div class="topbar">
+    <div style="font-size:12px;color:var(--cyan);cursor:pointer;margin-right:24px" onclick="show('s2')">← Dashboard</div>
+    <div class="logo"><div class="logo-icon" style="background:var(--red)">🚨</div>Report an Incident</div>
+    <div class="spacer"></div>
+    <div class="badge badge-pub">PUBLIC</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:560px 1fr;gap:16px;padding:16px 24px">
+    <div class="card" style="padding:28px">
+      <div style="font-size:18px;font-weight:700;margin-bottom:6px">Submit a Community Report</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:20px">Reports are reviewed and verified before being shared with response agencies.</div>
+
+      <div class="form-field" style="margin-bottom:14px">
+        <label>Incident Type</label>
+        <select>
+          <option>Select type ▾</option>
+          <option>🌧️ Flash Flood / Water Accumulation</option>
+          <option>🌫️ Haze / Smoke — Unusual odour</option>
+          <option>🦟 Potential Dengue Breeding Spot</option>
+          <option>🏥 Medical Emergency</option>
+          <option>🔥 Fire / Smoke</option>
+          <option>🏗️ Structural Damage</option>
+          <option>⚠️ Other Emergency</option>
+        </select>
+      </div>
+      <div class="form-field" style="margin-bottom:14px">
+        <label>Location</label>
+        <input placeholder="Block / Street / Landmark or use GPS 📍">
+      </div>
+      <div class="form-field" style="margin-bottom:14px">
+        <label>Description</label>
+        <textarea style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:13px;padding:11px 14px;outline:none;width:100%;height:90px;resize:none" placeholder="Describe what you see — include severity, how many people affected, if anyone is injured..."></textarea>
+      </div>
+      <div class="form-field" style="margin-bottom:20px">
+        <label>Photo / Video (optional)</label>
+        <div style="border:1.5px dashed var(--border);border-radius:8px;padding:20px;text-align:center;color:var(--muted);font-size:12px">📷 Tap to upload or drag & drop<br><span style="font-size:10px">Max 10MB · JPG, PNG, MP4</span></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" style="accent-color:var(--blue)"> Share my location automatically</label>
+      </div>
+      <button class="btn btn-primary" style="width:100%;padding:13px;font-size:14px">🚨 Submit Report</button>
+      <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px">Reports reviewed before forwarding to agencies · Anonymous submission available</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card" style="padding:18px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px">📋 Recent Community Reports</div>
+        ${[
+          {type:'Flash Flood',loc:'Orchard Rd near ION',time:'12 mins ago',status:'Verified',col:'var(--cyan)',scol:'var(--green)'},
+          {type:'Dengue Breeding',loc:'Tampines Blk 456 void deck',time:'28 mins ago',status:'Under Review',col:'var(--red)',scol:'var(--amber)'},
+          {type:'Haze Odour',loc:'Jurong West Ave 3',time:'45 mins ago',status:'Verified',col:'var(--amber)',scol:'var(--green)'},
+          {type:'Road Flooding',loc:'Bukit Timah Rd near MRT',time:'1 hr ago',status:'Resolved',col:'var(--cyan)',scol:'var(--muted)'},
+        ].map(r=>`
+          <div class="card-inner" style="padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:12px">
+            <div style="width:4px;height:44px;background:${r.col};border-radius:2px;flex-shrink:0"></div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:600">${r.type}</div><div style="font-size:11px;color:var(--muted)">📍 ${r.loc} · ${r.time}</div></div>
+            <span style="padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;background:transparent;border:1px solid ${r.scol};color:${r.scol}">${r.status}</span>
+          </div>`).join('')}
+      </div>
+
+      <div class="card" style="padding:18px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">⚠️ Important Guidelines</div>
+        ${['Only report genuine emergencies or hazards you have personally witnessed.','Do NOT report minor inconveniences — reserve for safety-related incidents.','If life is in immediate danger, call 995 (SCDF) or 999 (SPF) first.','False reports are an offence under the Civil Defence Act.'].map((g,i)=>`
+          <div style="padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;color:${i===2?'var(--red)':i===3?'var(--amber)':'var(--muted)'}">${i===2?'🚨':i===3?'⚠️':'•'} ${g}</div>`).join('')}
+      </div>
+    </div>
+  </div>
+
+  <div class="anno" style="right:14px;top:180px">Reports go through a verification layer before being visible to agencies or on the map.</div>
+  <div class="screen-label">05 / Public — Report Incident</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     S5 · RESPONDER LOGIN
+══════════════════════════════════════════════════════════════ -->
+<div id="s5" class="screen">
+  <div style="position:absolute;inset:0;display:grid;grid-template-columns:480px 1fr">
+
+    <!-- Left branding panel -->
+    <div style="background:var(--surface);border-right:1px solid var(--border);padding:60px 48px;display:flex;flex-direction:column">
+      <div style="font-size:36px;margin-bottom:8px">⚡</div>
+      <div style="font-size:28px;font-weight:700;margin-bottom:6px">QuickAid</div>
+      <div style="font-size:18px;font-weight:600;color:var(--amber);margin-bottom:20px">Responder Portal</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:32px">Operational intelligence for Singapore's emergency response agencies.</div>
+
+      <div class="section-label">Authorised Agencies</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:32px">
+        ${['SCDF','SPF','MOH','PUB','NEA','SFA'].map(ag=>`
+          <div class="card-inner" style="padding:10px;text-align:center;font-size:13px;font-weight:700;color:var(--muted)">${ag}</div>`).join('')}
+      </div>
+
+      <div style="margin-top:auto;padding:14px;background:rgba(245,166,35,.08);border-radius:8px;border:1px solid rgba(245,166,35,.2)">
+        <div style="font-size:11px;color:var(--amber);font-weight:700">🔒 Security Notice</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5">Secured by Singapore Government SSO (CorpPass / SingPass for Business). All access is logged and audited per MHA cybersecurity policy.</div>
+      </div>
+    </div>
+
+    <!-- Right login form -->
+    <div style="display:flex;align-items:center;justify-content:center;padding:48px">
+      <div style="width:420px">
+        <div style="font-size:26px;font-weight:700;margin-bottom:6px">Agency Sign-In</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:32px">Use your CorpPass or SingPass for Business credentials</div>
+        <div class="form-field" style="margin-bottom:14px"><label>Agency Email / CorpPass ID</label><input placeholder="name@agency.gov.sg"></div>
+        <div class="form-field" style="margin-bottom:14px"><label>Password</label><input type="password" placeholder="••••••••"></div>
+        <div class="form-field" style="margin-bottom:20px"><label>Agency</label><select><option>Select your agency ▾</option><option>SCDF</option><option>SPF</option><option>MOH</option><option>PUB</option><option>NEA</option></select></div>
+        <div style="display:flex;gap:10px;margin-bottom:20px">
+          <button class="btn" style="flex:1;background:rgba(245,166,35,.1);border:1px solid var(--amber);color:var(--amber);padding:12px">📱 Send MFA OTP</button>
+          <div class="form-field" style="flex:2"><input placeholder="Enter OTP code"></div>
+        </div>
+        <button class="btn btn-primary" onclick="show('s6')" style="width:100%;padding:14px;font-size:14px;background:var(--amber);color:#1a0a00">Login to Responder Portal →</button>
+        <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px">Issues signing in? Contact your agency IT helpdesk.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="anno" style="right:14px;top:300px">MFA mandatory for all responder logins — OTP sent to registered agency mobile number.</div>
+  <div class="anno" style="right:14px;top:500px">CorpPass SSO means no separate QuickAid password — reuses existing agency credentials.</div>
+  <div class="screen-label">06 / Responder — Login</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     S6 · RESPONDER OPS DASHBOARD
+══════════════════════════════════════════════════════════════ -->
+<div id="s6" class="screen">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sb-logo">⚡</div>
+    <div class="sb-icon active" title="Map">🗺️</div>
+    <div class="sb-icon" title="Incidents">📋</div>
+    <div class="sb-icon" title="Units">👥</div>
+    <div class="sb-icon" title="Comms">📡</div>
+    <div class="sb-icon" title="Alerts">⚠️</div>
+    <div class="sb-icon" title="Settings" style="margin-top:auto;margin-bottom:12px">⚙️</div>
+    <div class="sb-icon" title="Logout" style="margin-bottom:8px">🚪</div>
+  </div>
+
+  <div style="margin-left:60px;height:832px;display:flex;flex-direction:column">
+    <!-- Topbar -->
+    <div style="height:56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0">
+      <div style="font-size:15px;font-weight:700">SCDF Ops — Haze + Flood Response</div>
+      <div style="flex:1"></div>
+      ${[
+        {v:'2',label:'Active Crises',col:'var(--red)'},
+        {v:'14',label:'Open Incidents',col:'var(--amber)'},
+        {v:'87',label:'Units Deployed',col:'var(--green)'},
+        {v:'3',label:'Resource Requests',col:'var(--cyan)'},
+      ].map(b=>`
+        <div style="padding:5px 14px;background:rgba(0,0,0,.3);border-radius:8px;border:1px solid ${b.col};display:flex;align-items:baseline;gap:6px">
+          <span style="font-size:20px;font-weight:700;color:${b.col}">${b.v}</span>
+          <span style="font-size:10px;color:${b.col}">${b.label}</span>
+        </div>`).join('')}
+      <div class="badge badge-resp" style="margin-left:8px">SCDF</div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">CPT Ahmad · 14:37</div>
+    </div>
+
+    <!-- Main area -->
+    <div style="flex:1;display:grid;grid-template-columns:1fr 360px;overflow:hidden">
+
+      <!-- Left: Map + Incident list -->
+      <div style="display:flex;flex-direction:column;overflow:hidden">
+        <!-- Ops Map -->
+        <div class="map-ph" style="flex:1;border-radius:0;position:relative;margin:0">
+          <div style="position:absolute;top:12px;left:12px;z-index:3;display:flex;gap:6px">
+            <button class="btn" style="padding:5px 12px;font-size:11px;background:rgba(245,166,35,.15);border:1px solid var(--amber);color:var(--amber)">🔴 INC-001 Flood</button>
+            <button class="btn" style="padding:5px 12px;font-size:11px;background:rgba(240,71,71,.1);border:1px solid var(--border);color:var(--muted)">Layers ▾</button>
+            <button class="btn" style="padding:5px 12px;font-size:11px;background:rgba(59,126,246,.1);border:1px solid var(--border);color:var(--muted)">Filter Units</button>
+          </div>
+          <!-- Unit markers -->
+          <div class="map-unit" style="top:35%;left:22%"><div class="map-dot" style="background:var(--red);width:14px;height:14px"></div><div class="map-label" style="color:var(--red)">INC-001 🔴</div></div>
+          <div class="map-unit" style="top:50%;left:40%"><div class="map-dot" style="background:var(--amber)"></div><div class="map-label" style="color:var(--amber)">SCDF-A3 🚒</div></div>
+          <div class="map-unit" style="top:30%;left:58%"><div class="map-dot" style="background:var(--green)"></div><div class="map-label" style="color:var(--green)">MED-02 🚑</div></div>
+          <div class="map-unit" style="top:60%;left:68%"><div class="map-dot" style="background:var(--cyan)"></div><div class="map-label" style="color:var(--cyan)">PUB-F1 🌊</div></div>
+          <div class="map-unit" style="top:45%;left:75%"><div class="map-dot" style="background:var(--blue)"></div><div class="map-label" style="color:var(--blue)">SPF-K7 🚓</div></div>
+          <div class="map-ph-inner">
+            <div style="font-size:28px">🗺️</div>
+            <div style="font-size:13px;font-weight:600;margin-top:6px">Operational Map — Live Unit Positions</div>
+            <div style="font-size:11px;margin-top:3px;opacity:.6">SCDF units · Staging areas · Incident hotspots · Flood sensors</div>
+          </div>
+        </div>
+
+        <!-- Incident list -->
+        <div style="background:var(--surface);border-top:1px solid var(--border);padding:12px 16px;overflow-y:auto;max-height:280px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="font-size:13px;font-weight:700">Active Incidents</div>
+            <span style="font-size:11px;color:var(--cyan);cursor:pointer">View All →</span>
+          </div>
+          ${[
+            {id:'INC-001',type:'Flash Flood',loc:'Bukit Timah Rd',sev:'HIGH',status:'In Progress',units:'3 SCDF, 2 PUB',col:'var(--cyan)'},
+            {id:'INC-002',type:'Haze Distress',loc:'Woodlands Eldercare Ctr',sev:'MED',status:'Dispatched',units:'1 AMB, 1 SPF',col:'var(--amber)'},
+            {id:'INC-003',type:'Dengue Fogging',loc:'Tampines Blk 234',sev:'MED',status:'Scheduled',units:'2 NEA Teams',col:'var(--red)'},
+            {id:'INC-004',type:'Mass Casualty — Standby',loc:'Changi Expo',sev:'LOW',status:'Monitoring',units:'Standby',col:'var(--green)'},
+          ].map(inc=>`
+            <div class="inc-row" style="border-color:${inc.col}">
+              <div class="inc-id">${inc.id}</div>
+              <div class="inc-info"><div class="inc-title">${inc.type}</div><div class="inc-loc">📍 ${inc.loc}</div></div>
+              <span class="sev ${inc.sev==='HIGH'?'sev-high':inc.sev==='MED'?'sev-med':'sev-low'}">${inc.sev}</span>
+              <div class="inc-status">${inc.status}</div>
+              <div class="inc-units" style="font-size:11px;color:var(--muted)">${inc.units}</div>
+              <button class="inc-action" onclick="show('s7')">View →</button>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- Right panel -->
+      <div style="background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden">
+        <!-- Resource status -->
+        <div style="padding:16px;border-bottom:1px solid var(--border);flex-shrink:0">
+          <div style="font-size:13px;font-weight:700;margin-bottom:14px">Resource Status</div>
+          ${[
+            {name:'SCDF Engines',avail:8,total:12,col:'var(--red)'},
+            {name:'Ambulances',avail:14,total:18,col:'var(--green)'},
+            {name:'PUB Flood Units',avail:3,total:6,col:'var(--cyan)'},
+            {name:'SPF Patrol Cars',avail:22,total:28,col:'var(--blue)'},
+            {name:'Volunteer Teams',avail:41,total:80,col:'var(--amber)'},
+          ].map(r=>`
+            <div class="res-row">
+              <div class="res-header">
+                <div class="res-name">${r.name}</div>
+                <div class="res-val" style="color:${r.col}">${r.avail}/${r.total}</div>
+              </div>
+              <div class="prog-wrap"><div class="prog-fill" style="background:${r.col};width:${Math.round(r.avail/r.total*100)}%"></div></div>
+            </div>`).join('')}
+        </div>
+
+        <!-- Inter-agency comms -->
+        <div style="padding:16px;flex:1;overflow:hidden;display:flex;flex-direction:column">
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px">Inter-Agency Comms</div>
+          <div class="scroll-panel" style="flex:1;overflow-y:auto">
+            ${[
+              {from:'PUB Ops',msg:'Flood sensor #BT-07: water level 2.1m ⚠️ threshold breach',time:'14:35'},
+              {from:'MOH EOC',msg:'Requesting 2 additional ambulances — Woodlands Eldercare',time:'14:28'},
+              {from:'NEA Ops',msg:'Fogging confirmed Tampines Cluster — commencing 15:00',time:'14:15'},
+              {from:'LTA Ops',msg:'Bukit Timah Rd N+S closed — diversion via Upper Bukit Timah',time:'14:10'},
+            ].map(c=>`
+              <div class="comm-bubble">
+                <div class="comm-from">${c.from}<span class="comm-time">${c.time}</span></div>
+                <div class="comm-msg">${c.msg}</div>
+              </div>`).join('')}
+          </div>
+          <div style="margin-top:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);font-size:12px;color:var(--muted)">📡 Broadcast to all agencies...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="anno" style="position:fixed;right:14px;top:160px;z-index:50">Sidebar icons: Map · Incidents · Units · Comms · Alerts · Settings.</div>
+  <div class="anno" style="position:fixed;right:14px;top:360px;z-index:50">Resource bars go RED if &lt;30% available — auto-alert sent to Government dashboard.</div>
+  <div class="screen-label">07 / Responder — Ops Dashboard</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     S7 · RESPONDER — INCIDENT DETAIL
+══════════════════════════════════════════════════════════════ -->
+<div id="s7" class="screen">
+  <div class="sidebar">
+    <div class="sb-logo">⚡</div>
+    <div class="sb-icon">🗺️</div>
+    <div class="sb-icon active">📋</div>
+    <div class="sb-icon">👥</div>
+    <div class="sb-icon">📡</div>
+    <div class="sb-icon">⚠️</div>
+    <div class="sb-icon" style="margin-top:auto;margin-bottom:20px">⚙️</div>
+  </div>
+
+  <div style="margin-left:60px">
+    <!-- Topbar -->
+    <div style="height:56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:14px">
+      <div style="font-size:12px;color:var(--cyan);cursor:pointer" onclick="show('s6')">← Incidents</div>
+      <div style="font-size:15px;font-weight:700">INC-001 — Flash Flood: Bukit Timah Rd</div>
+      <div style="padding:3px 10px;background:rgba(14,196,216,.15);border-radius:20px;font-size:10px;font-weight:700;color:var(--cyan)">● IN PROGRESS</div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">🕐 Opened 13:42 · Duration: 55min</div>
+      <div style="flex:1"></div>
+      <div style="padding:5px 14px;background:rgba(240,71,71,.15);border-radius:8px;border:1px solid rgba(240,71,71,.4);font-size:12px;font-weight:700;color:var(--red)">⬆️ HIGH SEVERITY</div>
+    </div>
+
+    <!-- 3-column layout -->
+    <div style="display:grid;grid-template-columns:340px 1fr 320px;gap:0;height:776px">
+
+      <!-- Col 1: Incident info -->
+      <div style="background:var(--surface);border-right:1px solid var(--border);padding:16px;overflow-y:auto">
+        <div style="font-size:13px;font-weight:700;margin-bottom:14px">Incident Information</div>
+        ${[
+          ['Type','Flash Flood'],['Sub-type','Drain overflow + road flooding'],
+          ['Location','Bukit Timah Rd, near Rail Mall'],['Reported By','PUB Flood Sensor #BT-07'],
+          ['Confirmed By','SCDF Alpha-3 (on-scene)'],['Affected Area','~400m stretch, 3 roads closed'],
+          ['Casualties','0 confirmed · 2 requiring evacuation'],['Est. Clear Time','~6:00pm (~2.5 hrs)'],
+        ].map(([k,v])=>`
+          <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em">${k}</div>
+            <div style="font-size:12px;color:var(--text);margin-top:3px">${v}</div>
+          </div>`).join('')}
+
+        <!-- Quick actions -->
+        <div style="margin-top:16px;font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text)">Quick Actions</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+          ${[
+            {label:'🚒 Deploy Engine',col:'var(--amber)'},
+            {label:'🚑 Request Ambulance',col:'var(--green)'},
+            {label:'🚧 Close Road',col:'var(--red)'},
+            {label:'📢 Public Alert',col:'var(--cyan)'},
+          ].map(qa=>`
+            <button style="padding:9px 6px;border-radius:8px;background:rgba(0,0,0,.2);border:1px solid ${qa.col};color:${qa.col};font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer">${qa.label}</button>`).join('')}
+        </div>
+      </div>
+
+      <!-- Col 2: Map + Timeline -->
+      <div style="display:flex;flex-direction:column;border-right:1px solid var(--border)">
+        <div class="map-ph" style="flex:1;border-radius:0">
+          <div style="position:absolute;top:12px;left:12px;z-index:3">
+            <div style="padding:6px 12px;background:rgba(14,196,216,.2);border-radius:6px;font-size:11px;color:var(--cyan);font-weight:700;border:1px solid rgba(14,196,216,.3)">📍 Bukit Timah Rd — Flood Extent Overlay</div>
+          </div>
+          <div class="map-unit" style="top:40%;left:35%"><div class="map-dot" style="background:var(--red);width:16px;height:16px"></div><div class="map-label" style="color:var(--red)">Flood Zone</div></div>
+          <div class="map-unit" style="top:30%;left:50%"><div class="map-dot" style="background:var(--amber)"></div><div class="map-label" style="color:var(--amber)">SCDF A-3 🚒</div></div>
+          <div class="map-unit" style="top:55%;left:60%"><div class="map-dot" style="background:var(--cyan)"></div><div class="map-label" style="color:var(--cyan)">PUB F-1 🌊</div></div>
+          <div class="map-ph-inner">
+            <div style="font-size:24px">🗺️</div>
+            <div style="font-size:12px;margin-top:6px">Incident Map · Unit Positions · Evacuation Routes</div>
+          </div>
+        </div>
+
+        <!-- Timeline -->
+        <div style="height:260px;background:var(--surface);border-top:1px solid var(--border);padding:14px 16px;overflow-y:auto">
+          <div style="font-size:12px;font-weight:700;margin-bottom:12px">Incident Timeline</div>
+          ${[
+            {time:'13:42',ev:'PUB sensor BT-07 threshold breach — auto-alert generated',col:'var(--cyan)'},
+            {time:'13:45',ev:'SCDF Alpha-3 dispatched from Bukit Timah Fire Station',col:'var(--amber)'},
+            {time:'13:58',ev:'SCDF on-scene, flood confirmed. Severity upgraded to HIGH',col:'var(--red)'},
+            {time:'14:10',ev:'LTA road closure: Bukit Timah Rd North & Southbound',col:'var(--amber)'},
+            {time:'14:25',ev:'2 residents evacuated to Bukit Timah CC shelter',col:'var(--green)'},
+            {time:'14:32',ev:'PUB Flood Unit F1 deployed — pumping operations begin',col:'var(--cyan)'},
+          ].map(ev=>`
+            <div class="tl-item">
+              <div class="tl-dot" style="background:${ev.col}"></div>
+              <div class="tl-content"><div class="tl-time">${ev.time}</div><div class="tl-text">${ev.ev}</div></div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- Col 3: Units + Field comms -->
+      <div style="display:flex;flex-direction:column;overflow:hidden">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0">
+          <div style="font-size:12px;font-weight:700;margin-bottom:10px">Deployed Units (5)</div>
+          ${[
+            {id:'SCDF Alpha-3',type:'Fire Engine',status:'On Scene',col:'var(--green)'},
+            {id:'AMB Bravo-1',type:'Ambulance',status:'On Scene',col:'var(--green)'},
+            {id:'SCDF Charlie-2',type:'Rescue Tender',status:'En Route',col:'var(--amber)'},
+            {id:'PUB Flood Unit F1',type:'Pump Truck',status:'On Scene',col:'var(--green)'},
+            {id:'SPF Kilo-7',type:'Patrol Car',status:'Cordon',col:'var(--blue)'},
+          ].map(u=>`
+            <div style="padding:8px 10px;background:var(--surface2);border-radius:6px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center">
+              <div><div style="font-size:11px;font-weight:600">${u.id}</div><div style="font-size:10px;color:var(--muted)">${u.type}</div></div>
+              <span style="padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;background:rgba(0,0,0,.2);border:1px solid ${u.col};color:${u.col}">${u.status}</span>
+            </div>`).join('')}
+          <button class="btn" style="width:100%;margin-top:6px;padding:9px;background:rgba(59,126,246,.1);border:1px solid var(--blue);color:var(--blue);font-size:11px">+ Request Additional Unit</button>
+        </div>
+
+        <div style="padding:14px 16px;flex:1;overflow:hidden;display:flex;flex-direction:column">
+          <div style="font-size:12px;font-weight:700;margin-bottom:10px">Field Communications</div>
+          <div class="scroll-panel" style="flex:1;overflow-y:auto">
+            ${[
+              {from:'SCDF Alpha-3',msg:'Flood depth ~80cm at Rail Mall junction. Requesting pump unit.',time:'14:33'},
+              {from:'PUB F1',msg:'Pump operational. Estimated 2.5hr to clear.',time:'14:30'},
+              {from:'EOC Ops',msg:'LTA road closure confirmed. Public alert issued via SG-Alert.',time:'14:22'},
+              {from:'SPF Kilo-7',msg:'Cordon established. Traffic diverted via Upper Bukit Timah.',time:'14:18'},
+            ].map(c=>`
+              <div class="comm-bubble">
+                <div class="comm-from">${c.from}<span class="comm-time">${c.time}</span></div>
+                <div class="comm-msg">${c.msg}</div>
+              </div>`).join('')}
+          </div>
+          <div style="margin-top:8px;padding:9px 12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);font-size:12px;color:var(--muted)">📡 Reply to field team...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="anno" style="right:14px;top:180px">Quick actions auto-populate dispatch forms — one tap to deploy additional units.</div>
+  <div class="anno" style="right:14px;top:560px">Field comms are end-to-end encrypted with non-repudiation logging for accountability.</div>
+  <div class="screen-label">08 / Responder — Incident Detail</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     S8 · GOVERNMENT STRATEGIC DASHBOARD
+══════════════════════════════════════════════════════════════ -->
+<div id="s8" class="screen">
+  <div class="sidebar">
+    <div class="sb-logo">⚡</div>
+    <div class="sb-icon active">📊</div>
+    <div class="sb-icon">🏛️</div>
+    <div class="sb-icon">🗺️</div>
+    <div class="sb-icon">📡</div>
+    <div class="sb-icon">⚠️</div>
+    <div class="sb-icon" style="margin-top:auto;margin-bottom:20px">⚙️</div>
+  </div>
+
+  <div style="margin-left:60px">
+    <div style="height:56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:14px">
+      <div style="font-size:15px;font-weight:700">National Crisis Intelligence — Government View</div>
+      <div style="flex:1"></div>
+      <!-- DORSCON indicator -->
+      <div style="font-size:11px;color:var(--muted);margin-right:6px">DORSCON:</div>
+      <div style="padding:5px 14px;background:rgba(24,217,139,.15);border-radius:20px;border:1px solid var(--green);font-size:12px;font-weight:700;color:var(--green)">🟢 GREEN</div>
+      <div class="badge badge-gov" style="margin-left:8px">GOV OFFICIAL</div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">Minister Lee · 14:37</div>
+    </div>
+
+    <!-- KPI Row -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:14px 20px 0">
+      ${[
+        {label:'Active Crises',val:'2',sub:'Haze + Flash Flood',col:'var(--amber)',chg:'↑ 1 since 12:00'},
+        {label:'Total Incidents',val:'14',sub:'Across all agencies',col:'var(--red)',chg:'↑ 3 since 12:00'},
+        {label:'Units Deployed',val:'87',sub:'SCDF · SPF · PUB · MOH',col:'var(--green)',chg:'↑ 12 deployed today'},
+        {label:'Volunteers Active',val:'312',sub:'Islandwide',col:'var(--cyan)',chg:'↑ 48 since 10:00'},
+        {label:'Public Alerts Sent',val:'6',sub:'Via SG-Alert today',col:'var(--blue)',chg:'Last: 14:32'},
+      ].map(k=>`
+        <div class="kpi-card">
+          <div class="kpi-label">${k.label}</div>
+          <div class="kpi-val" style="color:${k.col}">${k.val}</div>
+          <div class="kpi-sub">${k.sub}</div>
+          <div class="kpi-change" style="color:${k.col}">${k.chg}</div>
+        </div>`).join('')}
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 340px;gap:12px;padding:12px 20px">
+
+      <!-- Left: Map + Agency Status -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="map-ph" style="height:280px;border-radius:10px;position:relative">
+          <div style="position:absolute;top:12px;left:12px;z-index:3;display:flex;gap:6px">
+            <span style="padding:4px 10px;background:rgba(59,126,246,.15);border:1px solid var(--blue);border-radius:20px;font-size:10px;font-weight:700;color:var(--blue)">National Overview</span>
+            <span style="padding:4px 10px;background:rgba(24,217,139,.15);border:1px solid var(--green);border-radius:20px;font-size:10px;font-weight:700;color:var(--green)">All Agencies</span>
+          </div>
+          <div class="map-unit" style="top:35%;left:20%"><div class="map-dot" style="background:var(--cyan);width:16px;height:16px"></div><div class="map-label" style="color:var(--cyan)">Flood Zone — SCDF</div></div>
+          <div class="map-unit" style="top:50%;left:45%"><div class="map-dot" style="background:var(--red);width:16px;height:16px"></div><div class="map-label" style="color:var(--red)">Dengue Hotspot — NEA</div></div>
+          <div class="map-unit" style="top:28%;left:65%"><div class="map-dot" style="background:var(--amber);width:16px;height:16px"></div><div class="map-label" style="color:var(--amber)">Haze West — PSI 103</div></div>
+          <div class="map-ph-inner">
+            <div style="font-size:24px">🗺️</div>
+            <div style="font-size:13px;font-weight:600;margin-top:6px">National Crisis Map — All Active Events</div>
+          </div>
+        </div>
+
+        <!-- Agency status grid -->
+        <div class="card" style="padding:16px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:12px">Agency Response Status</div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">
+            ${[
+              {name:'SCDF',status:'Active',detail:'8/12 engines · 2 major incidents',col:'var(--red)'},
+              {name:'SPF',status:'Active',detail:'22/28 patrols · 1 major incident',col:'var(--blue)'},
+              {name:'MOH',status:'Active',detail:'14/18 ambulances · Advisory issued',col:'var(--green)'},
+              {name:'PUB',status:'Active',detail:'3/6 flood units · Sensor alert active',col:'var(--cyan)'},
+              {name:'NEA',status:'Active',detail:'Fogging ops · 312 dengue clusters',col:'var(--amber)'},
+            ].map(ag=>`
+              <div style="background:var(--surface2);border-radius:8px;padding:12px;border-top:3px solid ${ag.col}">
+                <div style="font-size:14px;font-weight:700;color:${ag.col}">${ag.name}</div>
+                <div style="font-size:10px;font-weight:700;color:${ag.col};margin-top:2px">● ${ag.status}</div>
+                <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.4">${ag.detail}</div>
+              </div>`).join('')}
+          </div>
+        </div>
+
+        <!-- Predictive alerts (exclusive to Gov) -->
+        <div class="card" style="padding:16px;border:1px solid rgba(59,126,246,.3)">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+            <div style="font-size:13px;font-weight:700">🔵 Predictive Intelligence</div>
+            <span style="padding:2px 8px;border-radius:12px;background:rgba(59,126,246,.15);font-size:9px;font-weight:700;color:var(--blue);border:1px solid rgba(59,126,246,.3)">GOV ONLY</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+            ${[
+              {icon:'🌧️',title:'Flood Probability',val:'72%',sub:'Bukit Timah next 2hrs · High confidence',col:'var(--cyan)'},
+              {icon:'🦟',title:'Dengue Expansion',val:'18 clusters',sub:'Predicted new clusters by Sunday',col:'var(--red)'},
+              {icon:'🌫️',title:'Haze PSI Forecast',val:'PSI 110',sub:'Western region by 8pm — Unhealthy threshold',col:'var(--amber)'},
+            ].map(p=>`
+              <div style="background:var(--surface2);border-radius:8px;padding:12px">
+                <div style="font-size:16px">${p.icon}</div>
+                <div style="font-size:10px;color:var(--muted);font-weight:600;margin-top:4px">${p.title}</div>
+                <div style="font-size:20px;font-weight:700;color:${p.col};margin-top:4px">${p.val}</div>
+                <div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4">${p.sub}</div>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: DORSCON + Decisions -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <!-- DORSCON -->
+        <div class="esc-card">
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px">DORSCON Level</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Disease Outbreak Response System</div>
+          <div class="dorscon-bar">
+            <div class="dorscon-level active" style="background:var(--green);color:#fff">GREEN</div>
+            <div class="dorscon-level" style="background:var(--amber);color:#000">YELLOW</div>
+            <div class="dorscon-level" style="background:var(--red);color:#fff">ORANGE</div>
+            <div class="dorscon-level" style="background:#8B0000;color:#fff">RED</div>
+          </div>
+          <button class="btn" style="width:100%;margin-top:10px;padding:9px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.4);color:var(--amber);font-size:12px">⚠️ Initiate Level Change</button>
+        </div>
+
+        <!-- Decision log (Gov-only) -->
+        <div class="card" style="padding:14px;border:1px solid rgba(59,126,246,.2);flex:1">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+            <div style="font-size:12px;font-weight:700">Decision Log</div>
+            <span style="padding:2px 6px;border-radius:8px;background:rgba(59,126,246,.15);font-size:9px;color:var(--blue);font-weight:700;border:1px solid rgba(59,126,246,.3)">GOV ONLY</span>
+          </div>
+          ${[
+            {who:'Minister Lee',action:'Authorised N95 mask distribution — Woodlands, Jurong East, Tampines',time:'14:20'},
+            {who:'Dir SCDF',action:'Elevated flood response to Level 2 — deployed additional 3 engines',time:'13:55'},
+            {who:'Director MOH',action:'Issued public health advisory — HFMD elevated in childcare centres',time:'12:40'},
+            {who:'Minister Lee',action:'Pre-authorised media statement on haze outlook',time:'11:15'},
+          ].map(d=>`
+            <div style="padding:9px 0;border-bottom:1px solid var(--border)">
+              <div style="font-size:10px;color:var(--blue);font-weight:700">${d.who} · <span style="color:var(--muted);font-weight:400;font-family:var(--mono)">${d.time}</span></div>
+              <div style="font-size:11px;color:var(--text);margin-top:3px;line-height:1.4">${d.action}</div>
+            </div>`).join('')}
+        </div>
+
+        <!-- Escalation actions -->
+        <div class="card" style="padding:14px">
+          <div style="font-size:12px;font-weight:700;margin-bottom:10px">Escalation Actions</div>
+          ${[
+            {label:'📢 Issue National Alert',col:'var(--red)'},
+            {label:'🪖 Activate SAF Support',col:'var(--amber)'},
+            {label:'📰 Media Briefing',col:'var(--blue)'},
+            {label:'🏥 Open Emergency Shelters',col:'var(--green)'},
+          ].map(a=>`
+            <button style="width:100%;padding:9px;border-radius:8px;background:transparent;border:1px solid ${a.col};color:${a.col};font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;margin-bottom:6px;text-align:left">${a.label}</button>`).join('')}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="anno" style="right:14px;top:180px">Predictive intelligence (Gov-only): AI-driven forecasts from weather + historical crisis data.</div>
+  <div class="anno" style="right:14px;top:560px">Decision log provides full audit trail of ministerial/director-level actions taken.</div>
+  <div class="screen-label">09 / Government — Strategic Dashboard</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     S9 · GOVERNMENT — RESOURCE ALLOCATION
+══════════════════════════════════════════════════════════════ -->
+<div id="s9" class="screen">
+  <div class="sidebar">
+    <div class="sb-logo">⚡</div>
+    <div class="sb-icon">📊</div>
+    <div class="sb-icon active">🏛️</div>
+    <div class="sb-icon">🗺️</div>
+    <div class="sb-icon">📡</div>
+    <div class="sb-icon">⚠️</div>
+    <div class="sb-icon" style="margin-top:auto;margin-bottom:20px">⚙️</div>
+  </div>
+
+  <div style="margin-left:60px">
+    <div style="height:56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:14px">
+      <div style="font-size:12px;color:var(--cyan);cursor:pointer" onclick="show('s8')">← Gov Dashboard</div>
+      <div style="font-size:15px;font-weight:700">Cross-Agency Resource Allocation</div>
+      <div style="flex:1"></div>
+      <div class="badge badge-gov">GOV OFFICIAL</div>
+      <span style="padding:2px 10px;border-radius:12px;background:rgba(59,126,246,.15);font-size:10px;font-weight:700;color:var(--blue);border:1px solid rgba(59,126,246,.3)">🔵 GOV ONLY VIEW</span>
+    </div>
+
+    <!-- Summary banner -->
+    <div style="background:rgba(245,166,35,.08);border-bottom:1px solid rgba(245,166,35,.2);padding:10px 20px;display:flex;align-items:center;gap:20px">
+      <div style="font-size:13px;font-weight:700;color:var(--amber)">⚠️ Resource Contention Detected</div>
+      <div style="font-size:12px;color:var(--muted)">Ambulances approaching critical threshold (78% deployed). PUB flood units at 50% capacity during active Bukit Timah incident.</div>
+      <button style="margin-left:auto;padding:6px 14px;border-radius:8px;background:rgba(245,166,35,.15);border:1px solid var(--amber);color:var(--amber);font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">Request Additional Assets →</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px 20px">
+
+      <!-- Left: Detailed resource tables -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card" style="padding:16px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:12px">Resource Utilisation by Agency</div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="border-bottom:1px solid var(--border)">
+              ${['Agency','Resource','Available','Deployed','Reserve','Status'].map(h=>`<th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.06em">${h}</th>`).join('')}
+            </tr></thead>
+            <tbody>
+              ${[
+                {ag:'SCDF',res:'Fire Engines',avail:4,dep:8,res_:0,col:'var(--amber)',st:'Stretched'},
+                {ag:'SCDF',res:'Rescue Tenders',avail:3,dep:5,res_:2,col:'var(--green)',st:'Normal'},
+                {ag:'MOH',res:'Ambulances',avail:4,dep:14,res_:0,col:'var(--red)',st:'Critical'},
+                {ag:'PUB',res:'Flood Units',avail:3,dep:3,res_:0,col:'var(--amber)',st:'Stretched'},
+                {ag:'SPF',res:'Patrol Cars',avail:6,dep:22,res_:0,col:'var(--green)',st:'Normal'},
+                {ag:'NEA',res:'Fogging Teams',avail:4,dep:8,res_:2,col:'var(--green)',st:'Normal'},
+                {ag:'Volunteers',res:'Trained Teams',avail:39,dep:41,res_:0,col:'var(--amber)',st:'Stretched'},
+              ].map(r=>`
+                <tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:8px;font-weight:600;color:${r.col}">${r.ag}</td>
+                  <td style="padding:8px;color:var(--muted)">${r.res}</td>
+                  <td style="padding:8px;color:var(--green)">${r.avail}</td>
+                  <td style="padding:8px;color:var(--amber)">${r.dep}</td>
+                  <td style="padding:8px;color:var(--muted)">${r.res_}</td>
+                  <td style="padding:8px"><span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:rgba(0,0,0,.2);border:1px solid ${r.col};color:${r.col}">${r.st}</span></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Reallocation tool -->
+        <div class="card" style="padding:16px;border:1px solid rgba(59,126,246,.25)">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+            <div style="font-size:13px;font-weight:700">Resource Reallocation Tool</div>
+            <span style="padding:2px 6px;border-radius:8px;background:rgba(59,126,246,.15);font-size:9px;font-weight:700;color:var(--blue)">GOV ONLY</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
+            <div class="form-field"><label>From Agency</label><select style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);padding:9px 12px"><option>SCDF</option><option>SPF</option><option>MOH</option></select></div>
+            <div class="form-field"><label>Resource Type</label><select style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);padding:9px 12px"><option>Ambulances</option><option>Fire Engines</option></select></div>
+            <div class="form-field"><label>Quantity</label><input type="number" placeholder="e.g. 2" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);padding:9px 12px"></div>
+            <button class="btn btn-primary" style="padding:10px 16px;font-size:12px">Reallocate</button>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:8px">Reallocation requires digital sign-off from both agency directors. Auto-notifies relevant teams.</div>
+        </div>
+      </div>
+
+      <!-- Right: Mutual aid + SAF + Timeline -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <!-- SAF / External support -->
+        <div class="card" style="padding:16px;border:1px solid rgba(59,126,246,.25)">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+            <div style="font-size:13px;font-weight:700">🪖 External Support Options</div>
+            <span style="padding:2px 6px;border-radius:8px;background:rgba(59,126,246,.15);font-size:9px;font-weight:700;color:var(--blue)">GOV ONLY</span>
+          </div>
+          ${[
+            {name:'SAF Medical Corps',detail:'50 medics available · 2hr activation time',status:'Standby',col:'var(--blue)'},
+            {name:'SAF Engineers (Flood)',detail:'Portable pump units · 3hr activation time',status:'Standby',col:'var(--blue)'},
+            {name:'Red Cross Volunteers',detail:'200 trained volunteers · immediate activation',status:'Available',col:'var(--green)'},
+            {name:'Regional Mutual Aid (Malaysia)',detail:'Formal request required · 6hr+ response',status:'Not Activated',col:'var(--muted)'},
+          ].map(e=>`
+            <div style="padding:10px 12px;background:var(--surface2);border-radius:8px;display:flex;align-items:center;gap:12px;margin-bottom:6px">
+              <div style="flex:1">
+                <div style="font-size:12px;font-weight:600">${e.name}</div>
+                <div style="font-size:10px;color:var(--muted);margin-top:2px">${e.detail}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+                <span style="padding:2px 8px;border-radius:10px;border:1px solid ${e.col};color:${e.col};font-size:10px;font-weight:700">${e.status}</span>
+                <button style="padding:3px 10px;border-radius:6px;background:transparent;border:1px solid var(--blue);color:var(--blue);font-size:10px;cursor:pointer;font-family:var(--font)">Activate</button>
+              </div>
+            </div>`).join('')}
+        </div>
+
+        <!-- Budget / manpower snapshot -->
+        <div class="card" style="padding:16px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:12px">Emergency Manpower Snapshot</div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+            ${[
+              {label:'Total Responders',val:'874',sub:'Across all agencies',col:'var(--text)'},
+              {label:'Currently Deployed',val:'87',sub:'10% of total force',col:'var(--amber)'},
+              {label:'On Standby',val:'320',sub:'Available for immediate dispatch',col:'var(--green)'},
+              {label:'Off Duty / Reserve',val:'467',sub:'12hr recall time',col:'var(--muted)'},
+            ].map(s=>`
+              <div class="stat-card"><div class="stat-val" style="color:${s.col}">${s.val}</div><div class="stat-label">${s.label}<br><span style="color:var(--muted2)">${s.sub}</span></div></div>`).join('')}
+          </div>
+        </div>
+
+        <!-- Crisis cost tracker (Gov only) -->
+        <div class="card" style="padding:16px;border:1px solid rgba(59,126,246,.2)">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <div style="font-size:12px;font-weight:700">💰 Crisis Response Cost Tracker</div>
+            <span style="padding:2px 6px;border-radius:8px;background:rgba(59,126,246,.15);font-size:9px;font-weight:700;color:var(--blue)">GOV ONLY</span>
+          </div>
+          ${[
+            {item:'N95 mask distribution (25,000 units)',cost:'$62,500',col:'var(--amber)'},
+            {item:'SCDF overtime + fuel (today)',cost:'$18,400',col:'var(--muted)'},
+            {item:'PUB pump unit deployment',cost:'$8,200',col:'var(--muted)'},
+            {item:'Volunteer coordination support',cost:'$3,600',col:'var(--muted)'},
+          ].map(c=>`
+            <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:11px">
+              <span style="color:var(--muted)">${c.item}</span>
+              <span style="font-weight:700;color:${c.col}">${c.cost}</span>
+            </div>`).join('')}
+          <div style="display:flex;justify-content:space-between;padding:10px 0;font-size:13px;font-weight:700">
+            <span>Total Today</span><span style="color:var(--amber)">$92,700</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="anno" style="right:14px;top:180px">Resource contention auto-detected when any agency exceeds 70% deployment threshold.</div>
+  <div class="anno" style="right:14px;top:500px">Cost tracker is Gov-only — not visible to responders or the public.</div>
+  <div class="screen-label">10 / Government — Resource Allocation</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     S10 · NAVIGATION FLOW MAP
+══════════════════════════════════════════════════════════════ -->
+<div id="s10" class="screen">
+  <div style="padding:28px 40px;height:832px;overflow:auto">
+    <div style="font-size:22px;font-weight:700;margin-bottom:4px">QuickAid — Application Flow Map</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:28px">Complete navigation structure showing all user journeys across 3 access tiers</div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+
+      <!-- Public Flow -->
+      <div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px;display:flex;align-items:center;gap:8px"><div style="width:24px;height:2px;background:var(--cyan)"></div>Public Flow (No Login)</div>
+        ${[
+          {num:'01',title:'Landing / Role Selection',desc:'Entry point. Choose role or learn about platform.',col:'var(--cyan)',next:'02'},
+          {num:'02',title:'Public Dashboard',desc:'Crisis cards, live map, alert feed, 4 quick CTAs.',col:'var(--cyan)',next:'03,04,05'},
+          {num:'03',title:'Emergency Detail',desc:'Per-crisis detail: Haze PSI zones, trend chart, health advisory, mask points.',col:'var(--cyan)',next:null},
+          {num:'04',title:'Volunteer Sign-Up',desc:'Registration form, skill selector, live volunteer needs matching.',col:'var(--cyan)',next:null},
+          {num:'05',title:'Report Incident',desc:'Community incident reporting with photo upload and verification.',col:'var(--cyan)',next:null},
+        ].map((s,i)=>`
+          <div style="position:relative;margin-bottom:${i<4?'0':'0'}">
+            <div style="background:var(--surface);border-radius:10px;border:1px solid var(--border);border-left:3px solid ${s.col};padding:14px 16px;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                <span style="font-family:var(--mono);font-size:11px;color:${s.col};font-weight:700">${s.num}</span>
+                <span style="font-size:13px;font-weight:700">${s.title}</span>
+              </div>
+              <div style="font-size:11px;color:var(--muted);line-height:1.5">${s.desc}</div>
+              ${s.next?`<div style="font-size:10px;color:${s.col};margin-top:6px">→ Navigates to: Screen ${s.next}</div>`:''}
+            </div>
+            ${i<4?`<div style="width:1px;height:6px;background:${s.col};margin:0 0 0 20px;opacity:.5"></div>`:''}
+          </div>`).join('')}
+      </div>
+
+      <!-- Responder Flow -->
+      <div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);margin-bottom:14px;display:flex;align-items:center;gap:8px"><div style="width:24px;height:2px;background:var(--amber)"></div>Responder Flow (Agency Login)</div>
+        ${[
+          {num:'06',title:'Responder Login',desc:'CorpPass/SingPass for Business SSO. MFA enforced. Agency selector.',col:'var(--amber)',next:'07'},
+          {num:'07',title:'Ops Dashboard',desc:'Sidebar nav, ops map with live unit positions, incident list, resource bars, inter-agency comms.',col:'var(--amber)',next:'08'},
+          {num:'08',title:'Incident Detail',desc:'Full incident info, unit deployment, quick actions (dispatch, close road, alert), field comms, timeline.',col:'var(--amber)',next:null},
+        ].map((s,i)=>`
+          <div style="margin-bottom:0">
+            <div style="background:var(--surface);border-radius:10px;border:1px solid var(--border);border-left:3px solid ${s.col};padding:14px 16px;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                <span style="font-family:var(--mono);font-size:11px;color:${s.col);font-weight:700">${s.num}</span>
+                <span style="font-size:13px;font-weight:700">${s.title}</span>
+              </div>
+              <div style="font-size:11px;color:var(--muted);line-height:1.5">${s.desc}</div>
+              ${s.next?`<div style="font-size:10px;color:${s.col};margin-top:6px">→ Navigates to: Screen ${s.next}</div>`:''}
+            </div>
+            ${i<2?`<div style="width:1px;height:6px;background:${s.col};margin:0 0 0 20px;opacity:.5"></div>`:''}
+          </div>`).join('')}
+
+        <div style="margin-top:16px;padding:12px;background:rgba(245,166,35,.06);border-radius:8px;border:1px solid rgba(245,166,35,.2)">
+          <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:6px">🔒 Access Controls</div>
+          <div style="font-size:10px;color:var(--muted);line-height:1.6">• CorpPass SSO + MFA required<br>• Agency-scoped data visibility<br>• All actions audit-logged<br>• Unconfirmed reports visible (not on Public view)<br>• Internal resource shortages shown</div>
+        </div>
+      </div>
+
+      <!-- Gov Flow -->
+      <div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);margin-bottom:14px;display:flex;align-items:center;gap:8px"><div style="width:24px;height:2px;background:var(--blue)"></div>Government Flow (Secure Login)</div>
+        ${[
+          {num:'06*',title:'Gov Login',desc:'Highest-privilege CorpPass. MFA + hardware token. Full audit trail.',col:'var(--blue)',next:'09'},
+          {num:'09',title:'Strategic Dashboard',desc:'National KPIs, DORSCON controls, 5-agency status, predictive AI forecasts, decision log, escalation actions.',col:'var(--blue)',next:'10'},
+          {num:'10',title:'Resource Allocation',desc:'Cross-agency utilisation table, reallocation tool, SAF/external support, cost tracker.',col:'var(--blue)',next:null},
+        ].map((s,i)=>`
+          <div style="margin-bottom:0">
+            <div style="background:var(--surface);border-radius:10px;border:1px solid var(--border);border-left:3px solid ${s.col};padding:14px 16px;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                <span style="font-family:var(--mono);font-size:11px;color:${s.col};font-weight:700">${s.num}</span>
+                <span style="font-size:13px;font-weight:700">${s.title}</span>
+              </div>
+              <div style="font-size:11px;color:var(--muted);line-height:1.5">${s.desc}</div>
+              ${s.next?`<div style="font-size:10px;color:${s.col};margin-top:6px">→ Navigates to: Screen ${s.next}</div>`:''}
+            </div>
+            ${i<2?`<div style="width:1px;height:6px;background:${s.col};margin:0 0 0 20px;opacity:.5"></div>`:''}
+          </div>`).join('')}
+
+        <div style="margin-top:16px;padding:12px;background:rgba(59,126,246,.06);border-radius:8px;border:1px solid rgba(59,126,246,.2)">
+          <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:6px">🔵 Gov-Exclusive Data</div>
+          <div style="font-size:10px;color:var(--muted);line-height:1.6">• Predictive AI crisis forecasts<br>• DORSCON level controls<br>• Full resource utilisation (all agencies)<br>• SAF / external support activation<br>• Crisis response cost tracker<br>• Decision log (ministerial actions)<br>• Classified incident pre-reports</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data sources legend -->
+    <div style="margin-top:24px;padding:16px 20px;background:var(--surface);border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:12px;font-weight:700;margin-bottom:10px">📡 Data Sources Integrated</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        ${[
+          'NEA Real-time PSI API','NEA Dengue Cluster Feed','PUB Flood Sensor Network','MOH Disease Surveillance',
+          'MET Service Weather Forecast','SCDF Incident System','SPF Dispatch System','SG-Alert / Gov.sg',
+          'OneMap API (SLA)','NVPC Volunteer Registry','SGSecure Community Network','data.gov.sg Open Data',
+        ].map(src=>`<span style="padding:4px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:10px;font-weight:600;color:var(--muted)">${src}</span>`).join('')}
+      </div>
+    </div>
+  </div>
+  <div class="screen-label">11 / Application Flow Map</div>
+</div>
+
+</div><!-- end screen-wrap -->
+
+<script>
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) { el.classList.add('active'); document.getElementById('screen-wrap').scrollTop = 0; }
+  // Match nav button
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    if (b.getAttribute('onclick') && b.getAttribute('onclick').includes(id)) b.classList.add('active');
+  });
+}
+</script>
+</body>
+</html>
