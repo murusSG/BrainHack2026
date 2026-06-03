@@ -1,7 +1,16 @@
-import { navigationItems } from '../data/dashboardData';
+import { Link, useLocation } from 'react-router-dom';
 
-export function SidebarNav({ activePage, onSelectPage }) {
-  const implementedPages = new Set(['overview', 'incident-map', 'resources', 'hospitals', 'alerts']);
+const navItems = [
+  { id: 'overview', label: 'Overview', path: '/', icon: 'overview' },
+  { id: 'incident-map', label: 'Incident Map', path: '/incident-map', icon: 'map' },
+  { id: 'resources', label: 'Resources', path: '/resources', icon: 'resources' },
+  { id: 'hospitals', label: 'Hospitals', path: '/hospitals', icon: 'hospitals' },
+  { id: 'alerts', label: 'Alerts', path: '/alerts', icon: 'alerts' },
+  { id: 'system-flow', label: 'System Flow', path: '/system-flow', icon: 'system' },
+];
+
+export function SidebarNav() {
+  const location = useLocation();
 
   return (
     <aside className="sidebar">
@@ -14,24 +23,32 @@ export function SidebarNav({ activePage, onSelectPage }) {
       </div>
 
       <nav className="nav-list" aria-label="Primary">
-        {navigationItems.map((item) => {
-          const isImplemented = implementedPages.has(item.id);
-
+        {navItems.map((item) => {
+          const isActive =
+            item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
           return (
-          <button
-            key={item.id}
-            type="button"
-            className={`nav-item ${activePage === item.id ? 'active' : ''} ${!isImplemented ? 'disabled' : ''}`}
-            aria-current={activePage === item.id ? 'page' : undefined}
-            onClick={() => isImplemented && onSelectPage?.(item.id)}
-            disabled={!isImplemented}
-          >
-            <span className="nav-icon" aria-hidden="true" />
-            <span>{item.label}</span>
-          </button>
+            <Link
+              key={item.id}
+              to={item.path}
+              className={`nav-item ${isActive ? 'active' : ''}`}
+            >
+              <span className={`nav-icon nav-icon-${item.icon}`} aria-hidden="true" />
+              <span>{item.label}</span>
+            </Link>
           );
         })}
       </nav>
+
+      <div className="persona-jump-list">
+        <Link to="/responder" className="nav-item persona-jump">
+          <span className="nav-icon nav-icon-responder" aria-hidden="true" />
+          <span>Responder View</span>
+        </Link>
+        <Link to="/resident" className="nav-item persona-jump">
+          <span className="nav-icon nav-icon-resident" aria-hidden="true" />
+          <span>Resident View</span>
+        </Link>
+      </div>
     </aside>
   );
 }

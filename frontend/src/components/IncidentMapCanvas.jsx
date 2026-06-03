@@ -64,7 +64,7 @@ export function IncidentMapCanvas({ incidents, summary }) {
               <p className="marker-id">{incident.id}</p>
               <h3>{incident.title}</h3>
               <p className="muted-copy">
-                {incident.location} · {incident.vicinityRadius}
+                {incident.location} / {incident.vicinityRadius}
               </p>
             </div>
           </article>

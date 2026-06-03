@@ -1,0 +1,63 @@
+// frontend/src/services/demoEvents.js
+// Curated demo events layered on top of live feeds so the map is never empty
+// and can showcase serious multi-hazard scenarios during the pitch.
+// Shape matches the unified event format from eventAdapter.js.
+
+export const demoEvents = [
+  {
+    id: 'demo-flood-orchard',
+    source: 'PUB',
+    hazardType: 'flood',
+    severity: 'critical',
+    title: 'Flash flood — Orchard Road',
+    location: 'Orchard Road, Central',
+    lat: 1.3048,
+    lng: 103.8318,
+    vicinityRadiusMeters: 900,
+    timestamp: new Date().toISOString(),
+    publicAction: 'Avoid the area. Do not walk or drive through flood water.',
+    isDemo: true,
+  },
+  {
+    id: 'demo-fire-jurong',
+    source: 'SCDF',
+    hazardType: 'fire',
+    severity: 'high',
+    title: 'Industrial fire — Jurong East',
+    location: 'Jurong East Industrial Estate',
+    lat: 1.3329,
+    lng: 103.7436,
+    vicinityRadiusMeters: 1400,
+    timestamp: new Date().toISOString(),
+    publicAction: 'Shelter indoors. Close windows. Avoid service roads.',
+    isDemo: true,
+  },
+  {
+    id: 'demo-dengue-tampines',
+    source: 'NEA',
+    hazardType: 'dengue',
+    severity: 'high',
+    title: 'Dengue cluster — Tampines (12 cases)',
+    location: 'Tampines St 21',
+    lat: 1.3536,
+    lng: 103.9450,
+    vicinityRadiusMeters: 320,
+    timestamp: new Date().toISOString(),
+    publicAction: 'Remove stagnant water. Apply repellent. Check breeding spots.',
+    isDemo: true,
+  },
+  {
+    id: 'demo-medical-woodlands',
+    source: 'MOH',
+    hazardType: 'medical',
+    severity: 'medium',
+    title: 'ED surge — Woodlands',
+    location: 'Khoo Teck Puat Hospital catchment',
+    lat: 1.4382,
+    lng: 103.7890,
+    vicinityRadiusMeters: 2200,
+    timestamp: new Date().toISOString(),
+    publicAction: 'Use polyclinics for non-emergencies to ease ED load.',
+    isDemo: true,
+  },
+];

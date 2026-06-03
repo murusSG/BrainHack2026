@@ -1,18 +1,41 @@
+import { Link } from 'react-router-dom';
 import { AgencyFeedPanel } from '../components/AgencyFeedPanel';
+import { AllocationApprovalPanel } from '../components/AllocationApprovalPanel';
+import { ForesightEngine } from '../components/ForesightEngine';
 import { MetricCard } from '../components/MetricCard';
 import { QuickActionsPanel } from '../components/QuickActionsPanel';
 import { RecommendationPanel } from '../components/RecommendationPanel';
 import { TimelinePanel } from '../components/TimelinePanel';
 import {
   dataSources,
-  predictiveSignals,
   quickActions,
   recommendations,
   roleViews,
   topStats
 } from '../data/dashboardData';
+import { useEvents } from '../hooks/useEvents';
 
 export function OverviewPage() {
+  const { events, status } = useEvents();
+  const demoEventCount = events.filter((event) => event.isDemo).length;
+  const liveEventCount = events.length - demoEventCount;
+  const activeIncidentDelta =
+    status === 'loading'
+      ? 'Syncing live feeds'
+      : status === 'error'
+        ? 'Demo fallback active'
+        : `${liveEventCount} live + ${demoEventCount} demo`;
+  const overviewStats = topStats.map((stat) =>
+    stat.label === 'Active incidents'
+      ? {
+          ...stat,
+          value: String(events.length),
+          delta: activeIncidentDelta,
+          loading: status === 'loading',
+        }
+      : stat
+  );
+
   return (
     <div className="overview-page">
       <section className="hero-panel">
@@ -20,20 +43,27 @@ export function OverviewPage() {
           <p className="eyebrow">One Single Source of Truth</p>
           <h1>Emergency Overview</h1>
           <p className="hero-copy">
-            MURUS SG fuses agency telemetry, crowd intelligence, and operational capacity into one
-            live command surface, reducing relay delays and helping every unit act on the same
-            verified picture.
+            A command surface for one crisis picture: predict what escalates, allocate resources
+            early, and keep responders and residents aligned from the same verified feed.
           </p>
         </div>
         <div className="hero-actions">
-          <button type="button" className="ghost-button">
-            Filter
-          </button>
-          <button type="button" className="primary-button">
-            Incident Type
-          </button>
+          <a href="#foresight-engine" className="primary-button hero-action-link">
+            Review Foresight
+          </a>
+          <Link to="/incident-map" className="ghost-button hero-action-link">
+            Incident Map
+          </Link>
         </div>
       </section>
+
+      <section className="stats-grid">
+        {overviewStats.map((stat) => (
+          <MetricCard key={stat.label} {...stat} />
+        ))}
+      </section>
+
+      <ForesightEngine />
 
       <section className="status-banner panel">
         <div className="status-mark" />
@@ -52,12 +82,6 @@ export function OverviewPage() {
         </div>
       </section>
 
-      <section className="stats-grid">
-        {topStats.map((stat) => (
-          <MetricCard key={stat.label} {...stat} />
-        ))}
-      </section>
-
       <section className="content-grid">
         <div className="left-column">
           <TimelinePanel />
@@ -65,50 +89,38 @@ export function OverviewPage() {
         </div>
         <div className="right-column">
           <RecommendationPanel recommendations={recommendations} />
-          <QuickActionsPanel actions={quickActions} />
+          <AllocationApprovalPanel />
+        </div>
+      </section>
 
-          <div className="panel">
-            <div className="section-heading">
-              <h2>Predictive Signals</h2>
-              <span className="pill">Historical trend model</span>
-            </div>
-            <div className="forecast-list">
-              {predictiveSignals.map((signal) => (
-                <article key={signal.title} className="forecast-card">
-                  <p className="forecast-title">{signal.title}</p>
-                  <p className="forecast-value">{signal.value}</p>
-                  <p className="muted-copy">{signal.note}</p>
-                </article>
-              ))}
-            </div>
-          </div>
+      <section className="overview-support-grid">
+        <QuickActionsPanel actions={quickActions} />
 
-          <div className="panel">
-            <div className="section-heading">
-              <h2>Role-Specific Decisions</h2>
-              <span className="pill">Unified outputs</span>
-            </div>
-            <div className="roles-list">
-              {roleViews.map((view) => (
-                <article key={view.role} className="role-card">
-                  <p className="role-title">{view.role}</p>
-                  <p className="muted-copy">{view.summary}</p>
-                </article>
-              ))}
-            </div>
+        <div className="panel">
+          <div className="section-heading">
+            <h2>Role-Specific Decisions</h2>
+            <span className="pill">Unified outputs</span>
           </div>
+          <div className="roles-list">
+            {roleViews.map((view) => (
+              <article key={view.role} className="role-card">
+                <p className="role-title">{view.role}</p>
+                <p className="muted-copy">{view.summary}</p>
+              </article>
+            ))}
+          </div>
+        </div>
 
-          <div className="panel">
-            <div className="section-heading">
-              <h2>Unified Data Ingestion Layer</h2>
-              <span className="pill">Normalised event schema</span>
-            </div>
-            <p className="muted-copy">
-              Every incoming signal is transformed into a shared internal incident schema so
-              command, field teams, hospitals, and public channels operate from the same event
-              record.
-            </p>
+        <div className="panel">
+          <div className="section-heading">
+            <h2>Unified Data Ingestion Layer</h2>
+            <span className="pill">Normalised event schema</span>
           </div>
+          <p className="muted-copy">
+            Every incoming signal is transformed into a shared internal incident schema so
+            command, field teams, hospitals, and public channels operate from the same event
+            record.
+          </p>
         </div>
       </section>
 

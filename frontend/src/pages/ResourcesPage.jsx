@@ -1,12 +1,10 @@
 import {
   interAgencyRequestForm,
-  resourceLedgerEntries,
-  resourceLedgerMeta,
   resourceLedgerTabs,
   resourceShortageAlert,
-  resourceSummaryCards,
   resourceTrend
 } from '../data/dashboardData';
+import { useScdfResources } from '../hooks/useScdfResources';
 
 function resourceSymbol(icon) {
   if (icon === 'fleet') {
@@ -50,10 +48,17 @@ function buildTrendArea(values, max, height) {
 }
 
 export function ResourcesPage() {
+  const { status, error, summaryCards, ledgerEntries, ledgerMeta } = useScdfResources();
   const chartHeight = 100;
   const stockPath = buildTrendPath(resourceTrend.currentStock, resourceTrend.yMax, chartHeight);
   const stockArea = buildTrendArea(resourceTrend.currentStock, resourceTrend.yMax, chartHeight);
   const demandPath = buildTrendPath(resourceTrend.projectedDemand, resourceTrend.yMax, chartHeight);
+  const syncLabel =
+    status === 'loading'
+      ? 'Syncing SCDF'
+      : status === 'error'
+        ? 'Planning fallback'
+        : ledgerMeta.syncStatus;
 
   return (
     <div className="resources-page">
@@ -65,6 +70,7 @@ export function ResourcesPage() {
           </p>
         </div>
         <div className="hero-actions">
+          <span className="pill">{syncLabel}</span>
           <button type="button" className="ghost-button">
             Export Report
           </button>
@@ -77,8 +83,14 @@ export function ResourcesPage() {
         </div>
       </section>
 
+      {status === 'error' && (
+        <p className="feed-warning">
+          SCDF public resource feed unavailable ({error}). Showing planning defaults.
+        </p>
+      )}
+
       <section className="resource-summary-grid">
-        {resourceSummaryCards.map((card) => (
+        {summaryCards.map((card) => (
           <article key={card.label} className="resource-summary-card">
             <div className="resource-card-top">
               <span className={`resource-icon icon-${resourceSymbol(card.icon)}`} aria-hidden="true" />
@@ -147,8 +159,8 @@ export function ResourcesPage() {
           <section className="panel resource-ledger-panel">
             <div className="resource-ledger-head">
               <div>
-                <h2>{resourceLedgerMeta.title}</h2>
-                <p>{resourceLedgerMeta.subtitle}</p>
+                <h2>{ledgerMeta.title}</h2>
+                <p>{ledgerMeta.subtitle}</p>
               </div>
               <label className="resource-ledger-search">
                 <span className="searchbar-icon" aria-hidden="true">
@@ -156,7 +168,7 @@ export function ResourcesPage() {
                 </span>
                 <input
                   type="text"
-                  placeholder={resourceLedgerMeta.searchPlaceholder}
+                  placeholder={ledgerMeta.searchPlaceholder}
                   aria-label="Search resource ledger"
                 />
               </label>
@@ -185,7 +197,7 @@ export function ResourcesPage() {
                 <span>Actions</span>
               </div>
 
-              {resourceLedgerEntries.map((entry) => (
+              {ledgerEntries.map((entry) => (
                 <div key={entry.unitId} className="resource-ledger-row">
                   <span className="ledger-strong">{entry.unitId}</span>
                   <span>{entry.type}</span>
@@ -208,9 +220,9 @@ export function ResourcesPage() {
             </div>
 
             <div className="resource-ledger-footer">
-              <span>{resourceLedgerMeta.syncStatus}</span>
+              <span>{ledgerMeta.syncStatus}</span>
               <button type="button" className="inline-link">
-                {resourceLedgerMeta.auditLabel}
+                {ledgerMeta.auditLabel}
               </button>
             </div>
           </section>
