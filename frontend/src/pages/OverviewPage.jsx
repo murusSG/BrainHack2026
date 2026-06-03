@@ -11,18 +11,8 @@ import {
   roleViews,
   topStats
 } from '../data/dashboardData';
-import { useCrisisEvents } from '../hooks/useCrisisEvents';
-import { toTimelineItem } from '../utils/crisisView';
 
 export function OverviewPage() {
-  const { events } = useCrisisEvents();
-
-  // Newest first; cap the timeline so it stays scannable.
-  const liveTimeline = [...events]
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .slice(0, 8)
-    .map(toTimelineItem);
-
   return (
     <div className="overview-page">
       <section className="hero-panel">
@@ -70,7 +60,7 @@ export function OverviewPage() {
 
       <section className="content-grid">
         <div className="left-column">
-          <TimelinePanel items={liveTimeline} live={liveTimeline.length > 0} />
+          <TimelinePanel />
           <AgencyFeedPanel />
         </div>
         <div className="right-column">
