@@ -90,34 +90,37 @@ export function OverviewPage() {
         <div className="right-column">
           <RecommendationPanel recommendations={recommendations} />
           <AllocationApprovalPanel />
-          <QuickActionsPanel actions={quickActions} />
+        </div>
+      </section>
 
-          <div className="panel">
-            <div className="section-heading">
-              <h2>Role-Specific Decisions</h2>
-              <span className="pill">Unified outputs</span>
-            </div>
-            <div className="roles-list">
-              {roleViews.map((view) => (
-                <article key={view.role} className="role-card">
-                  <p className="role-title">{view.role}</p>
-                  <p className="muted-copy">{view.summary}</p>
-                </article>
-              ))}
-            </div>
-          </div>
+      <section className="overview-support-grid">
+        <QuickActionsPanel actions={quickActions} />
 
-          <div className="panel">
-            <div className="section-heading">
-              <h2>Unified Data Ingestion Layer</h2>
-              <span className="pill">Normalised event schema</span>
-            </div>
-            <p className="muted-copy">
-              Every incoming signal is transformed into a shared internal incident schema so
-              command, field teams, hospitals, and public channels operate from the same event
-              record.
-            </p>
+        <div className="panel">
+          <div className="section-heading">
+            <h2>Role-Specific Decisions</h2>
+            <span className="pill">Unified outputs</span>
           </div>
+          <div className="roles-list">
+            {roleViews.map((view) => (
+              <article key={view.role} className="role-card">
+                <p className="role-title">{view.role}</p>
+                <p className="muted-copy">{view.summary}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <div className="panel">
+          <div className="section-heading">
+            <h2>Unified Data Ingestion Layer</h2>
+            <span className="pill">Normalised event schema</span>
+          </div>
+          <p className="muted-copy">
+            Every incoming signal is transformed into a shared internal incident schema so
+            command, field teams, hospitals, and public channels operate from the same event
+            record.
+          </p>
         </div>
       </section>
 
