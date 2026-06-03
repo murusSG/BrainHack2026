@@ -1,11 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
 
 const navItems = [
-  { id: 'overview', label: 'Overview', path: '/' },
-  { id: 'incident-map', label: 'Incident Map', path: '/incident-map' },
-  { id: 'resources', label: 'Resources', path: '/resources' },
-  { id: 'hospitals', label: 'Hospitals', path: '/hospitals' },
-  { id: 'alerts', label: 'Alerts', path: '/alerts' },
+  { id: 'overview', label: 'Overview', path: '/', icon: 'overview' },
+  { id: 'incident-map', label: 'Incident Map', path: '/incident-map', icon: 'map' },
+  { id: 'resources', label: 'Resources', path: '/resources', icon: 'resources' },
+  { id: 'hospitals', label: 'Hospitals', path: '/hospitals', icon: 'hospitals' },
+  { id: 'alerts', label: 'Alerts', path: '/alerts', icon: 'alerts' },
 ];
 
 export function SidebarNav() {
@@ -31,7 +31,7 @@ export function SidebarNav() {
               to={item.path}
               className={`nav-item ${isActive ? 'active' : ''}`}
             >
-              <span className="nav-icon" aria-hidden="true" />
+              <span className={`nav-icon nav-icon-${item.icon}`} aria-hidden="true" />
               <span>{item.label}</span>
             </Link>
           );
@@ -40,11 +40,11 @@ export function SidebarNav() {
 
       <div className="persona-jump-list">
         <Link to="/responder" className="nav-item persona-jump">
-          <span className="nav-icon" aria-hidden="true" />
+          <span className="nav-icon nav-icon-responder" aria-hidden="true" />
           <span>Responder View</span>
         </Link>
         <Link to="/resident" className="nav-item persona-jump">
-          <span className="nav-icon" aria-hidden="true" />
+          <span className="nav-icon nav-icon-resident" aria-hidden="true" />
           <span>Resident View</span>
         </Link>
       </div>

@@ -35,6 +35,10 @@ export function IncidentMapPage() {
         <div className="incident-map-main">
           <section className="panel map-panel">
             <div className="incident-map-shell">
+              <div className="map-floating-toolbar">
+                <span>Search coordinates, zone names, or incidents</span>
+                <strong>2 active filters</strong>
+              </div>
               {isLoading ? (
                 <MapLoadingSkeleton />
               ) : (

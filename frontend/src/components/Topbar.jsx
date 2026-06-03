@@ -3,7 +3,7 @@ export function Topbar() {
     <header className="topbar">
       <label className="searchbar">
         <span className="searchbar-icon" aria-hidden="true">
-          +
+          /
         </span>
         <input
           type="text"
@@ -18,7 +18,7 @@ export function Topbar() {
           <span>Systems online</span>
         </div>
         <button type="button" className="icon-button" aria-label="Notifications">
-          1
+          !
         </button>
         <button type="button" className="profile-button" aria-label="User profile">
           DS
