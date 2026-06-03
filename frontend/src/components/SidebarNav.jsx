@@ -6,6 +6,7 @@ const navItems = [
   { id: 'resources', label: 'Resources', path: '/resources', icon: 'resources' },
   { id: 'hospitals', label: 'Hospitals', path: '/hospitals', icon: 'hospitals' },
   { id: 'alerts', label: 'Alerts', path: '/alerts', icon: 'alerts' },
+  { id: 'system-flow', label: 'System Flow', path: '/system-flow', icon: 'system' },
 ];
 
 export function SidebarNav() {

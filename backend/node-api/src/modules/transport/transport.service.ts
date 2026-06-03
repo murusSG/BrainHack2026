@@ -2,11 +2,12 @@ import { ltaClient } from "../../services/lta.client";
 import { transportRepo } from "../../repositories/transport.repo";
 import type {
   LtaResponse,
+  LtaFloodAlertItem,
   LtaTrafficIncident,
   LtaTrainServiceAlert,
   LtaTrainServiceAlertsResponse,
 } from "./transport.types";
-import type { TrafficIncident, TrainAlert } from "../../../../shared/types/transport";
+import type { LtaFloodAlert, TrafficIncident, TrainAlert } from "../../../../shared/types/transport";
 
 export async function getTrafficIncidents(): Promise<TrafficIncident[]> {
   const { data } = await ltaClient.get<LtaResponse<LtaTrafficIncident>>("/TrafficIncidents");
@@ -39,4 +40,18 @@ export async function getTrainAlerts(): Promise<TrainAlert[]> {
   }));
 
   return alerts;
+}
+
+export async function getLtaFloodAlerts(): Promise<LtaFloodAlert[]> {
+  const { data } = await ltaClient.get<LtaResponse<LtaFloodAlertItem>>("/Flood-Alerts");
+
+  return data.value.map((item) => ({
+    nodeId: item.NodeID,
+    linkId: item.LinkID,
+    latitude: item.Latitude,
+    longitude: item.Longitude,
+    alertMessage: item.AlertMessage,
+    alertLevel: item.AlertLevel,
+    previousAlertLevel: item.PreviousAlertLevel,
+  }));
 }

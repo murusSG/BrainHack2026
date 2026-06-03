@@ -7,6 +7,7 @@ import { OverviewPage } from './pages/OverviewPage';
 import { ResourcesPage } from './pages/ResourcesPage';
 import { ResidentPage } from './pages/ResidentPage';
 import { ResponderPage } from './pages/ResponderPage';
+import { SystemFlowPage } from './pages/SystemFlowPage';
 
 // Wraps the command dashboard pages in the existing sidebar layout
 function CommandShell({ page }) {
@@ -16,6 +17,7 @@ function CommandShell({ page }) {
     resources: <ResourcesPage />,
     hospitals: <HospitalsPage />,
     alerts: <AlertsPage />,
+    'system-flow': <SystemFlowPage />,
   };
   return <DashboardLayout activePage={page}>{pages[page]}</DashboardLayout>;
 }
@@ -34,6 +36,7 @@ export default function App() {
         <Route path="/resources" element={<CommandShell page="resources" />} />
         <Route path="/hospitals" element={<CommandShell page="hospitals" />} />
         <Route path="/alerts" element={<CommandShell page="alerts" />} />
+        <Route path="/system-flow" element={<CommandShell page="system-flow" />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

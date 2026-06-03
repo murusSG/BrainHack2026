@@ -29,3 +29,14 @@ export interface LtaTrainServiceAlert {
 export interface LtaTrainServiceAlertsResponse {
   value: LtaTrainServiceAlert[];
 }
+
+/** Raw shape from LTA /Flood-Alerts */
+export interface LtaFloodAlertItem {
+  NodeID: string;
+  LinkID: string;
+  Latitude: number;
+  Longitude: number;
+  AlertMessage: string;
+  AlertLevel: string;
+  PreviousAlertLevel: string;
+}

@@ -1,9 +1,7 @@
 import {
-  hospitalFacilityCards,
-  hospitalSummaryCards,
   hospitalTrackerMeta,
-  specializedFacilitiesRegistry
 } from '../data/dashboardData';
+import { useHospitalData } from '../hooks/useHospitalData';
 
 function hospitalSymbol(icon) {
   if (icon === 'alert') {
@@ -41,6 +39,23 @@ function FacilityMetric({ label, data }) {
 }
 
 export function HospitalsPage() {
+  const {
+    status,
+    error,
+    summaryCards,
+    facilityCards,
+    registryRows,
+    liveOccupancyCount,
+    liveReferenceCount,
+  } = useHospitalData();
+  const hasLiveData = liveOccupancyCount > 0 || liveReferenceCount > 0;
+  const syncLabel =
+    status === 'loading'
+      ? 'Syncing public data'
+      : hasLiveData
+        ? `${liveOccupancyCount + liveReferenceCount} live records`
+        : 'Planning fallback';
+
   return (
     <div className="hospitals-page">
       <section className="hero-panel hospital-hero">
@@ -49,6 +64,7 @@ export function HospitalsPage() {
           <p className="hero-copy">{hospitalTrackerMeta.subtitle}</p>
         </div>
         <div className="hero-actions">
+          <span className="pill">{syncLabel}</span>
           <button type="button" className="ghost-button">
             {hospitalTrackerMeta.filterLabel}
           </button>
@@ -58,8 +74,14 @@ export function HospitalsPage() {
         </div>
       </section>
 
+      {status === 'error' && (
+        <p className="feed-warning">
+          Hospital public datasets unavailable ({error}). Showing planning defaults.
+        </p>
+      )}
+
       <section className="hospital-summary-grid">
-        {hospitalSummaryCards.map((card) => (
+        {summaryCards.map((card) => (
           <article key={card.label} className="hospital-summary-card">
             <div className="hospital-summary-inner">
               <span className={`hospital-icon icon-${hospitalSymbol(card.icon)} tone-${card.tone}`} aria-hidden="true" />
@@ -88,8 +110,8 @@ export function HospitalsPage() {
 
         <div className="hospital-toolbar-actions">
           <button type="button" className="hospital-pill-button">
-            <span className="transfer-count">3</span>
-            {hospitalTrackerMeta.pendingTransfers}
+            <span className="transfer-count">{liveReferenceCount || 3}</span>
+            {liveReferenceCount ? 'Reference Records' : hospitalTrackerMeta.pendingTransfers}
           </button>
           <button type="button" className="ghost-button">
             {hospitalTrackerMeta.exportLabel}
@@ -98,7 +120,7 @@ export function HospitalsPage() {
       </section>
 
       <section className="hospital-cards-grid">
-        {hospitalFacilityCards.map((facility) => (
+        {facilityCards.map((facility) => (
           <article key={facility.name} className="hospital-card">
             <div className="hospital-card-header">
               <div>
@@ -152,7 +174,7 @@ export function HospitalsPage() {
             <span>Actions</span>
           </div>
 
-          {specializedFacilitiesRegistry.map((facility) => (
+          {registryRows.map((facility) => (
             <div key={facility.name} className="facility-registry-row">
               <span className="ledger-strong">{facility.name}</span>
               <span>

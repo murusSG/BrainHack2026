@@ -5,6 +5,7 @@ export const navigationItems = [
   { id: 'hospitals', label: 'Hospitals' },
   { id: 'volunteers', label: 'Volunteers' },
   { id: 'alerts', label: 'Alerts' },
+  { id: 'system-flow', label: 'System Flow' },
   { id: 'incident-detail', label: 'Incident Detail' }
 ];
 
@@ -102,6 +103,63 @@ export const recommendations = [
     category: 'Public messaging',
     priority: 'Action',
     text: 'Issue a regional SMS advisory for Toa Payoh residents regarding localised flooding and alternate routes.'
+  }
+];
+
+export const allocationRecommendations = [
+  {
+    id: 'ALLOC-1024',
+    incidentId: 'INC-1024',
+    incidentTitle: 'Flash Flood Warning: Orchard Rd',
+    severity: 'critical',
+    confidence: 91,
+    generatedAt: '2 mins ago',
+    modelVersion: 'MURUS-ALLOC-0.3',
+    triggerSignals: [
+      'PUB sensor #42 above 90%',
+      'Road submersion risk in 15 min',
+      '~15,000 commuters affected'
+    ],
+    draftMessage:
+      'Request coordinated response for Orchard Rd flash flood risk. Please confirm team availability and estimated response window.',
+    agencies: [
+      {
+        id: 'pub',
+        agency: 'PUB',
+        channel: 'Drainage Ops',
+        confidence: 94,
+        reason: 'Verified canal threshold breach near Stamford Diversion Canal.',
+        suggestedAction: 'Deploy drainage response crew and inspect chokepoints along Orchard Rd.',
+        status: 'pending_approval'
+      },
+      {
+        id: 'lta',
+        agency: 'LTA',
+        channel: 'Traffic Ops',
+        confidence: 88,
+        reason: 'High probability of road closure and traffic diversion requirement.',
+        suggestedAction: 'Prepare lane closure support and push diversion routes to transport operators.',
+        status: 'pending_approval'
+      },
+      {
+        id: 'scdf',
+        agency: 'SCDF',
+        channel: 'Ops Centre',
+        confidence: 82,
+        reason: 'Flooding may affect stranded pedestrians and basement evacuation routes.',
+        suggestedAction: 'Stage one rescue unit and standby ambulance near Central sector.',
+        status: 'pending_approval'
+      },
+      {
+        id: 'spf',
+        agency: 'SPF',
+        channel: 'Ground Command',
+        confidence: 69,
+        reason: 'Crowd control may be required if evacuation routes cross shopping belt exits.',
+        suggestedAction: 'Place patrol support on standby for cordon and access control.',
+        status: 'pending_approval'
+      }
+    ]
   }
 ];
 

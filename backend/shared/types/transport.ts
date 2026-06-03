@@ -19,3 +19,13 @@ export interface TrainAlertSegment {
   freeMRTShuttle: string;
   mRTShuttleDirection: string;
 }
+
+export interface LtaFloodAlert {
+  nodeId: string;
+  linkId: string;
+  latitude: number;
+  longitude: number;
+  alertMessage: string;
+  alertLevel: string;
+  previousAlertLevel: string;
+}

@@ -18,3 +18,12 @@ export async function getTrainAlerts(req: Request, res: Response, next: NextFunc
     next(err);
   }
 }
+
+export async function getLtaFloodAlerts(req: Request, res: Response, next: NextFunction) {
+  try {
+    const data = await transportService.getLtaFloodAlerts();
+    res.json({ data, source: "LTA DataMall /Flood-Alerts", fetchedAt: new Date().toISOString() });
+  } catch (err) {
+    next(err);
+  }
+}

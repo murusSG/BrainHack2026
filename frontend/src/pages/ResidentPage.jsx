@@ -4,6 +4,7 @@ import { CrisisMap } from '../components/CrisisMap';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
 import { useEvents } from '../hooks/useEvents';
+import { api } from '../services/api';
 
 function distanceMeters(a, b) {
   const R = 6371000;
@@ -33,6 +34,7 @@ export function ResidentPage() {
   const { events, status, error } = useEvents();
   const [activePoint, setActivePoint] = useState(WATCH_POINTS[0].id);
   const [shelterNote, setShelterNote] = useState(null);
+  const [shelterLoading, setShelterLoading] = useState(false);
   const isLoading = status === 'loading';
   const demoEventCount = events.filter((event) => event.isDemo).length;
   const liveEventCount = events.length - demoEventCount;
@@ -60,6 +62,30 @@ export function ResidentPage() {
   const active = statusByPoint.find((statusItem) => statusItem.point.id === activePoint);
   const activeSeverity = active?.affecting[0]?.severity;
   const activeTone = isLoading ? 'loading' : statusTone(activeSeverity);
+
+  async function handleNearestShelter(point) {
+    setShelterLoading(true);
+    setShelterNote(`Finding nearest SCDF shelter for ${point.label}...`);
+    try {
+      const nearest = await api.scdfNearest(point.lat, point.lng, 'SHELTER');
+      const shelter = Array.isArray(nearest) ? nearest[0] : null;
+      if (!shelter) {
+        setShelterNote(`No configured SCDF shelter records found near ${point.label}.`);
+        return;
+      }
+      const distance = shelter.distance_meters
+        ? ` (${Math.round(shelter.distance_meters)}m away)`
+        : '';
+      const address = shelter.address ? `, ${shelter.address}` : '';
+      setShelterNote(`Nearest shelter for ${point.label}: ${shelter.name}${address}${distance}`);
+    } catch (err) {
+      setShelterNote(
+        `Nearest shelter for ${point.label}: ${shelterForPoint(point.id)}. Live lookup unavailable (${err.message}).`
+      );
+    } finally {
+      setShelterLoading(false);
+    }
+  }
 
   return (
     <div className="resident-page">
@@ -131,9 +157,10 @@ export function ResidentPage() {
                     <button
                       type="button"
                       className="resident-secondary-button"
-                      onClick={() => setShelterNote(`Nearest shelter for ${active.point.label}: ${shelterForPoint(active.point.id)}`)}
+                      disabled={shelterLoading}
+                      onClick={() => handleNearestShelter(active.point)}
                     >
-                      Nearest shelter
+                      {shelterLoading ? 'Finding shelter' : 'Nearest shelter'}
                     </button>
                   </div>
                 </article>

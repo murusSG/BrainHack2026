@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { AgencyFeedPanel } from '../components/AgencyFeedPanel';
+import { AllocationApprovalPanel } from '../components/AllocationApprovalPanel';
 import { ForesightEngine } from '../components/ForesightEngine';
 import { MetricCard } from '../components/MetricCard';
 import { QuickActionsPanel } from '../components/QuickActionsPanel';
@@ -88,6 +89,7 @@ export function OverviewPage() {
         </div>
         <div className="right-column">
           <RecommendationPanel recommendations={recommendations} />
+          <AllocationApprovalPanel />
           <QuickActionsPanel actions={quickActions} />
 
           <div className="panel">
