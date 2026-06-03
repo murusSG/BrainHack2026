@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 const predictions = [
   {
     id: 'flood-dunearn',
-    icon: '\u{1F30A}',
+    icon: 'PUB',
     title: 'Flood risk - Dunearn Rd',
     confidence: 73,
     horizon: '40 min',
@@ -13,7 +13,7 @@ const predictions = [
   },
   {
     id: 'call-surge-west',
-    icon: '\u{1F637}',
+    icon: '995',
     title: '995 call surge - West region',
     confidence: 68,
     horizon: '2 hrs',
@@ -23,7 +23,7 @@ const predictions = [
   },
   {
     id: 'dengue-tampines',
-    icon: '\u{1F99F}',
+    icon: 'NEA',
     title: 'Dengue expansion - Tampines',
     confidence: 81,
     horizon: '3 days',
@@ -46,6 +46,7 @@ function clamp(value, min, max) {
 export function ForesightEngine() {
   const [surgeBeds, setSurgeBeds] = useState(0);
   const [qrtCount, setQrtCount] = useState(0);
+  const [actionStatus, setActionStatus] = useState('No response action staged yet.');
 
   const outcomes = useMemo(() => {
     const overflowProbability = clamp(
@@ -84,18 +85,17 @@ export function ForesightEngine() {
     },
     {
       label: 'Lives-at-risk index',
-      value: `${Math.round(outcomes.livesAtRisk).toLocaleString()}${
-        outcomes.livesAtRisk < baseline.livesAtRisk ? ' ↓' : ''
-      }`,
+      value: Math.round(outcomes.livesAtRisk).toLocaleString(),
       improved: outcomes.livesAtRisk < baseline.livesAtRisk,
+      trend: outcomes.livesAtRisk < baseline.livesAtRisk ? 'DOWN' : null,
     },
   ];
 
   return (
-    <section className="foresight-engine panel" aria-labelledby="foresight-title">
+    <section id="foresight-engine" className="foresight-engine panel" aria-labelledby="foresight-title">
       <div className="foresight-header">
         <div>
-          <p className="eyebrow">Predictive · Next 7 days</p>
+          <p className="eyebrow">Predictive / Next 7 days</p>
           <h2 id="foresight-title">Foresight Engine</h2>
         </div>
         <span className="foresight-beta">BETA</span>
@@ -119,7 +119,7 @@ export function ForesightEngine() {
                 <div>
                   <p className="foresight-alert-title">{prediction.title}</p>
                   <p className="foresight-alert-meta">
-                    Source: {prediction.source} · {prediction.horizon}
+                    Source: {prediction.source} / {prediction.horizon}
                   </p>
                 </div>
               </div>
@@ -133,12 +133,16 @@ export function ForesightEngine() {
               <button
                 type="button"
                 className={`foresight-action foresight-${prediction.severity}`}
+                onClick={() =>
+                  setActionStatus(`${prediction.action} staged for ${prediction.title}`)
+                }
               >
                 {prediction.action}
               </button>
             </article>
           ))}
         </div>
+        <p className="foresight-action-status">{actionStatus}</p>
       </div>
 
       <div className="foresight-simulator">
@@ -183,7 +187,10 @@ export function ForesightEngine() {
               key={outcome.label}
               className={`foresight-outcome ${outcome.improved ? 'is-improved' : 'is-baseline'}`}
             >
-              <p className="foresight-outcome-value">{outcome.value}</p>
+              <p className="foresight-outcome-value">
+                {outcome.value}
+                {outcome.trend && <span className="foresight-trend">{outcome.trend}</span>}
+              </p>
               <p className="foresight-outcome-label">{outcome.label}</p>
             </article>
           ))}

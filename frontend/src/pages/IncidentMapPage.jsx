@@ -20,6 +20,14 @@ export function IncidentMapPage() {
   const { events, status, error } = useEvents();
   const [selected, setSelected] = useState(null);
   const isLoading = status === 'loading';
+  const demoEventCount = events.filter((event) => event.isDemo).length;
+  const liveEventCount = events.length - demoEventCount;
+  const feedLabel =
+    status === 'loading'
+      ? 'Syncing'
+      : status === 'error'
+        ? 'Demo fallback'
+        : `${liveEventCount} live / ${demoEventCount} demo`;
 
   return (
     <div className="incident-map-page">
@@ -49,9 +57,9 @@ export function IncidentMapPage() {
             <div className="section-heading incident-list-heading">
               <div>
                 <p className="eyebrow">Active incidents</p>
-                <h2>{isLoading ? 'Syncing map events' : `${events.length} live map events`}</h2>
+                <h2>{isLoading ? 'Syncing map events' : `${events.length} unified events`}</h2>
               </div>
-              <span className="pill">{isLoading ? 'Syncing' : 'Live'}</span>
+              <span className="pill">{feedLabel}</span>
             </div>
 
             {isLoading ? (
@@ -71,6 +79,7 @@ export function IncidentMapPage() {
                   >
                     <div className="incident-list-top">
                       <p className="incident-code">{incident.source}</p>
+                      {incident.isDemo && <span className="demo-chip">Demo</span>}
                       <span className={`severity-chip chip-${severityTone(incident.severity)}`}>
                         {incident.severity}
                       </span>

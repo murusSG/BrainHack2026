@@ -66,6 +66,8 @@ button {
   position: sticky;
   top: 0;
   height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .brand-block {
@@ -113,6 +115,7 @@ button {
   gap: 14px;
   padding: 0 18px;
   text-align: left;
+  text-decoration: none;
 }
 
 .nav-item.active {
@@ -124,6 +127,18 @@ button {
 .nav-item.disabled {
   opacity: 0.52;
   cursor: default;
+}
+
+.persona-jump-list {
+  display: grid;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 24px;
+}
+
+.persona-jump {
+  background: rgba(85, 167, 255, 0.06);
+  border-color: rgba(85, 167, 255, 0.12);
 }
 
 .nav-icon,
@@ -246,6 +261,13 @@ button {
   border-color: var(--border-strong);
 }
 
+.hero-action-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
 .main-content {
   padding: 42px 28px 54px;
 }
@@ -307,6 +329,11 @@ h1 {
   flex-wrap: wrap;
 }
 
+.hero-actions .primary-button {
+  background: rgba(85, 167, 255, 0.16);
+  color: #d9ecff;
+}
+
 .status-banner,
 .panel {
   background: rgba(13, 13, 15, 0.82);
@@ -319,6 +346,10 @@ h1 {
   padding: 24px;
 }
 
+.overview-page .status-banner {
+  padding: 18px 22px;
+}
+
 .status-mark {
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(255, 181, 84, 0.2), rgba(255, 118, 118, 0.9));
@@ -328,6 +359,10 @@ h1 {
   margin: 0 0 6px;
   font-size: 1.85rem;
   font-weight: 800;
+}
+
+.overview-page .status-title {
+  font-size: 1.42rem;
 }
 
 .status-text {
@@ -2149,8 +2184,28 @@ h1 {
 .incident-list-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
+}
+
+.incident-list-top .severity-chip {
+  margin-left: auto;
+}
+
+.demo-chip,
+.resident-feed-pill {
+  min-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  border: 1px solid rgba(85, 167, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(85, 167, 255, 0.08);
+  color: #cce7ff;
+  padding: 0 8px;
+  font-size: 0.7rem;
+  font-weight: 850;
+  text-transform: uppercase;
 }
 
 .severity-chip {
@@ -2670,8 +2725,10 @@ h1 {
 .foresight-engine {
   display: grid;
   gap: 24px;
+  scroll-margin-top: 120px;
+  border-color: rgba(85, 167, 255, 0.24);
   background:
-    linear-gradient(135deg, rgba(85, 167, 255, 0.08), transparent 34%),
+    linear-gradient(135deg, rgba(85, 167, 255, 0.12), transparent 36%),
     rgba(13, 13, 15, 0.9);
 }
 
@@ -2695,7 +2752,7 @@ h1 {
 }
 
 .foresight-header h2 {
-  font-size: 2rem;
+  font-size: 2.15rem;
   line-height: 1.1;
 }
 
@@ -2767,7 +2824,10 @@ h1 {
   display: grid;
   place-items: center;
   background: rgba(255, 255, 255, 0.06);
-  font-size: 1.35rem;
+  color: var(--foresight-tone);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0;
 }
 
 .foresight-alert-title {
@@ -2817,6 +2877,16 @@ h1 {
   color: #18140a;
 }
 
+.foresight-action-status {
+  margin: 0;
+  border: 1px solid rgba(85, 167, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(85, 167, 255, 0.06);
+  color: var(--muted);
+  padding: 10px 12px;
+  font-size: 0.92rem;
+}
+
 .foresight-simulator {
   display: grid;
   grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
@@ -2864,10 +2934,27 @@ h1 {
 }
 
 .foresight-outcome-value {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
   color: var(--amber);
   font-size: 2.25rem;
   line-height: 1;
   font-weight: 850;
+}
+
+.foresight-trend {
+  min-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(25, 211, 154, 0.24);
+  border-radius: 999px;
+  background: rgba(25, 211, 154, 0.1);
+  color: var(--green);
+  padding: 0 8px;
+  font-size: 0.7rem;
+  font-weight: 900;
 }
 
 .foresight-outcome.is-improved .foresight-outcome-value {
@@ -2952,7 +3039,8 @@ h1 {
   color: var(--muted);
 }
 
-.responder-command-link {
+.responder-command-link,
+.resident-command-link {
   min-height: 38px;
   display: inline-flex;
   align-items: center;
@@ -2961,6 +3049,7 @@ h1 {
   border-radius: 8px;
   padding: 0 12px;
   color: var(--blue);
+  font-size: 0.86rem;
   text-decoration: none;
   white-space: nowrap;
 }
@@ -3009,6 +3098,13 @@ h1 {
     linear-gradient(135deg, rgba(255, 118, 118, 0.11), transparent 45%),
     rgba(13, 13, 15, 0.92);
   padding: 18px;
+}
+
+.responder-route-kicker {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .responder-route-card h2 {
@@ -3177,7 +3273,11 @@ h1 {
 
   .responder-status-row {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .responder-status-card:first-child {
+    grid-column: 1 / -1;
   }
 
   .responder-status-card {
@@ -3353,11 +3453,18 @@ h1 {
 }
 
 .resident-header,
-.resident-card-actions {
+.resident-card-actions,
+.resident-header-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.resident-header-actions {
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .resident-header h1,
@@ -3381,13 +3488,6 @@ h1 {
 .resident-header h1 {
   font-size: 1.42rem;
   line-height: 1.1;
-}
-
-.resident-command-link {
-  color: var(--blue);
-  font-size: 0.86rem;
-  text-decoration: none;
-  white-space: nowrap;
 }
 
 .resident-watch-grid {
@@ -3526,6 +3626,13 @@ h1 {
   font-weight: 800;
 }
 
+.resident-button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
 .resident-primary-button {
   border: 0;
   background: var(--blue);
@@ -3544,6 +3651,16 @@ h1 {
   border-radius: 8px;
 }
 
+.resident-shelter-note {
+  margin: 0;
+  border: 1px solid rgba(25, 211, 154, 0.2);
+  border-radius: 8px;
+  background: rgba(25, 211, 154, 0.08);
+  color: #aaf4dd;
+  padding: 12px 14px;
+  font-size: 0.92rem;
+}
+
 @media (max-width: 390px) {
   .resident-page {
     padding: 12px;
@@ -3552,6 +3669,7 @@ h1 {
 
   .resident-header {
     align-items: flex-start;
+    gap: 10px;
   }
 
   .resident-header h1 {
@@ -3582,6 +3700,11 @@ h1 {
   .resident-card-actions {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .resident-header-actions {
+    align-items: flex-end;
+    gap: 6px;
   }
 
   .resident-map-shell {

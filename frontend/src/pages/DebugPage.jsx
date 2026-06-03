@@ -56,13 +56,13 @@ export function DebugPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <strong>{e.title}</strong>
               <span style={{ textTransform: 'uppercase', fontSize: 12, opacity: 0.7 }}>
-                {e.source} · {e.severity}
+                {e.source} / {e.severity}
               </span>
             </div>
             <p style={{ margin: '4px 0', opacity: 0.8 }}>{e.location}</p>
             <p style={{ margin: '4px 0', fontSize: 13 }}>{e.publicAction}</p>
             <code style={{ fontSize: 12, opacity: 0.6 }}>
-              {e.lat?.toFixed(4)}, {e.lng?.toFixed(4)} · radius {e.vicinityRadiusMeters}m
+              {e.lat?.toFixed(4)}, {e.lng?.toFixed(4)} / radius {e.vicinityRadiusMeters}m
             </code>
           </div>
         ))}

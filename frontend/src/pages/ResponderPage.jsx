@@ -60,6 +60,14 @@ export function ResponderPage() {
   const [selected, setSelected] = useState(null);
   const [routingStatus, setRoutingStatus] = useState('pending');
   const isLoading = status === 'loading';
+  const demoEventCount = events.filter((event) => event.isDemo).length;
+  const liveEventCount = events.length - demoEventCount;
+  const feedLabel =
+    status === 'loading'
+      ? 'Syncing'
+      : status === 'error'
+        ? 'Fallback'
+        : `${liveEventCount}/${demoEventCount}`;
 
   const sortedIncidents = useMemo(() => {
     return events
@@ -103,10 +111,8 @@ export function ResponderPage() {
           <p className="responder-status-value">{isLoading ? '...' : sortedIncidents.length}</p>
         </article>
         <article className="responder-status-card">
-          <p className="responder-status-label">Feed</p>
-          <p className="responder-status-value">
-            {status === 'loading' ? 'Syncing' : status === 'error' ? 'Fallback' : 'Live'}
-          </p>
+          <p className="responder-status-label">Live/Demo</p>
+          <p className="responder-status-value">{feedLabel}</p>
         </article>
       </section>
 
@@ -118,7 +124,10 @@ export function ResponderPage() {
 
       <section className="responder-route-card">
         <div>
-          <p className="eyebrow">Capacity-aware route</p>
+          <div className="responder-route-kicker">
+            <p className="eyebrow">Capacity-aware route</p>
+            <span className="demo-chip">Demo route</span>
+          </div>
           <h2>Cardiac case at Bishan</h2>
           <p className="responder-route-chain">
             TTSH at capacity (94%) -&gt; Reroute to NUH (23 min, 12% capacity)
@@ -207,7 +216,8 @@ export function ResponderPage() {
                   <span className="responder-incident-title">{incident.title}</span>
                   <span className="responder-incident-meta">
                     {incident.location} | {HAZARD_LABEL[incident.hazardType] ?? 'Hazard'} |{' '}
-                    {formatDistance(incident.distanceFromResponder)}
+                    {formatDistance(incident.distanceFromResponder)} |{' '}
+                    {incident.isDemo ? 'demo event' : 'live feed'}
                   </span>
                 </span>
                 <span className={`severity-chip chip-${severityTone(incident.severity)}`}>

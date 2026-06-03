@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { AgencyFeedPanel } from '../components/AgencyFeedPanel';
 import { ForesightEngine } from '../components/ForesightEngine';
 import { MetricCard } from '../components/MetricCard';
@@ -6,7 +7,6 @@ import { RecommendationPanel } from '../components/RecommendationPanel';
 import { TimelinePanel } from '../components/TimelinePanel';
 import {
   dataSources,
-  predictiveSignals,
   quickActions,
   recommendations,
   roleViews,
@@ -42,20 +42,27 @@ export function OverviewPage() {
           <p className="eyebrow">One Single Source of Truth</p>
           <h1>Emergency Overview</h1>
           <p className="hero-copy">
-            MURUS SG fuses agency telemetry, crowd intelligence, and operational capacity into one
-            live command surface, reducing relay delays and helping every unit act on the same
-            verified picture.
+            A command surface for one crisis picture: predict what escalates, allocate resources
+            early, and keep responders and residents aligned from the same verified feed.
           </p>
         </div>
         <div className="hero-actions">
-          <button type="button" className="ghost-button">
-            Filter
-          </button>
-          <button type="button" className="primary-button">
-            Incident Type
-          </button>
+          <a href="#foresight-engine" className="primary-button hero-action-link">
+            Review Foresight
+          </a>
+          <Link to="/incident-map" className="ghost-button hero-action-link">
+            Incident Map
+          </Link>
         </div>
       </section>
+
+      <section className="stats-grid">
+        {overviewStats.map((stat) => (
+          <MetricCard key={stat.label} {...stat} />
+        ))}
+      </section>
+
+      <ForesightEngine />
 
       <section className="status-banner panel">
         <div className="status-mark" />
@@ -74,14 +81,6 @@ export function OverviewPage() {
         </div>
       </section>
 
-      <section className="stats-grid">
-        {overviewStats.map((stat) => (
-          <MetricCard key={stat.label} {...stat} />
-        ))}
-      </section>
-
-      <ForesightEngine />
-
       <section className="content-grid">
         <div className="left-column">
           <TimelinePanel />
@@ -90,22 +89,6 @@ export function OverviewPage() {
         <div className="right-column">
           <RecommendationPanel recommendations={recommendations} />
           <QuickActionsPanel actions={quickActions} />
-
-          <div className="panel">
-            <div className="section-heading">
-              <h2>Predictive Signals</h2>
-              <span className="pill">Historical trend model</span>
-            </div>
-            <div className="forecast-list">
-              {predictiveSignals.map((signal) => (
-                <article key={signal.title} className="forecast-card">
-                  <p className="forecast-title">{signal.title}</p>
-                  <p className="forecast-value">{signal.value}</p>
-                  <p className="muted-copy">{signal.note}</p>
-                </article>
-              ))}
-            </div>
-          </div>
 
           <div className="panel">
             <div className="section-heading">

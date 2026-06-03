@@ -38,16 +38,16 @@ export function SidebarNav() {
         })}
       </nav>
 
-      {/* Quick jump to the public resident view — handy for the demo */}
-      <Link to="/responder" className="nav-item" style={{ marginTop: 24 }}>
-        <span className="nav-icon" aria-hidden="true" />
-        <span>Responder View</span>
-      </Link>
-
-      <Link to="/resident" className="nav-item" style={{ marginTop: 'auto' }}>
-        <span className="nav-icon" aria-hidden="true" />
-        <span>Resident View ↗</span>
-      </Link>
+      <div className="persona-jump-list">
+        <Link to="/responder" className="nav-item persona-jump">
+          <span className="nav-icon" aria-hidden="true" />
+          <span>Responder View</span>
+        </Link>
+        <Link to="/resident" className="nav-item persona-jump">
+          <span className="nav-icon" aria-hidden="true" />
+          <span>Resident View</span>
+        </Link>
+      </div>
     </aside>
   );
 }

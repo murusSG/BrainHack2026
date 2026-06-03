@@ -32,7 +32,16 @@ function statusTone(severity) {
 export function ResidentPage() {
   const { events, status, error } = useEvents();
   const [activePoint, setActivePoint] = useState(WATCH_POINTS[0].id);
+  const [shelterNote, setShelterNote] = useState(null);
   const isLoading = status === 'loading';
+  const demoEventCount = events.filter((event) => event.isDemo).length;
+  const liveEventCount = events.length - demoEventCount;
+  const feedLabel =
+    status === 'loading'
+      ? 'Syncing'
+      : status === 'error'
+        ? 'Demo fallback'
+        : `${liveEventCount} live / ${demoEventCount} demo`;
 
   const statusByPoint = useMemo(() => {
     return WATCH_POINTS.map((point) => {
@@ -59,9 +68,12 @@ export function ResidentPage() {
           <p className="resident-kicker">MURUS SG</p>
           <h1>Your safety brief</h1>
         </div>
-        <Link to="/" className="resident-command-link">
-          Command view
-        </Link>
+        <div className="resident-header-actions">
+          <span className="resident-feed-pill">{feedLabel}</span>
+          <Link to="/" className="resident-command-link">
+            Command view
+          </Link>
+        </div>
       </header>
 
       <div className="resident-watch-grid" aria-label="Saved locations">
@@ -74,7 +86,10 @@ export function ResidentPage() {
             <button
               key={point.id}
               type="button"
-              onClick={() => setActivePoint(point.id)}
+              onClick={() => {
+                setActivePoint(point.id);
+                setShelterNote(null);
+              }}
               className={`resident-watch-button ${activePoint === point.id ? 'is-active' : ''}`}
             >
               <span className={`resident-status-dot is-${pointTone}`} aria-hidden="true" />
@@ -106,13 +121,18 @@ export function ResidentPage() {
             <div className="resident-alert-list">
               {active.affecting.map((event) => (
                 <article key={event.id} className="resident-alert-card">
+                  {event.isDemo && <span className="demo-chip">Demo event</span>}
                   <h2>{event.title}</h2>
                   <p className="resident-action-copy">Action: {event.publicAction}</p>
                   <div className="resident-card-actions">
-                    <button type="button" className="resident-primary-button">
+                    <Link to="/incident-map" className="resident-primary-button resident-button-link">
                       View on map
-                    </button>
-                    <button type="button" className="resident-secondary-button">
+                    </Link>
+                    <button
+                      type="button"
+                      className="resident-secondary-button"
+                      onClick={() => setShelterNote(`Nearest shelter for ${active.point.label}: ${shelterForPoint(active.point.id)}`)}
+                    >
                       Nearest shelter
                     </button>
                   </div>
@@ -122,6 +142,8 @@ export function ResidentPage() {
           </>
         )}
       </section>
+
+      {shelterNote && <p className="resident-shelter-note">{shelterNote}</p>}
 
       {status === 'error' && (
         <p className="resident-feed-warning">
@@ -140,4 +162,10 @@ export function ResidentPage() {
       </section>
     </div>
   );
+}
+
+function shelterForPoint(pointId) {
+  if (pointId === 'work') return 'Orchard Gateway concourse, demo routing';
+  if (pointId === 'parents') return 'Woodlands Community Club, demo routing';
+  return 'Tampines Hub, demo routing';
 }

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Circle, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Severity → colour, reusing your theme tokens
+// Severity colours reuse the existing theme tokens.
 const SEVERITY_COLOR = {
   critical: '#ff7676',
   high: '#ffb554',
@@ -11,19 +11,18 @@ const SEVERITY_COLOR = {
   info: '#19d39a',
 };
 
-// Hazard → emoji marker label (simple, no icon assets needed)
 const HYPERLOCAL_HAZARDS = new Set(['flood', 'fire', 'dengue']);
 
-const HAZARD_ICON = {
-  flood: '🌊',
-  haze: '🌫️',
-  dengue: '🦟',
-  fire: '🔥',
-  medical: '🚑',
-  traffic: '🚗',
-  mrt: '🚆',
-  weather: '🌧️',
-  lightning: '⚡',
+const HAZARD_LABEL = {
+  flood: 'Flood',
+  haze: 'Haze',
+  dengue: 'Dengue',
+  fire: 'Fire',
+  medical: 'Medical',
+  traffic: 'Traffic',
+  mrt: 'MRT',
+  weather: 'Weather',
+  lightning: 'Lightning',
 };
 
 const SG_CENTER = [1.3521, 103.8198];
@@ -82,14 +81,12 @@ export function CrisisMap({ events = [], onSelect, selectedId, height = '100%' }
               >
                 <Popup>
                   <div style={{ minWidth: 180 }}>
-                    <strong>
-                      {HAZARD_ICON[e.hazardType] ?? '⚠️'} {e.title}
-                    </strong>
+                    <strong>{e.title}</strong>
                     <p style={{ margin: '4px 0', fontSize: 13 }}>{e.location}</p>
                     <p style={{ margin: '4px 0', fontSize: 13 }}>{e.publicAction}</p>
                     <span style={{ fontSize: 11, textTransform: 'uppercase', opacity: 0.7 }}>
-                      {e.source} · {e.severity}
-                      {e.isDemo ? ' · demo' : ''}
+                      {HAZARD_LABEL[e.hazardType] ?? 'Hazard'} / {e.source} / {e.severity}
+                      {e.isDemo ? ' / demo' : ''}
                     </span>
                   </div>
                 </Popup>
