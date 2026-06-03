@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { supabase } from "../config/supabase";
+import { supabaseAuth } from "../config/supabase";
 import { ApiError, ConfigurationError } from "../utils/apiError";
 
 export type UserRole = "public" | "responder" | "leader";
@@ -32,13 +32,13 @@ function extractBearerToken(req: Request): string | null {
  */
 export async function requireAuth(req: Request, _res: Response, next: NextFunction): Promise<void> {
   try {
-    if (!supabase) {
+    if (!supabaseAuth) {
       throw new ConfigurationError("Authentication is unavailable: Supabase is not configured.");
     }
     const token = extractBearerToken(req);
     if (!token) throw new ApiError("UNAUTHORIZED", "Missing bearer token.", 401);
 
-    const { data, error } = await supabase.auth.getUser(token);
+    const { data, error } = await supabaseAuth.auth.getUser(token);
     if (error || !data.user) throw new ApiError("UNAUTHORIZED", "Invalid or expired token.", 401);
 
     const role = (data.user.app_metadata?.role as UserRole | undefined) ?? "public";
