@@ -11,6 +11,7 @@ import { hospitalsRouter } from "../modules/hospitals/hospitals.routes";
 import { crisisRouter } from "../modules/crisis/crisis.routes";
 import { foresightRouter } from "../modules/foresight/foresight.routes";
 import { commandRouter } from "../modules/command/command.routes";
+import { authRouter } from "../modules/auth/auth.routes";
 
 export const v1Router = Router();
 
@@ -27,3 +28,4 @@ v1Router.use("/hospitals", hospitalsRouter);
 v1Router.use("/crisis", crisisRouter);
 v1Router.use("/foresight", foresightRouter);
 v1Router.use("/command", commandRouter);
+v1Router.use("/auth", authRouter);

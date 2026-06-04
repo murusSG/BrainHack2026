@@ -389,3 +389,52 @@
 - This continues the visual-control cleanup pass so fewer dashboard controls behave like inert mockups.
 - Backend was not changed for this task, so backend tests were not rerun.
 ---
+---
+## Session: 2026-06-05
+
+### Built
+- `PROJECT_CONTEXT.md`
+
+### Current app state
+- The project now has a root context file that captures the full rundown, personas, current implementations, and next steps discussed across the chat.
+- The repo still has the ongoing backend auth/Supabase port in progress.
+
+### Still to do
+1. Finish the backend auth port and verify it with the existing API/tests.
+2. Decide whether any frontend auth wiring should be added now or deferred.
+3. Continue replacing remaining simulated or visual-only controls with backend-backed flows where it matters.
+
+### Notes
+- This session was focused on creating a durable metadata handoff for the project rather than changing app behavior.
+- Existing env/auth work in the worktree was left untouched.
+---
+---
+## Session: 2026-06-05
+
+### Built
+- `backend/node-api/src/repositories/auth.repo.ts`
+- `backend/node-api/src/middlewares/auth.ts`
+- `backend/node-api/tests/integration/auth.routes.test.ts`
+- `backend/node-api/tests/unit/auth.middleware.test.ts`
+- `backend/node-api/tests/unit/auth.repo.test.ts`
+- `PROGRESS.md`
+
+### Current app state
+- Audited recently updated branches before continuing the next steps.
+- `origin/feat/merged-workspace2` does not contain the current auth/profile-role implementation; it is closer to earlier API scaffolding.
+- `origin/pb/muru/feat/backendapi` contains the thin Supabase JWT auth route/middleware and a profiles migration, but it diverges from the current command/foresight branch and deletes newer command/foresight modules, so it should not be merged wholesale.
+- Backend auth now resolves authenticated users from Supabase bearer tokens and looks up persona `role` plus optional `agency` from the `profiles` table when available.
+- Auth falls back to JWT `app_metadata.role` when the profiles table/row is unavailable, preserving demo resilience before migrations are installed.
+- Added tests for `/api/v1/auth/me`, missing/invalid bearer tokens, profile role mapping, repository fallback behavior, and `requireRole` authorization.
+- Verification is green: backend typecheck passes and backend tests pass: 13 suites, 33 tests.
+
+### Still to do
+1. Run `backend/node-api/scripts/migrations/002_command_state.sql` and `003_profiles_roles.sql` in Supabase once project credentials/table access are available.
+2. Decide whether frontend login/gating should be wired now or deferred until after the demo path is locked.
+3. Replace simulated agency contact with a real notification path or a clearer simulation label.
+4. Decide whether frontend-local alert/resource/hospital staged actions need backend-backed persistence.
+
+### Notes
+- This task preserved the current command/foresight implementation instead of merging the backend auth branch, because that branch was missing newer demo-critical modules.
+- `backend/node-api/.env.local` already contains local secret material and should remain uncommitted/ignored.
+---
