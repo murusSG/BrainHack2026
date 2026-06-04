@@ -14,6 +14,37 @@ import {
   topStats
 } from '../data/dashboardData';
 
+const DORSCON_LEVELS = [
+  {
+    level: 'Green',
+    tone: 'normal',
+    disease: 'Disease is mild, or severe but does not spread easily from person to person.',
+    impact: 'Minimal disruption. Border screening and travel advice may be applied.',
+    advice: 'Maintain good personal hygiene and continue to monitor health advisories.'
+  },
+  {
+    level: 'Yellow',
+    tone: 'caution',
+    disease: 'Disease is severe and spreads easily outside Singapore, or is spreading locally but remains contained.',
+    impact: 'Minimal disruption, with added border or healthcare precautions possible.',
+    advice: 'Stay home if unwell, maintain good personal hygiene, and watch for health updates.'
+  },
+  {
+    level: 'Orange',
+    tone: 'warning',
+    disease: 'Disease is severe and spreads easily, but is still being contained inside Singapore.',
+    impact: 'Moderate disruption such as temperature screening or visitor restrictions.',
+    advice: 'Stay home if sick, maintain hygiene, and comply with control measures.'
+  },
+  {
+    level: 'Red',
+    tone: 'danger',
+    disease: 'Disease is severe and spreading widely.',
+    impact: 'Major disruption such as closures, work-from-home orders, or significant fatalities.',
+    advice: 'Avoid crowded areas, comply with control measures, and follow urgent advisories.'
+  }
+];
+
 function getLatestMetrics(metrics) {
   const latestByFacility = new Map();
 
@@ -211,6 +242,7 @@ function buildDataSources(psiResponse, pm25Response, weatherResponse, occupancyR
 export function OverviewPage({ onOpenPublicDashboard }) {
   const [liveResponses, setLiveResponses] = useState({});
   const [overviewError, setOverviewError] = useState('');
+  const [showDorsconGuide, setShowDorsconGuide] = useState(false);
 
   useEffect(() => {
     let isCancelled = false;
@@ -271,6 +303,7 @@ export function OverviewPage({ onOpenPublicDashboard }) {
         liveResponses.flood
       )
     : dataSources;
+  const currentDorscon = DORSCON_LEVELS[2];
 
   return (
     <div className="overview-page">
@@ -301,24 +334,55 @@ export function OverviewPage({ onOpenPublicDashboard }) {
         </div>
       </section>
 
-      <section className="status-banner panel">
+      <section className={`status-banner panel dorscon-banner tone-${currentDorscon.tone}`}>
         <div className="status-mark" />
         <div className="status-content">
-          <p className="status-title">Current Status: Code Orange</p>
+          <p className="status-title">Current Status: DORSCON {currentDorscon.level}</p>
           <p className="status-text">
-            Moderate risk of widespread transmission. Public health measures remain at Stage 2.
-            Frontline units are on standby while Jurong West and Toa Payoh run elevated watch.
+            {currentDorscon.disease} {currentDorscon.impact} Frontline units remain on standby
+            while Jurong West and Toa Payoh run elevated watch.
           </p>
         </div>
         <div className="status-meta">
           <span className="pill">
             {liveResponses.psi?.fetchedAt ? `Updated ${formatTimestamp(liveResponses.psi.fetchedAt)}` : 'Updated 2m ago'}
           </span>
-          <button type="button" className="inline-link">
-            View guidelines
+          <button
+            type="button"
+            className="inline-link"
+            onClick={() => setShowDorsconGuide((current) => !current)}
+          >
+            {showDorsconGuide ? 'Hide DORSCON guide' : 'View DORSCON guide'}
           </button>
         </div>
       </section>
+
+      {showDorsconGuide ? (
+        <section className="panel dorscon-panel">
+          <div className="section-heading">
+            <h2>DORSCON Alert Levels</h2>
+            <span className="pill">Disease Outbreak Response System Condition</span>
+          </div>
+          <div className="dorscon-grid">
+            {DORSCON_LEVELS.map((item) => (
+              <article key={item.level} className={`dorscon-card tone-${item.tone}`}>
+                <div className="dorscon-card-head">
+                  <p className="dorscon-level">{item.level}</p>
+                </div>
+                <p className="dorscon-copy">
+                  <strong>Nature of disease:</strong> {item.disease}
+                </p>
+                <p className="dorscon-copy">
+                  <strong>Impact on daily life:</strong> {item.impact}
+                </p>
+                <p className="dorscon-copy">
+                  <strong>Advice to public:</strong> {item.advice}
+                </p>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {overviewError ? (
         <section className="panel">

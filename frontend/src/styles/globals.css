@@ -1798,11 +1798,12 @@ h1 {
 }
 
 .alert-context-grid {
-  align-items: start;
+  align-items: stretch;
 }
 
 .alert-context-left {
   display: grid;
+  grid-template-rows: auto 1fr;
   gap: 16px;
   flex: 1;
 }
@@ -1814,7 +1815,8 @@ h1 {
 
 .spatial-map-card {
   position: relative;
-  min-height: 316px;
+  min-height: 560px;
+  height: 100%;
   border-radius: 18px;
   overflow: hidden;
   background:
@@ -1884,6 +1886,7 @@ h1 {
 .alert-responders-panel {
   width: 280px;
   display: grid;
+  align-content: start;
   gap: 16px;
 }
 
@@ -2418,11 +2421,16 @@ h1 {
 }
 
 .facility-registry-head {
+  padding: 6px 8px 0;
   margin-bottom: 14px;
 }
 
 .facility-registry-table {
   display: grid;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .facility-registry-row {
@@ -2432,6 +2440,7 @@ h1 {
   align-items: center;
   min-height: 84px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0 22px;
 }
 
 .facility-registry-header {
@@ -2456,10 +2465,31 @@ h1 {
 }
 
 .registry-level-pill {
-  background: rgba(216, 250, 234, 0.98);
-  color: #0f7a5f;
-  border-color: rgba(216, 250, 234, 0.98);
   font-weight: 700;
+}
+
+.facility-registry-panel .registry-level-pill.level-1 {
+  background: rgba(236, 32, 79, 0.16);
+  color: #ec204f;
+  border-color: rgba(236, 32, 79, 0.28);
+}
+
+.facility-registry-panel .registry-level-pill.level-2 {
+  background: rgba(253, 103, 58, 0.16);
+  color: #fd673a;
+  border-color: rgba(253, 103, 58, 0.28);
+}
+
+.facility-registry-panel .registry-level-pill.level-3 {
+  background: rgba(255, 146, 44, 0.16);
+  color: #ff922c;
+  border-color: rgba(255, 146, 44, 0.28);
+}
+
+.facility-registry-panel .registry-level-pill.level-na {
+  background: rgba(148, 163, 184, 0.16);
+  color: #8f9baa;
+  border-color: rgba(148, 163, 184, 0.28);
 }
 
 .registry-manage-link {
@@ -3847,4 +3877,1370 @@ h1 {
     transform: translateX(-50%);
     min-width: 190px;
   }
+}
+
+/* Bright Singapore-inspired theme overrides */
+:root {
+  color-scheme: light;
+  font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+  background: #fff8f4;
+  color: #2f1417;
+  --bg: #fff8f4;
+  --panel: #ffffff;
+  --panel-soft: #fff2ee;
+  --panel-strong: #ffe4dd;
+  --border: rgba(182, 28, 43, 0.12);
+  --border-strong: rgba(196, 23, 39, 0.28);
+  --text: #2f1417;
+  --muted: #7d5d62;
+  --blue: #d62839;
+  --blue-deep: #921120;
+  --green: #0d9464;
+  --amber: #d9821d;
+  --red: #c5162b;
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(214, 40, 57, 0.14), transparent 28%),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.9), transparent 18%),
+    linear-gradient(180deg, #fffdfc 0%, #fff4f1 54%, #fff8f4 100%);
+}
+
+h1,
+h2,
+h3 {
+  color: #351317;
+}
+
+.login-shell {
+  background:
+    radial-gradient(circle at top center, rgba(214, 40, 57, 0.16), transparent 32%),
+    linear-gradient(180deg, #fff9f7 0%, #fff1ed 100%);
+}
+
+.login-backdrop-grid {
+  background-image:
+    linear-gradient(rgba(214, 40, 57, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(214, 40, 57, 0.08) 1px, transparent 1px);
+}
+
+.login-backdrop-wave.top {
+  background-image: radial-gradient(circle at 16px 60px, transparent 22px, rgba(214, 40, 57, 0.45) 24px, transparent 26px);
+}
+
+.login-backdrop-wave.bottom {
+  background-image: radial-gradient(circle at 24px 60px, transparent 22px, rgba(214, 40, 57, 0.28) 24px, transparent 26px);
+}
+
+.login-brand-mark,
+.brand-mark,
+.public-brand-mark {
+  background: linear-gradient(180deg, #ea3948, #c5162b);
+  color: #fff8f8;
+  box-shadow: 0 18px 40px rgba(197, 22, 43, 0.18);
+}
+
+.login-brand-name,
+.brand-name.accent {
+  color: #c5162b;
+}
+
+.login-brand-subtitle,
+.login-kicker,
+.login-card-copy,
+.login-access-card p,
+.login-role-helper,
+.login-legal-copy,
+.public-brand-subtitle,
+.public-sidebar-footnote,
+.public-card-head p,
+.public-resource-row p,
+.hero-copy,
+.muted-copy,
+.status-text,
+.section-heading p {
+  color: var(--muted);
+}
+
+.login-access-card,
+.login-card,
+.login-role-option,
+.sidebar,
+.topbar,
+.panel,
+.hero-panel,
+.status-banner,
+.recommendation-panel,
+.quick-actions-panel,
+.source-card,
+.metric-card,
+.public-sidebar,
+.public-topbar,
+.public-card,
+.public-advisory-card,
+.public-shelter-card,
+.resource-summary-card,
+.hospital-summary-card,
+.hospital-card,
+.resource-request-panel,
+.resource-alert-banner,
+.alert-feed-card,
+.alert-fact-card,
+.responder-card,
+.broadcast-step-card,
+.incident-list-card,
+.engine-card,
+.quick-log-entry,
+.map-surface-note {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: var(--border);
+  box-shadow: 0 18px 40px rgba(128, 26, 37, 0.07);
+}
+
+.app-shell,
+.main-shell,
+.public-shell,
+.public-main-shell {
+  background: transparent;
+}
+
+.sidebar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 244, 241, 0.94));
+  border-right: 1px solid var(--border);
+}
+
+.topbar {
+  background: rgba(255, 250, 248, 0.92);
+  border-bottom: 1px solid var(--border);
+}
+
+.searchbar,
+.map-searchbar,
+.incident-filter-search,
+.resource-ledger-search,
+.alerts-filter-search,
+.hospital-search,
+.login-input-shell,
+.public-contact-input,
+.resource-field input,
+.resource-field select {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(182, 28, 43, 0.14);
+}
+
+.searchbar input::placeholder,
+.map-searchbar input::placeholder,
+.incident-filter-search input::placeholder,
+.alerts-filter-search input::placeholder,
+.resource-ledger-search input::placeholder,
+.hospital-search input::placeholder,
+.login-field input::placeholder,
+.public-contact-input::placeholder {
+  color: #b18b90;
+}
+
+.searchbar-icon,
+.login-input-icon {
+  color: #b54654;
+}
+
+.login-card {
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.login-card-eyebrow,
+.login-label,
+.eyebrow,
+.brand-name,
+.public-sidebar-title,
+.public-advisory-type,
+.metric-label {
+  color: #921120;
+}
+
+.login-access-tag,
+.login-role-pill,
+.pill,
+.public-counter-pill,
+.public-mini-pill,
+.resource-tab,
+.registry-type-pill,
+.registry-level-pill,
+.severity-chip,
+.alert-status-pill {
+  background: rgba(214, 40, 57, 0.08);
+  border-color: rgba(214, 40, 57, 0.12);
+  color: #9f1424;
+}
+
+.alerts-feed-panel .alert-feed-card {
+  background: linear-gradient(180deg, rgba(252, 243, 246, 0.98), rgba(248, 233, 238, 0.98));
+  border-color: rgba(231, 174, 184, 0.7);
+}
+
+.alerts-feed-panel .alert-feed-card.active {
+  background: linear-gradient(180deg, rgba(250, 235, 240, 0.99), rgba(245, 222, 229, 0.99));
+  box-shadow: inset 4px 0 0 0 #f46f75;
+}
+
+.login-access-tag.public,
+.system-pill,
+.public-signal-pill {
+  background: rgba(13, 148, 100, 0.08);
+  border-color: rgba(13, 148, 100, 0.18);
+  color: #0d7c55;
+}
+
+.login-role-option,
+.nav-item,
+.quick-action-button,
+.map-legend-item,
+.public-language-button,
+.public-toggle,
+.public-inline-button,
+.ghost-button,
+.icon-button,
+.profile-button,
+.resource-ledger-row,
+.facility-registry-row,
+.hospital-pill-button,
+.ledger-menu-button {
+  background: rgba(255, 248, 246, 0.88);
+  border-color: rgba(182, 28, 43, 0.1);
+  color: var(--text);
+}
+
+.login-role-option:hover,
+.nav-item:hover,
+.quick-action-button:hover,
+.ghost-button:hover,
+.public-language-button:hover,
+.public-toggle:hover,
+.public-inline-button:hover,
+.hospital-pill-button:hover {
+  border-color: rgba(197, 22, 43, 0.26);
+  background: rgba(255, 238, 233, 0.96);
+}
+
+.nav-item.active,
+.login-role-option.active,
+.quick-action-button.featured,
+.resource-tab.active {
+  background: linear-gradient(180deg, rgba(214, 40, 57, 0.14), rgba(214, 40, 57, 0.08));
+  border-color: rgba(197, 22, 43, 0.24);
+  color: #a01021;
+}
+
+.primary-button,
+.login-submit-button,
+.public-primary-button,
+.public-language-button.active,
+.public-toggle.active,
+.map-filter-pill,
+.alert-primary {
+  background: linear-gradient(180deg, #ea3948, #c5162b);
+  border-color: #c5162b;
+  color: #fff8f8;
+}
+
+.primary-button,
+.login-submit-button,
+.public-primary-button,
+.alert-primary,
+.map-filter-pill {
+  box-shadow: 0 14px 28px rgba(197, 22, 43, 0.16);
+}
+
+.profile-button {
+  background: linear-gradient(180deg, rgba(234, 57, 72, 0.18), rgba(197, 22, 43, 0.1));
+  color: #a01021;
+}
+
+.public-outline-button,
+.public-topbar-back,
+.public-return-link,
+.alert-secondary {
+  background: rgba(255, 240, 236, 0.88);
+  border-color: rgba(197, 22, 43, 0.16);
+  color: #a01021;
+}
+
+.inline-link,
+.public-summary-link,
+.registry-manage-link,
+.responders-link {
+  color: #b01729;
+}
+
+.status-banner,
+.hero-panel.resource-hero,
+.hero-panel.hospital-hero {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 244, 241, 0.96));
+}
+
+.status-mark {
+  background: linear-gradient(180deg, rgba(234, 57, 72, 0.25), rgba(197, 22, 43, 0.9));
+}
+
+.public-shell {
+  color: var(--text);
+}
+
+.public-sidebar {
+  background:
+    linear-gradient(180deg, rgba(255, 252, 251, 0.98), rgba(255, 244, 241, 0.94));
+  border-right: 1px solid var(--border);
+}
+
+.public-sidebar-section {
+  border-top: 1px solid rgba(182, 28, 43, 0.1);
+}
+
+.public-topbar {
+  background: rgba(255, 250, 248, 0.94);
+  border-bottom: 1px solid var(--border);
+}
+
+.public-breadcrumbs,
+.public-counter-pill,
+.public-mini-pill,
+.public-summary-link {
+  color: var(--text);
+}
+
+.public-incident-banner {
+  background: linear-gradient(135deg, #ee4251 0%, #c5162b 100%);
+  color: #fff8f8;
+  box-shadow: 0 22px 50px rgba(197, 22, 43, 0.22);
+}
+
+.public-banner-icon {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fffdfd;
+}
+
+.public-advisory-card.tone-critical {
+  box-shadow: inset 4px 0 0 0 #cf1d31, 0 18px 40px rgba(128, 26, 37, 0.07);
+}
+
+.public-advisory-card.tone-info {
+  box-shadow: inset 4px 0 0 0 #e26733, 0 18px 40px rgba(128, 26, 37, 0.07);
+}
+
+.public-advisory-card.tone-safe {
+  box-shadow: inset 4px 0 0 0 #0d9464, 0 18px 40px rgba(128, 26, 37, 0.07);
+}
+
+.public-advisory-card.tone-critical .public-advisory-type,
+.public-location-chip {
+  color: #c5162b;
+}
+
+.public-advisory-card.tone-info .public-advisory-type {
+  color: #cc5d1c;
+}
+
+.public-advisory-card.tone-safe .public-advisory-type {
+  color: #0d9464;
+}
+
+.public-map-preview {
+  background: linear-gradient(135deg, #f5efe9 0%, #edf2ec 42%, #dce8d9 100%);
+}
+
+.public-map-grid {
+  background-image:
+    linear-gradient(rgba(146, 17, 32, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(146, 17, 32, 0.07) 1px, transparent 1px);
+}
+
+.public-map-route {
+  background: linear-gradient(90deg, rgba(214, 40, 57, 0.92), rgba(239, 101, 92, 0.92));
+  box-shadow: 0 0 0 10px rgba(214, 40, 57, 0.08);
+}
+
+.public-map-marker.hazard,
+.public-legend-dot.hazard {
+  background: #d62839;
+}
+
+.public-map-marker.safe,
+.public-legend-dot.safe {
+  background: #15a46d;
+}
+
+.resource-summary-card,
+.hospital-summary-card,
+.hospital-card,
+.resource-request-panel,
+.incident-map-canvas,
+.incident-map-sidebar,
+.alerts-feed-panel,
+.alerts-detail-panel,
+.resource-ledger-panel,
+.facility-registry-panel {
+  border-color: var(--border);
+}
+
+.resource-alert-banner {
+  background: linear-gradient(135deg, #fff1ee, #ffe4de);
+}
+
+.alerts-topbar {
+  background: linear-gradient(180deg, rgba(255, 252, 251, 0.94), rgba(255, 245, 242, 0.94));
+  border-bottom: 1px solid var(--border);
+}
+
+.alerts-critical-pill {
+  background: rgba(214, 40, 57, 0.12);
+  color: #a01021;
+}
+
+.alert-feed-card.active {
+  background: linear-gradient(180deg, rgba(214, 40, 57, 0.12), rgba(214, 40, 57, 0.05));
+  border-color: rgba(197, 22, 43, 0.22);
+}
+
+.spatial-map-card,
+.map-surface {
+  background:
+    radial-gradient(circle at 20% 24%, rgba(214, 40, 57, 0.09), transparent 18%),
+    radial-gradient(circle at 78% 52%, rgba(13, 148, 100, 0.08), transparent 24%),
+    linear-gradient(180deg, #fffaf8 0%, #f6f1ee 100%);
+}
+
+.map-grid {
+  background-image:
+    linear-gradient(rgba(146, 17, 32, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(146, 17, 32, 0.05) 1px, transparent 1px);
+}
+
+.sg-mainland {
+  fill: rgba(239, 230, 226, 0.96);
+  stroke: rgba(146, 17, 32, 0.18);
+}
+
+.sg-islet {
+  fill: rgba(244, 236, 233, 0.94);
+  stroke: rgba(146, 17, 32, 0.14);
+}
+
+.marker-radius {
+  border-color: rgba(214, 40, 57, 0.18);
+  background: rgba(214, 40, 57, 0.07);
+}
+
+.radius-critical {
+  background: rgba(214, 40, 57, 0.14);
+  border-color: rgba(214, 40, 57, 0.26);
+}
+
+.radius-high,
+.radius-flood {
+  background: rgba(217, 130, 29, 0.12);
+  border-color: rgba(217, 130, 29, 0.24);
+}
+
+.radius-medium,
+.radius-support {
+  background: rgba(13, 148, 100, 0.1);
+  border-color: rgba(13, 148, 100, 0.22);
+}
+
+.marker-pin {
+  background: rgba(255, 255, 255, 0.97);
+  border-color: rgba(197, 22, 43, 0.24);
+  box-shadow: 0 12px 24px rgba(128, 26, 37, 0.12);
+}
+
+.symbol-flame::after {
+  background: rgba(255, 255, 255, 0.97);
+}
+
+.marker-tooltip,
+.map-surface-note {
+  background: rgba(255, 253, 252, 0.96);
+  border-color: rgba(182, 28, 43, 0.14);
+}
+
+.map-surface-note h2 {
+  color: #351317;
+}
+
+.severity-critical,
+.priority-tag,
+.hospital-summary-value.critical,
+.metric-critical,
+.alert-severity-pill.severity-critical,
+.alerts-case-id,
+.tone-danger .metric-value {
+  color: #c5162b;
+}
+
+.tone-warning .metric-value,
+.alert-severity-pill.severity-high,
+.resource-change.tone-warning {
+  color: #d9821d;
+}
+
+.tone-success .metric-value,
+.ledger-status.status-ready,
+.hospital-status.status-available,
+.public-resource-status.safe {
+  color: #0d9464;
+}
+
+.public-resource-status,
+.hospital-status,
+.ledger-status {
+  background: rgba(255, 240, 236, 0.88);
+  border: 1px solid rgba(182, 28, 43, 0.1);
+}
+
+/* Screenshot-specific contrast and color fixes */
+.login-field input,
+.login-field select,
+.login-input-shell input {
+  color: #201416;
+}
+
+.hero-panel {
+  padding: 26px 28px;
+}
+
+.recommendation-panel {
+  background: linear-gradient(180deg, #fff0f1, #ffe3e7);
+}
+
+.recommendation-card {
+  background: linear-gradient(180deg, #ffd9df, #ffc8d1);
+  border-color: rgba(197, 22, 43, 0.12);
+}
+
+.recommendation-card p,
+.recommendation-header p,
+.priority-tag {
+  color: #351317;
+}
+
+.priority-tag {
+  background: rgba(197, 22, 43, 0.1);
+  border-radius: 999px;
+  padding: 6px 12px;
+}
+
+.public-location-card,
+.public-resources-card,
+.public-shelter-card,
+.public-professional-notice {
+  color: #251517;
+}
+
+.public-location-card,
+.public-resources-card {
+  padding-top: 28px;
+}
+
+.public-chip-label,
+.public-privacy-note,
+.public-shelter-meta,
+.public-professional-notice p,
+.public-resource-row p {
+  color: #625055;
+}
+
+.public-chip-list {
+  gap: 16px;
+}
+
+.public-location-chip,
+.public-shelter-status,
+.public-resource-status {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.public-location-chip {
+  font-weight: 700;
+}
+
+.public-shelter-status {
+  color: #0f7a37;
+}
+
+.public-resource-status.safe,
+.public-resource-status.neutral {
+  color: #1f8a3d;
+}
+
+.public-resource-status.critical {
+  color: #c45f2d;
+}
+
+.section-heading.light h2,
+.section-heading.light p,
+.resource-field span,
+.resource-request-panel h2,
+.resource-request-panel p {
+  color: #251517;
+}
+
+.resource-request-panel {
+  background: #ffffff;
+}
+
+.resource-field input,
+.resource-field select,
+.resource-field textarea,
+.resource-ledger-search,
+.resource-tab.active,
+.alerts-feed-panel,
+.alerts-detail-panel,
+.alert-feed-card,
+.alert-fact-card,
+.responder-card,
+.broadcast-step-card,
+.spatial-map-label {
+  background: #f5d8e4;
+}
+
+.resource-field input,
+.resource-field select,
+.resource-field textarea {
+  border-color: rgba(197, 22, 43, 0.16);
+  color: #201416;
+}
+
+.resource-field textarea::placeholder {
+  color: #6b5559;
+}
+
+.resource-ledger-search input,
+.resource-tab,
+.resource-ledger-row,
+.resource-ledger-header,
+.ledger-menu-button {
+  color: #251517;
+}
+
+.alerts-topbar,
+.alerts-feed-panel,
+.alerts-detail-panel {
+  color: #251517;
+}
+
+.alerts-feed-panel,
+.alerts-detail-panel {
+  border-color: rgba(197, 22, 43, 0.1);
+}
+
+.alerts-tabs {
+  border-bottom-color: rgba(197, 22, 43, 0.1);
+}
+
+.alerts-tab {
+  color: #4f3338;
+}
+
+.alert-feed-card,
+.alert-fact-card,
+.responder-card,
+.broadcast-step-card {
+  border-color: rgba(197, 22, 43, 0.12);
+}
+
+.alert-feed-card.active {
+  background: #efc8d7;
+}
+
+.alert-feed-card h3,
+.alert-feed-id,
+.alerts-detail-head h2,
+.alert-fact-card strong,
+.responder-card h3,
+.broadcast-center-head h3,
+.alert-section-title,
+.spatial-map-label,
+.broadcast-step-card p {
+  color: #251517;
+}
+
+.alert-feed-meta,
+.alert-feed-bottom,
+.alerts-summary,
+.alert-fact-card p,
+.responder-card p,
+.alerts-case-id {
+  color: #624b50;
+}
+
+.alert-severity-pill,
+.alert-status-pill,
+.responder-eta {
+  border-color: rgba(197, 22, 43, 0.12);
+}
+
+.severity-critical {
+  background: rgba(197, 22, 43, 0.12);
+  color: #a01021;
+}
+
+.severity-warning {
+  background: rgba(217, 130, 29, 0.14);
+  color: #8d5416;
+}
+
+.severity-info {
+  background: rgba(182, 122, 140, 0.16);
+  color: #704852;
+}
+
+.alert-status-pill {
+  color: #8b2431;
+}
+
+.broadcast-center-panel {
+  border-top-color: rgba(197, 22, 43, 0.1);
+}
+
+/* White + soft pink pairing aligned to screenshots 3 and 4 */
+.alerts-page,
+.alerts-layout,
+.alerts-topbar,
+.alerts-feed-panel,
+.alerts-detail-panel {
+  background: #fffdfc;
+}
+
+.alerts-feed-panel,
+.alerts-detail-panel {
+  border-color: rgba(197, 22, 43, 0.08);
+}
+
+.alert-feed-card,
+.alert-fact-card,
+.responder-card,
+.broadcast-step-card,
+.resource-field input,
+.resource-field select,
+.resource-field textarea,
+.resource-ledger-search,
+.resource-tab.active,
+.spatial-map-label {
+  background: #f7dbe5;
+}
+
+.alert-feed-card.active {
+  background: #f1ceda;
+}
+
+.panel,
+.quick-actions-panel,
+.source-card,
+.metric-card,
+.resource-summary-card,
+.hospital-summary-card,
+.resource-ledger-panel,
+.facility-registry-panel,
+.incident-map-canvas,
+.incident-list-card,
+.engine-card,
+.quick-log-entry,
+.map-surface-note,
+.public-card,
+.public-advisory-card,
+.public-shelter-card,
+.resource-request-panel,
+.recommendation-panel,
+.recommendation-card,
+.forecast-card,
+.role-card,
+.intent-card,
+.quick-action-button {
+  background: #ffffff;
+}
+
+.forecast-card,
+.role-card,
+.intent-card,
+.quick-action-button,
+.source-card,
+.resource-summary-card,
+.hospital-summary-card,
+.incident-list-card,
+.engine-card,
+.quick-log-entry,
+.recommendation-card {
+  border-color: rgba(197, 22, 43, 0.12);
+}
+
+.forecast-card,
+.role-card,
+.intent-card {
+  background: #f7dbe5;
+}
+
+.intent-card h3,
+.role-title,
+.forecast-title,
+.source-card h3,
+.quick-action-label,
+.resource-summary-card h3,
+.resource-card-value,
+.hospital-summary-label,
+.hospital-summary-value,
+.hospital-card h2,
+.incident-list-card h3,
+.engine-card h3,
+.quick-log-entry p {
+  color: #2b171a;
+}
+
+.quick-action-note,
+.resource-card-detail,
+.hospital-region,
+.muted-copy,
+.source-latency {
+  color: #6f565b;
+}
+
+/* Stronger red presence and darker borders across all pages */
+:root {
+  --border: rgba(144, 18, 32, 0.24);
+  --border-strong: rgba(166, 17, 34, 0.38);
+}
+
+.hero-panel,
+.panel,
+.status-banner,
+.metric-card,
+.source-card,
+.recommendation-panel,
+.quick-actions-panel,
+.public-card,
+.public-advisory-card,
+.public-shelter-card,
+.resource-summary-card,
+.hospital-summary-card,
+.hospital-card,
+.resource-ledger-panel,
+.facility-registry-panel,
+.resource-request-panel,
+.incident-map-canvas,
+.incident-list-card,
+.engine-card,
+.quick-log-entry,
+.alerts-feed-panel,
+.alerts-detail-panel,
+.alert-feed-card,
+.alert-fact-card,
+.responder-card,
+.broadcast-step-card,
+.forecast-card,
+.role-card,
+.intent-card,
+.quick-action-button,
+.searchbar,
+.map-searchbar,
+.incident-filter-search,
+.resource-ledger-search,
+.alerts-filter-search,
+.hospital-search,
+.public-contact-input,
+.resource-field input,
+.resource-field select,
+.resource-field textarea,
+.resource-tab,
+.public-outline-button,
+.public-topbar-back,
+.public-return-link,
+.ghost-button,
+.icon-button,
+.profile-button,
+.nav-item {
+  border-color: rgba(144, 18, 32, 0.22);
+}
+
+.hero-panel,
+.panel,
+.status-banner,
+.metric-card,
+.source-card,
+.quick-actions-panel,
+.public-card,
+.resource-summary-card,
+.hospital-summary-card,
+.hospital-card,
+.resource-ledger-panel,
+.facility-registry-panel,
+.incident-map-canvas,
+.alerts-topbar,
+.topbar,
+.sidebar {
+  box-shadow: 0 18px 40px rgba(166, 17, 34, 0.08);
+}
+
+.forecast-card,
+.role-card,
+.intent-card,
+.quick-action-button,
+.source-card,
+.resource-summary-card,
+.hospital-summary-card,
+.incident-list-card,
+.engine-card,
+.quick-log-entry,
+.recommendation-card,
+.alert-feed-card,
+.alert-fact-card,
+.responder-card,
+.broadcast-step-card,
+.resource-field input,
+.resource-field select,
+.resource-field textarea,
+.resource-ledger-search,
+.resource-tab.active,
+.spatial-map-label {
+  background: #f5ccd8;
+}
+
+.recommendation-panel,
+.resource-alert-banner,
+.status-banner,
+.public-professional-notice {
+  background: linear-gradient(180deg, #fff2f4, #ffdfe6);
+}
+
+.recommendation-card,
+.metric-card,
+.resource-summary-card,
+.hospital-summary-card,
+.alert-feed-card.active {
+  background: #f1c3d1;
+}
+
+.pill,
+.public-counter-pill,
+.public-mini-pill,
+.resource-tab,
+.registry-type-pill,
+.registry-level-pill,
+.alert-status-pill,
+.severity-chip {
+  background: rgba(197, 22, 43, 0.12);
+  color: #a01021;
+  border-color: rgba(144, 18, 32, 0.18);
+}
+
+.eyebrow,
+.metric-label,
+.brand-name.accent,
+.login-card-eyebrow,
+.login-label,
+.public-sidebar-title,
+.resource-summary-card h3,
+.hospital-summary-label {
+  color: #b01627;
+}
+
+.primary-button,
+.login-submit-button,
+.public-primary-button,
+.alert-primary,
+.map-filter-pill {
+  background: linear-gradient(180deg, #ef3344, #bf1027);
+  border-color: rgba(144, 18, 32, 0.34);
+}
+
+.ghost-button:hover,
+.nav-item:hover,
+.public-outline-button:hover,
+.public-topbar-back:hover,
+.public-return-link:hover,
+.quick-action-button:hover {
+  background: #f7d9e1;
+  border-color: rgba(144, 18, 32, 0.28);
+}
+
+.nav-item.active,
+.login-role-option.active,
+.resource-tab.active,
+.quick-action-button.featured {
+  background: linear-gradient(180deg, rgba(239, 51, 68, 0.16), rgba(197, 22, 43, 0.08));
+  border-color: rgba(144, 18, 32, 0.3);
+  color: #9b1324;
+}
+
+.timeline-dot {
+  box-shadow: 0 0 0 6px rgba(191, 16, 39, 0.08);
+}
+
+.status-mark,
+.public-map-route {
+  box-shadow: 0 0 0 10px rgba(191, 16, 39, 0.1);
+}
+
+/* Public view shelter card formatting */
+.public-shelter-card {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.public-shelter-head {
+  align-items: flex-start;
+}
+
+.public-shelter-head h3 {
+  margin: 0;
+}
+
+.public-shelter-meta {
+  margin: 0;
+  color: #6f565b;
+}
+
+.public-shelter-card .public-outline-button {
+  margin-top: 2px;
+}
+
+/* Urgency color coding for labels */
+.alert-severity-pill,
+.alert-status-pill {
+  font-weight: 800;
+}
+
+.severity-critical,
+.alert-severity-pill.severity-critical {
+  background: rgba(197, 22, 43, 0.14);
+  border-color: rgba(197, 22, 43, 0.24);
+  color: #b01224;
+}
+
+.severity-warning,
+.alert-severity-pill.severity-warning,
+.alert-severity-pill.severity-high {
+  background: rgba(217, 130, 29, 0.16);
+  border-color: rgba(217, 130, 29, 0.26);
+  color: #9a5a14;
+}
+
+.severity-info,
+.severity-normal,
+.alert-severity-pill.severity-info,
+.alert-severity-pill.severity-normal {
+  background: rgba(18, 148, 95, 0.14);
+  border-color: rgba(18, 148, 95, 0.24);
+  color: #0f7f53;
+}
+
+.timeline-dot {
+  background: #169461;
+}
+
+/* Exact status palette requested by user */
+.tone-danger .metric-value,
+.severity-critical,
+.alert-severity-pill.severity-critical,
+.priority-tag,
+.hospital-summary-value.critical,
+.metric-critical,
+.public-resource-status.critical,
+.hospital-status.status-critical,
+.chip-critical,
+.swatch-critical {
+  color: #ec204f;
+}
+
+.tone-warning .metric-value,
+.severity-warning,
+.alert-severity-pill.severity-warning,
+.alert-severity-pill.severity-high,
+.resource-change.tone-warning,
+.hospital-status.status-warning {
+  color: #ff922c;
+}
+
+.tone-success .metric-value,
+.severity-info,
+.severity-normal,
+.alert-severity-pill.severity-info,
+.alert-severity-pill.severity-normal,
+.ledger-status.status-ready,
+.hospital-status.status-available,
+.hospital-status.status-normal,
+.public-resource-status.safe,
+.public-resource-status.neutral,
+.public-shelter-status,
+.status-live,
+.status-available {
+  color: #167a12;
+}
+
+.severity-critical,
+.alert-severity-pill.severity-critical,
+.hospital-status.status-critical,
+.chip-critical {
+  background: rgba(236, 32, 79, 0.14);
+  border-color: rgba(236, 32, 79, 0.24);
+}
+
+.severity-warning,
+.alert-severity-pill.severity-warning,
+.alert-severity-pill.severity-high,
+.hospital-status.status-warning {
+  background: rgba(255, 146, 44, 0.16);
+  border-color: rgba(255, 146, 44, 0.28);
+}
+
+.severity-info,
+.severity-normal,
+.alert-severity-pill.severity-info,
+.alert-severity-pill.severity-normal,
+.hospital-status.status-available,
+.hospital-status.status-normal,
+.public-resource-status.safe,
+ .public-resource-status.neutral,
+ .status-live {
+  background: rgba(46, 207, 3, 0.12);
+  border-color: rgba(46, 207, 3, 0.22);
+}
+
+.facility-progress-bar.critical,
+.radius-critical {
+  background: rgba(236, 32, 79, 0.18);
+  border-color: rgba(236, 32, 79, 0.28);
+}
+
+.facility-progress-bar.normal,
+.timeline-dot,
+.live-dot {
+  background: #2ecf03;
+}
+
+.status-mark {
+  background: linear-gradient(180deg, rgba(255, 146, 44, 0.32), rgba(236, 32, 79, 0.95));
+}
+
+/* Stronger progress bar colors */
+.facility-progress-bar.critical {
+  background: #ec204f;
+}
+
+.facility-progress-bar.warning {
+  background: #ff922c;
+}
+
+.facility-progress-bar.normal {
+  background: #167a12;
+}
+
+.metric-critical {
+  color: #ec204f;
+}
+
+.metric-warning {
+  color: #ff922c;
+}
+
+.metric-normal {
+  color: #167a12;
+}
+
+/* Ledger status palette */
+.ledger-status.status-available,
+.status-available {
+  background: rgba(46, 207, 3, 0.12);
+  border-color: rgba(46, 207, 3, 0.24);
+  color: #167a12;
+}
+
+.ledger-status.status-dispatched,
+.status-dispatched {
+  background: rgba(116, 116, 116, 0.12);
+  border-color: rgba(116, 116, 116, 0.24);
+  color: #666666;
+}
+
+.ledger-status.status-maintenance,
+.status-maintenance {
+  background: rgba(116, 116, 116, 0.12);
+  border-color: rgba(116, 116, 116, 0.24);
+  color: #666666;
+}
+
+/* OneMap preview integration */
+.one-map-preview,
+.one-map-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.incident-onemap-preview,
+.public-onemap-preview,
+.alerts-onemap-preview {
+  position: absolute;
+  inset: 0;
+}
+
+.one-map-canvas {
+  min-height: inherit;
+}
+
+.one-map-preview .leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #f8f1ef;
+  font: inherit;
+}
+
+.one-map-preview .leaflet-control-attribution {
+  background: rgba(255, 253, 252, 0.92);
+  color: #5a4348;
+}
+
+.one-map-preview .leaflet-control-attribution a {
+  color: #a01021;
+}
+
+.one-map-preview .leaflet-popup-content-wrapper,
+.one-map-preview .leaflet-popup-tip {
+  background: #fffaf8;
+  color: #2b171a;
+}
+
+.one-map-popup strong,
+.one-map-popup p {
+  margin: 0;
+}
+
+.one-map-popup p {
+  margin-top: 6px;
+  color: #6f565b;
+}
+
+.one-map-state {
+  position: absolute;
+  inset: auto 20px 20px auto;
+  z-index: 401;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(144, 18, 32, 0.18);
+  background: rgba(255, 250, 248, 0.94);
+  display: inline-flex;
+  align-items: center;
+  color: #6f565b;
+  font-weight: 700;
+}
+
+.map-surface-note {
+  z-index: 402;
+}
+
+.dorscon-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.dorscon-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.dorscon-card {
+  border: 1px solid rgba(144, 18, 32, 0.18);
+  border-radius: 18px;
+  padding: 18px;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.dorscon-card.tone-normal {
+  background: rgba(46, 207, 3, 0.12);
+}
+
+.dorscon-card.tone-caution {
+  background: rgba(255, 237, 71, 0.22);
+}
+
+.dorscon-card.tone-warning {
+  background: rgba(255, 146, 44, 0.22);
+}
+
+.dorscon-card.tone-danger {
+  background: rgba(236, 32, 79, 0.12);
+}
+
+.dorscon-card-head,
+.dorscon-copy {
+  margin: 0;
+}
+
+.dorscon-level {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.dorscon-card.tone-normal .dorscon-level {
+  color: #167a12;
+}
+
+.dorscon-card.tone-caution .dorscon-level {
+  color: #c69a00;
+}
+
+.dorscon-card.tone-warning .dorscon-level {
+  color: #ff922c;
+}
+
+.dorscon-card.tone-danger .dorscon-level {
+  color: #ec204f;
+}
+
+.dorscon-copy {
+  color: #4f3338;
+  line-height: 1.55;
+}
+
+.dorscon-banner.tone-normal {
+  background: linear-gradient(180deg, rgba(46, 207, 3, 0.12), rgba(46, 207, 3, 0.08));
+}
+
+.dorscon-banner.tone-caution {
+  background: linear-gradient(180deg, rgba(255, 237, 71, 0.26), rgba(255, 237, 71, 0.14));
+}
+
+.dorscon-banner.tone-warning {
+  background: linear-gradient(180deg, rgba(255, 146, 44, 0.3), rgba(255, 146, 44, 0.16));
+}
+
+.dorscon-banner.tone-danger {
+  background: linear-gradient(180deg, rgba(236, 32, 79, 0.14), rgba(236, 32, 79, 0.09));
+}
+
+.dorscon-banner.tone-normal .status-title {
+  color: #167a12;
+}
+
+.dorscon-banner.tone-caution .status-title {
+  color: #b28700;
+}
+
+.dorscon-banner.tone-warning .status-title {
+  color: #d96f00;
+}
+
+.dorscon-banner.tone-danger .status-title {
+  color: #ec204f;
 }

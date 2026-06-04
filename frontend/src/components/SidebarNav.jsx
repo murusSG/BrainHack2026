@@ -3,7 +3,6 @@ import { navigationItems } from '../data/dashboardData';
 export function SidebarNav({ activePage, onSelectPage }) {
   const implementedPages = new Set([
     'overview',
-    'public-dashboard',
     'incident-map',
     'resources',
     'hospitals',

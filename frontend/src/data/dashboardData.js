@@ -1,6 +1,5 @@
 export const navigationItems = [
   { id: 'overview', label: 'Overview' },
-  { id: 'public-dashboard', label: 'Public Dashboard' },
   { id: 'incident-map', label: 'Incident Map' },
   { id: 'resources', label: 'Resources' },
   { id: 'hospitals', label: 'Hospitals' },
@@ -447,8 +446,8 @@ export const hospitalFacilityCards = [
     region: 'West (Kent Ridge)',
     status: 'Warning',
     tone: 'warning',
-    generalBeds: { used: 1080, total: 1160, percent: 93, tone: 'critical' },
-    icuUnits: { used: 41, total: 45, percent: 91, tone: 'critical' },
+    generalBeds: { used: 1080, total: 1160, percent: 93, tone: 'warning' },
+    icuUnits: { used: 41, total: 45, percent: 91, tone: 'warning' },
     ventilators: '44 / 60',
     directLine: '+65 6779 5555'
   },

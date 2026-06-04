@@ -5,6 +5,7 @@ import {
   alertsPageMeta,
   broadcastSteps
 } from '../data/dashboardData';
+import { OneMapPreviewMap } from '../components/OneMapPreviewMap';
 
 function AlertFeedCard({ item }) {
   return (
@@ -26,13 +27,29 @@ function AlertFeedCard({ item }) {
 }
 
 function SpatialMapCard() {
+  const points = [
+    {
+      query: 'Orchard Road, Singapore',
+      title: alertDetail.title,
+      description: alertDetail.summary,
+      tone: 'critical',
+      radiusMeters: 900,
+      fallbackLatitude: 1.3048,
+      fallbackLongitude: 103.8318
+    },
+    {
+      query: 'Stamford Diversion Canal, Singapore',
+      title: 'Sensor source area',
+      description: 'Water level monitoring point.',
+      tone: 'warning',
+      fallbackLatitude: 1.2938,
+      fallbackLongitude: 103.8523
+    }
+  ];
+
   return (
     <div className="spatial-map-card">
-      <div className="spatial-grid" />
-      <div className="spatial-sg-shape" />
-      <div className="spatial-alert-zone outer" />
-      <div className="spatial-alert-zone middle" />
-      <div className="spatial-alert-zone core" />
+      <OneMapPreviewMap className="alerts-onemap-preview" points={points} zoom={13} />
       <div className="spatial-map-label">{alertDetail.mapLabel}</div>
     </div>
   );

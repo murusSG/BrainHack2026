@@ -9,6 +9,7 @@ import {
   publicShelters,
   publicSubscriptions
 } from '../data/dashboardData';
+import { OneMapPreviewMap } from '../components/OneMapPreviewMap';
 
 function AdvisoryCard({ advisory }) {
   return (
@@ -40,16 +41,36 @@ function AdvisoryCard({ advisory }) {
 }
 
 function PublicMapPreview() {
+  const points = [
+    {
+      query: 'Kallang Basin, Singapore',
+      title: 'Active Hazard Zone',
+      description: 'Flood impact area under active advisory.',
+      tone: 'hazard',
+      fallbackLatitude: 1.3072,
+      fallbackLongitude: 103.8691
+    },
+    {
+      query: 'Central Sports Complex, Singapore',
+      title: 'Central Sports Complex',
+      description: 'Nearby shelter / safe zone.',
+      tone: 'safe',
+      fallbackLatitude: 1.3028,
+      fallbackLongitude: 103.8835
+    },
+    {
+      query: 'Grand Civic Plaza, Singapore',
+      title: 'Grand Civic Plaza',
+      description: 'Nearby shelter / safe zone.',
+      tone: 'safe',
+      fallbackLatitude: 1.2951,
+      fallbackLongitude: 103.8553
+    }
+  ];
+
   return (
     <div className="public-map-preview">
-      <div className="public-map-grid" />
-      <div className="public-map-tile a" />
-      <div className="public-map-tile b" />
-      <div className="public-map-tile c" />
-      <div className="public-map-route" />
-      <span className="public-map-marker hazard first" />
-      <span className="public-map-marker hazard second" />
-      <span className="public-map-marker safe" />
+      <OneMapPreviewMap className="public-onemap-preview" points={points} />
     </div>
   );
 }

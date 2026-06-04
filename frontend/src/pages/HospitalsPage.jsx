@@ -21,18 +21,34 @@ function hospitalSymbol(icon) {
   return 'beds';
 }
 
+function traumaLevelClass(level) {
+  if (level === 'Level 1') {
+    return 'level-1';
+  }
+
+  if (level === 'Level 2') {
+    return 'level-2';
+  }
+
+  if (level === 'Level 3') {
+    return 'level-3';
+  }
+
+  return 'level-na';
+}
+
 function FacilityMetric({ label, data }) {
   return (
     <div className="facility-metric">
       <div className="facility-metric-head">
         <span>{label}</span>
-        <span className={data.tone === 'critical' ? 'metric-critical' : ''}>
+        <span className={data.tone ? `metric-${data.tone}` : ''}>
           {data.used} / {data.total} ({data.percent}%)
         </span>
       </div>
       <div className="facility-progress">
         <span
-          className={`facility-progress-bar ${data.tone === 'critical' ? 'critical' : 'normal'}`}
+          className={`facility-progress-bar ${data.tone ?? 'normal'}`}
           style={{ width: `${data.percent}%` }}
         />
       </div>
@@ -161,7 +177,9 @@ export function HospitalsPage() {
               <span>{facility.isolationUnits}</span>
               <span>{facility.dialysisStations}</span>
               <span>
-                <span className="registry-level-pill">{facility.traumaCenter}</span>
+                <span className={`registry-level-pill ${traumaLevelClass(facility.traumaCenter)}`}>
+                  {facility.traumaCenter}
+                </span>
               </span>
               <button type="button" className="inline-link registry-manage-link">
                 Manage
