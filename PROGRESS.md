@@ -216,3 +216,36 @@
 - Repository failures are logged and fall back to memory rather than failing the dispatcher workflow, which is intentional for demo resilience.
 - Supabase table names are `command_allocations`, `command_allocation_agencies`, and `command_timeline_entries`.
 ---
+
+---
+## Session: 2026-06-04
+
+### Built
+- `backend/node-api/package.json`
+- `backend/node-api/package-lock.json`
+- `backend/node-api/tests/integration/command.routes.test.ts`
+- `backend/node-api/tests/integration/foresight.routes.test.ts`
+- `README.md`
+- `PROGRESS.md`
+
+### Current app state
+- Added backend endpoint-level integration tests using Supertest.
+- Command route tests cover creating a Foresight allocation, listing allocations, patching agency status, listing timeline entries, and rejecting invalid agency statuses.
+- Foresight route test covers deterministic prediction output and fallback leader brief behavior without LLM credentials.
+- Root README now reflects the actual current app instead of the old scaffold-only repository description.
+- README now documents the real demo path, run commands, environment loading, Supabase migration order, API probes, test commands, and which pieces are still simulated.
+- Verification is green: frontend test passes, frontend production build passes, backend typecheck passes, and backend tests pass: 10 suites, 23 tests.
+- Still mock/hardcoded: agency contact remains a status update, not a real external notification; command persistence still requires running `002_command_state.sql` in Supabase.
+
+### Still to do
+1. Run `backend/node-api/scripts/migrations/002_command_state.sql` in the Supabase SQL editor for the deployed/project database.
+2. Decide whether the Foresight `Staged Actions` queue should reflect backend agency status after approval/contact or remain a local staging receipt.
+3. Extend deterministic Foresight rules to include hospital pressure from hospital datasets and multi-hazard correlation.
+4. Implement or clearly label remaining visual-only controls before final judging.
+5. Consider a small browser smoke script only after the demo route is final.
+
+### Notes
+- Added `supertest` and `@types/supertest` to backend dev dependencies.
+- `npm install` reported one high-severity backend dependency audit item. No forced audit fix was applied because it can introduce breaking changes and should be reviewed deliberately.
+- Backend test logs include requestLogger output during integration tests; this is harmless but can be quieted later with a test logger toggle if desired.
+---

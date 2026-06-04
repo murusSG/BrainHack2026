@@ -1,191 +1,161 @@
-# BrainHack2026
+# MURUS SG
 
-Repository scaffold for the BrainHack 2026 platform using a clear multi-service architecture:
+MURUS SG is a Singapore crisis-response dashboard for BrainHack 2026. It gives command teams one operating picture across live/demo incident feeds, Foresight predictions, dispatcher allocation review, responders, residents, hospitals, and resource views.
 
-- `frontend`: React application (JavaScript).
-- `backend/node-api`: Node.js API layer (TypeScript).
-- `server/flask-api`: Python Flask service layer.
+## Current Build
 
-This setup intentionally creates structure only. Boilerplate implementation code has not been generated yet.
+- React command dashboard in `frontend`.
+- TypeScript/Express API in `backend/node-api`.
+- Shared crisis-event contracts in `backend/shared`.
+- Flask scaffold remains in `server/flask-api`, but the active application path is React + Node API.
 
-## Architecture at a glance
+The strongest current demo path is:
 
-The project is organized by responsibility boundaries to support scalability, team ownership, and clean interfaces:
+1. Crisis aggregator normalises PUB, NEA, LTA, MOH, SCDF-style signals.
+2. Foresight Engine generates deterministic predictions from the unified crisis events.
+3. Optional VectorEngine/OpenAI-compatible LLM call writes a structured leader brief from those deterministic predictions.
+4. Commander stages a Foresight action.
+5. Dispatcher Review Queue receives a command allocation recommendation.
+6. Dispatcher approves/contact agencies.
+7. Command timeline records staged, approved, and contacted events.
 
-- Frontend owns presentation, UX flows, and client-side state.
-- Node API owns external-facing API contracts, auth boundaries, and orchestration.
-- Flask service owns Python-native workloads such as data processing, analytics, or ML-related flows.
-- Shared contracts under backend support consistent schema design across services.
+## What Is Real vs Simulated
 
-## Repository structure
+Working now:
+
+- Unified crisis event endpoint: `/api/v1/crisis/events`
+- Foresight endpoint: `/api/v1/foresight/predictions`
+- Command allocation state: `/api/v1/command/allocations`
+- Command timeline: `/api/v1/command/timeline`
+- Optional LLM leader brief layer
+- Supabase-backed command persistence when the command-state migration is applied
+- In-memory fallback when Supabase is not configured
+- Frontend smoke test for Foresight -> Dispatcher -> Timeline
+- Backend unit and integration tests
+
+Still simulated or partial:
+
+- Foresight is deterministic rules plus optional LLM narration, not a trained ML model.
+- Agency contact is a status update, not a real external notification.
+- Some dashboard controls remain visual-only.
+- Command persistence requires running `backend/node-api/scripts/migrations/002_command_state.sql` in Supabase.
+
+## Repository Structure
 
 ```text
-BrainHack2026/
-|-- docs/
-|-- frontend/
-|   |-- public/
-|   |-- src/
-|   |   |-- assets/
-|   |   |-- components/
-|   |   |-- features/
-|   |   |-- hooks/
-|   |   |-- layouts/
-|   |   |-- pages/
-|   |   |-- routes/
-|   |   |-- services/
-|   |   |-- store/
-|   |   |-- styles/
-|   |   `-- utils/
-|   |-- tests/
-|   |   |-- unit/
-|   |   `-- integration/
-|   `-- scripts/
-|-- backend/
-|   |-- node-api/
-|   |   |-- src/
-|   |   |   |-- config/
-|   |   |   |-- controllers/
-|   |   |   |-- middlewares/
-|   |   |   |-- modules/
-|   |   |   |-- repositories/
-|   |   |   |-- routes/
-|   |   |   |-- services/
-|   |   |   |-- types/
-|   |   |   `-- utils/
-|   |   |-- tests/
-|   |   |   |-- unit/
-|   |   |   `-- integration/
-|   |   `-- scripts/
-|   `-- shared/
-|       |-- schemas/
-|       `-- types/
-|-- server/
-|   `-- flask-api/
-|       |-- app/
-|       |   |-- api/
-|       |   |-- core/
-|       |   |-- models/
-|       |   |-- schemas/
-|       |   |-- services/
-|       |   `-- utils/
-|       |-- tests/
-|       |   |-- unit/
-|       |   `-- integration/
-|       `-- scripts/
-|-- .gitignore
-`-- requirements.txt
+frontend/                  React/Vite dashboard
+backend/node-api/           Express + TypeScript API
+backend/shared/             Shared crisis/event types
+server/flask-api/           Python scaffold, not the active app path
+docs/                       Pitch docs, diagrams, and supporting materials
+PROGRESS.md                 Session handoff history
 ```
 
-## Engineering principles applied in this scaffold
+## Prerequisites
 
-- Separation of concerns by runtime and responsibility.
-- Domain-friendly structure (`features`, `modules`, `services`, `repositories`) over flat folders.
-- Test directories split by intent (`unit`, `integration`).
-- Script folders isolated from runtime source code.
-- Shared contracts in dedicated `backend/shared` to reduce drift between services.
+- Node.js 20 or newer
+- npm
+- Optional: Supabase project for durable command state
+- Optional: VectorEngine/OpenAI-compatible API key for LLM leader briefs
 
-## Dependency baselines
+## Environment
 
-- Python dependencies for the Flask service are managed in root [`requirements.txt`](./requirements.txt).
-- Node and React dependency manifests are intentionally not generated yet, in line with the no-boilerplate requirement.
-
-## Local setup
-
-### Prerequisites
-
-- Git
-- Node.js 20 LTS (includes `npm`)
-- Python 3.11 or newer
-
-### 1. Clone and enter the repository
-
-```bash
-git clone <your-repo-url>
-cd BrainHack2026
-```
-
-### 2. Set up Python environment (Flask service dependencies)
-
-```bash
-python -m venv .venv
-```
-
-Activate virtual environment:
-
-- Windows PowerShell:
+Copy and edit:
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
+cd backend/node-api
+copy .env.example .env.local
 ```
 
-- macOS/Linux:
+Put real secrets in ignored `backend/node-api/.env.secrets`, not in tracked files:
 
-```bash
-source .venv/bin/activate
+```env
+LLM_API_BASE_URL=https://api.vectorengine.ai/v1
+LLM_MODEL=gpt-5.5:stable
+LLM_API_KEY=...
+SUPABASE_URL=...
+SUPABASE_SERVICE_ROLE_KEY=...
 ```
 
-Install Python dependencies:
+The backend loads `.env.secrets`, then `.env.local`, then `.env`.
 
-```bash
-pip install -r requirements.txt
-```
+## Supabase Setup
 
-### 3. Initialize frontend and Node backend package manifests
+Run the SQL migrations in Supabase SQL editor:
 
-This repository currently contains folder scaffolding only.
+1. `backend/node-api/scripts/migrations/001_create_tables.sql`
+2. `backend/node-api/scripts/migrations/002_command_state.sql`
 
-Before running frontend or Node backend locally, initialize those workspaces:
+Without Supabase, command allocations and timeline still work in memory for local demos, but reset when the backend restarts.
 
-- `frontend` as React (JavaScript).
-- `backend/node-api` as Node.js (TypeScript).
+## Run Locally
 
-No boilerplate was generated yet by design.
+Backend:
 
-## Run locally
-
-### Current repository state
-
-At this stage (scaffold-only), there are no application entrypoints yet, so full services are not runnable until implementation starts.
-
-### Expected run commands after initialization
-
-Use these as the project-standard local run targets once each service is bootstrapped:
-
-Frontend (React JS):
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Node API (TypeScript):
-
-```bash
+```powershell
 cd backend/node-api
 npm install
 npm run dev
 ```
 
-Flask service (Python):
+Frontend:
 
-```bash
-cd server/flask-api
-flask --app app.main run --debug --port 8000
+```powershell
+cd frontend
+npm install
+npm run dev
 ```
 
-### Recommended local ports
+Default URLs:
 
 - Frontend: `http://localhost:5173`
-- Node API: `http://localhost:3000`
-- Flask API: `http://localhost:8000`
+- Backend: `http://localhost:3000`
+- Health: `http://localhost:3000/api/v1/health`
 
-Adjust ports as needed in each service configuration.
+If `5173` is busy, Vite will choose the next available port.
 
-## Next implementation steps
+## Useful API Checks
 
-1. Initialize React (JavaScript) inside `frontend` (recommended: Vite React JS template).
-2. Initialize Node TypeScript project inside `backend/node-api`.
-3. Create Flask app entrypoint and package initialization inside `server/flask-api`.
-4. Add environment templates (`.env.example`) for each runtime.
-5. Add CI checks for linting, typing, and tests across all services.
+```powershell
+Invoke-RestMethod "http://localhost:3000/api/v1/foresight/predictions?surgeBeds=10&qrtCount=2"
+Invoke-RestMethod "http://localhost:3000/api/v1/command/allocations"
+Invoke-RestMethod "http://localhost:3000/api/v1/command/timeline"
+```
+
+## Tests
+
+Frontend:
+
+```powershell
+cd frontend
+npm test
+npm run build
+```
+
+Backend:
+
+```powershell
+cd backend/node-api
+npm run typecheck
+npm test -- --runInBand
+```
+
+Current coverage includes:
+
+- Command service unit tests
+- Command Supabase repository mapping tests
+- Command HTTP route integration tests
+- Foresight HTTP route integration test
+- Existing SCDF, MOH, hospital, population, OneMap, and data.gov.sg unit tests
+- Frontend Foresight-to-dispatcher flow test
+
+## LLM Role
+
+The LLM is only a briefing layer. It receives deterministic predictions, evidence, interventions, and outcome deltas, then returns a structured leader brief. It must not invent incidents, agencies, scores, severity, locations, or actions. The deterministic rules engine remains the source of truth.
+
+## Next Work
+
+1. Run the command-state Supabase migration in the deployment database.
+2. Decide whether the Foresight `Staged Actions` queue should reflect backend agency status after approval/contact.
+3. Extend Foresight rules with hospital pressure and multi-hazard correlation.
+4. Implement or clearly label remaining visual-only controls before final judging.
