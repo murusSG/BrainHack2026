@@ -9,6 +9,8 @@ import { oneMapRouter } from "../modules/onemap/onemap.routes";
 import { hdbRouter, populationRouter } from "../modules/population/population.routes";
 import { hospitalsRouter } from "../modules/hospitals/hospitals.routes";
 import { crisisRouter } from "../modules/crisis/crisis.routes";
+import { foresightRouter } from "../modules/foresight/foresight.routes";
+import { commandRouter } from "../modules/command/command.routes";
 
 export const v1Router = Router();
 
@@ -23,3 +25,5 @@ v1Router.use("/hdb", hdbRouter);
 v1Router.use("/population", populationRouter);
 v1Router.use("/hospitals", hospitalsRouter);
 v1Router.use("/crisis", crisisRouter);
+v1Router.use("/foresight", foresightRouter);
+v1Router.use("/command", commandRouter);

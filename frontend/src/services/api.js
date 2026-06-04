@@ -4,8 +4,12 @@
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api/v1';
 
-async function request(path, { unwrap = true } = {}) {
-  const res = await fetch(`${API_BASE}${path}`);
+async function request(path, { unwrap = true, method = 'GET', body } = {}) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
   if (!res.ok) {
     throw new Error(`API ${path} failed: ${res.status} ${res.statusText}`);
   }
@@ -16,6 +20,14 @@ async function request(path, { unwrap = true } = {}) {
 
 async function get(path) {
   return request(path);
+}
+
+async function post(path, body) {
+  return request(path, { method: 'POST', body });
+}
+
+async function patch(path, body) {
+  return request(path, { method: 'PATCH', body });
 }
 
 async function getRaw(path) {
@@ -55,6 +67,16 @@ export const api = {
   // Crisis aggregator
   crisisEvents: (params = {}) => get(withQuery('/crisis/events', params)),
   crisisEvent: (id) => get(`/crisis/events/${encodeURIComponent(id)}`),
+
+  // Deterministic foresight engine with optional LLM narrative layer
+  foresightPredictions: (params = {}) => get(withQuery('/foresight/predictions', params)),
+
+  // Command state: persisted demo recommendations and timeline decisions
+  commandAllocations: () => get('/command/allocations'),
+  commandTimeline: () => get('/command/timeline'),
+  createCommandAllocation: (payload) => post('/command/allocations', payload),
+  updateCommandAllocationAgencies: (id, payload) =>
+    patch(`/command/allocations/${encodeURIComponent(id)}/agencies`, payload),
 
   // SCDF public resources
   scdfResources: (type) => get(withQuery('/scdf/resources', { type })),

@@ -1,0 +1,218 @@
+---
+## Session: 2026-06-03
+
+### Built
+- Created `PROGRESS.md` to capture session handoff notes.
+- No application source files were changed in this session; this was a project audit and verification pass.
+
+### Current app state
+- Frontend production build passes.
+- Backend TypeScript typecheck passes.
+- Backend unit tests pass: 6 test suites, 16 tests.
+- Core event spine is working: frontend `useEvents()` prefers `/api/v1/crisis/events`, connects to WebSocket `/ws`, and falls back to older multi-feed fetching if the aggregator fails.
+- Incident Map is data-backed with live/demo unified events and OneMap rendering.
+- Resident view is mostly functional: watch-point proximity checks work, crisis cards update from events, and nearest shelter attempts the SCDF API before falling back to demo text.
+- Resources page attempts SCDF public resource data, then falls back to static planning data.
+- Hospitals page attempts public/MOH hospital datasets, then falls back to static planning data. Current hospital occupancy source is public statistical BOR, not real-time operational capacity.
+- Foresight Engine UI is present and interactive, but predictions and outcome calculations are hardcoded/demo logic.
+- Responder page exists and sorts incidents by severity/proximity, but the route recommendation is a hardcoded demo scenario.
+- Allocation Approval Panel has local approve/reject/contact state, but no backend persistence or actual agency contact.
+- Alerts page is static: feed, detail panel, map visual, tabs, and actions are hardcoded/nonfunctional.
+- Overview timeline, AI recommendations, agency feed status, quick actions, topbar search/notifications/profile, hospital controls, and resource request form are still mock or visual-only.
+
+### Still to do
+1. Add `react-router-dom` to `frontend/package.json` to avoid deployment installs failing when Vercel installs only the frontend workspace.
+2. Update root `README.md`; it still describes a scaffold-only repo and is stale.
+3. Decide which demo controls should be intentionally fake versus implemented, then label or wire them before finals.
+4. Make responder routing incident-driven using the selected event, hospital load data, and OneMap route endpoint where configured.
+5. Connect Foresight actions to visible command state, resource staging, or allocation review instead of only local status text.
+6. Replace Overview timeline and AI recommendations with derived data from unified events or clearly mark them as demo intelligence.
+7. Make Alerts page consume unified events or build a real alert/advisory workflow.
+8. Implement or disable visual-only controls: search/filter/export/transfer/manage buttons, quick actions, topbar buttons, and resource request submission.
+9. Confirm `.env` dataset IDs for SCDF, MOH, HDB/population, LTA, and OneMap before demo/deployment.
+10. Refresh the demo script and pitch notes so they match actual/partial/planned implementation status.
+
+### Notes
+- Old context file reviewed: `C:\Users\zheng\Downloads\murus-sg-context_1.md`.
+- The project has changed significantly since that context: Foresight UI, Responder view, System Flow page, crisis aggregator, WebSocket feed, OneMap support, SCDF/MOH/hospital/population modules, and backend tests now exist.
+- Strongest current story: crisis aggregator -> unified map -> resident/responder lenses.
+- Biggest honesty risk: several UI labels imply live AI/alerts/operations, but the backing data is still static, local-only, or demo-calculated.
+- System Flow page intentionally distinguishes active, partial, demo, and planned pieces; keep that framing for judges.
+---
+
+---
+## Session: 2026-06-03
+
+### Built
+- `.gitignore`
+- `backend/node-api/.env.example`
+- `backend/node-api/src/modules/foresight/foresight.types.ts`
+- `backend/node-api/src/modules/foresight/foresight.service.ts`
+- `backend/node-api/src/modules/foresight/foresight.controller.ts`
+- `backend/node-api/src/modules/foresight/foresight.routes.ts`
+- `backend/node-api/src/config/env.ts`
+- `backend/node-api/src/routes/v1.ts`
+- `frontend/src/services/api.js`
+- `frontend/src/components/ForesightEngine.jsx`
+- `frontend/src/styles/globals.css`
+- `PROGRESS.md`
+
+### Current app state
+- Added `/api/v1/foresight/predictions`.
+- Foresight now uses a deterministic rules engine first, deriving structured predictions from the crisis aggregator events.
+- Foresight includes optional LLM narrative generation through a Responses-compatible endpoint when `LLM_API_KEY` is configured.
+- Default LLM provider is now VectorEngine: `https://api.vectorengine.ai/v1/responses` with model `gpt-5.5:stable`.
+- Added top-level `leaderBrief` generation that processes the full deterministic Foresight package: predictions, evidence, interventions, baseline outcomes, projected outcomes, and outcome deltas.
+- Added a richer MURUS SG leader-brief system prompt that teaches the LLM the project context, Singapore crisis agencies, deterministic-source-of-truth rule, prioritisation criteria, and anti-hallucination constraints.
+- Added a stricter structured leader-brief response contract: `headline`, `summary`, `posture`, structured `priorityActions` with `label`, `owner`, `urgency`, `rationale`, and `linkedPredictionIds`, plus `publicComms`, `uncertainty`, and `tradeoff`.
+- Frontend now displays the generated leader briefing above the prediction cards, including headline, posture, summary, tradeoff, public comms, uncertainty, and structured priority actions.
+- LLM JSON parsing now tolerates plain JSON, fenced JSON, or JSON embedded in extra text.
+- Renamed the misleading Foresight section label from `Next 60 min` to `Active Forecasts`.
+- Reduced LLM usage: backend now generates only the top-level leader brief, not per-card LLM narratives.
+- Frontend sliders now update deterministic what-if outcomes locally; they no longer auto-call the LLM on every slider movement.
+- Added a `Generate Brief` control so commanders intentionally refresh the LLM leader brief after changing interventions.
+- Foresight action buttons now add visible items to a local `Staged Actions` queue with owner, source, linked prediction, and dispatcher-review status.
+- Foresight staged actions now lift into `OverviewPage` and become the active `AllocationApprovalPanel` recommendation.
+- Allocation Approval Panel now resets its approval state when a new Foresight-generated recommendation arrives.
+- Allocation Approval Panel displays a `Generated from Foresight staged action` origin banner with the linked prediction.
+- If no LLM key is configured, the endpoint still returns deterministic predictions with fallback commander/responder/resident brief text.
+- Frontend Foresight panel now fetches the backend endpoint with `surgeBeds` and `qrtCount`, displays rule-derived predictions, shows evidence chips, and labels whether the panel is rules-only, LLM-briefed, or fallback.
+- Foresight sliders now ask the backend for recalculated outcomes, with frontend fallback math if the endpoint is unavailable.
+- Backend loads ignored `.env.secrets` before `.env.local` and `.env`, so real LLM credentials do not need to live in tracked env files.
+- `.gitignore` now ignores env/secrets files and `.cache/`, while preserving `.env.example`.
+- Backend typecheck passes.
+- Backend unit tests pass: 6 test suites, 16 tests.
+- Frontend production build passes.
+- Runtime endpoint probe returned 3 predictions and `leaderBrief.status=generated`.
+- Still mock/hardcoded: Foresight is rule/scenario-based, not true ML; fallback demo predictions remain for empty/unavailable live feeds; Foresight action buttons update local status text only and do not yet create persisted allocations, timeline entries, or resource staging records.
+
+### Still to do
+1. Persist Foresight-generated allocation recommendations to backend command state instead of keeping them local-only.
+2. Add a timeline entry when an allocation recommendation is approved/contacted.
+3. Extend deterministic rules to include hospital pressure from hospital datasets and multi-hazard correlation.
+4. Add unit tests for `foresight.service.ts`.
+5. Add `react-router-dom` to `frontend/package.json`.
+6. Update root `README.md`; it still describes a scaffold-only repo.
+7. Decide which visual-only controls should be implemented versus clearly marked as demo-only.
+
+### Notes
+- Architectural decision: LLM is the narrator, not the forecasting authority. Deterministic rules produce confidence, horizon, severity, evidence, and recommended action; the LLM only rewrites that structured prediction into commander/responder/resident briefs.
+- The LLM call is optional and server-side only, so the app can still demo without API credentials.
+- The user provided a VectorEngine API key in chat. Do not commit it. Treat chat-shared keys as exposed if the transcript may be shared; rotate if needed.
+- The VectorEngine sample uses `stream: true`, but the backend intentionally sends `stream: false` because the Foresight service needs one complete JSON object to parse into briefings.
+- The LLM prompt explicitly says not to invent facts, agencies, locations, scores, or actions.
+- The frontend has a local fallback so the Foresight panel does not go blank if the backend endpoint is unavailable.
+---
+
+---
+## Session: 2026-06-04
+
+### Built
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `frontend/vite.config.js`
+- `frontend/tests/setup.js`
+- `frontend/tests/integration/foresight-allocation-flow.test.jsx`
+- `PROGRESS.md`
+
+### Current app state
+- Frontend now has a proper `npm test` command using Vitest, Testing Library, Jest DOM matchers, and jsdom.
+- Added a smoke/integration test for the demo-critical flow: Foresight loads a deterministic prediction, commander stages an action, `Staged Actions` appears, the Dispatcher Review Queue switches to the Foresight-generated recommendation, then approve/contact actions update the approval trail.
+- Added `react-router-dom` to the frontend package so frontend-only installs/builds no longer depend on the root package install.
+- Verification is green: frontend test passes, frontend production build passes, backend typecheck passes, and backend unit tests pass.
+- Still mock/hardcoded: Foresight-to-dispatcher recommendations are local React state only; approvals/contacting do not persist to backend, create timeline entries, or actually notify agencies.
+
+### Still to do
+1. Persist Foresight-generated allocation recommendations to backend command state instead of keeping them local-only.
+2. Add a timeline entry when a Foresight allocation is approved or agencies are contacted.
+3. Extend deterministic Foresight rules to include hospital pressure from hospital datasets and multi-hazard correlation.
+4. Add backend unit tests for `foresight.service.ts`.
+5. Update root `README.md`; it still describes a scaffold-only repo.
+6. Decide which remaining visual-only controls should be implemented versus clearly marked as demo-only.
+7. Consider a Playwright browser smoke test once the demo navigation and flows settle further.
+
+### Notes
+- The new frontend test intentionally checks the user-visible chain rather than internal state: stage forecast action -> dispatcher queue receives recommendation -> approval/contact trail updates.
+- `npm install` reported 2 moderate frontend dependency vulnerabilities; no forced audit fix was applied because that can introduce breaking dependency changes.
+- React Router is now declared in `frontend/package.json`; the root `package.json` still separately declares it and can be cleaned up later if the repo is reorganised.
+---
+
+---
+## Session: 2026-06-04
+
+### Built
+- `backend/node-api/src/modules/command/command.types.ts`
+- `backend/node-api/src/modules/command/command.service.ts`
+- `backend/node-api/src/modules/command/command.controller.ts`
+- `backend/node-api/src/modules/command/command.routes.ts`
+- `backend/node-api/src/routes/v1.ts`
+- `backend/node-api/tests/unit/command.service.test.ts`
+- `frontend/src/services/api.js`
+- `frontend/src/components/AllocationApprovalPanel.jsx`
+- `frontend/src/components/TimelinePanel.jsx`
+- `frontend/src/pages/OverviewPage.jsx`
+- `frontend/src/styles/globals.css`
+- `frontend/tests/integration/foresight-allocation-flow.test.jsx`
+- `PROGRESS.md`
+
+### Current app state
+- Added backend command-state endpoints under `/api/v1/command`.
+- Foresight-generated allocation recommendations are now posted to backend command state instead of only living in local React state.
+- Dispatcher approval, rejection, and contact actions now PATCH agency status back to backend command state when available.
+- Command timeline entries are created for allocation staged, allocation approved, agencies contacted, and allocation rejected events.
+- Overview timeline now merges command timeline entries above the existing demo/live timeline and labels itself `Command + live feed` when command entries exist.
+- Dispatcher Review Queue shows whether a Foresight recommendation is saved to command state or running in local fallback.
+- Frontend smoke test now covers command persistence calls and command timeline entries.
+- Browser smoke check passed on `http://localhost:5174`: staged a Foresight vector-control action, saw `Saved to command state`, saw timeline entries, approved selected agencies, contacted agencies, and saw approval trail update.
+- Verification is green: frontend test passes, frontend production build passes, backend typecheck passes, and backend unit tests pass: 7 suites, 18 tests.
+- Still mock/hardcoded: command state is in-memory only; it resets when the backend process restarts. Agency contact is still simulated as a status change, not a real notification.
+
+### Still to do
+1. Persist command allocations and command timeline to Supabase or another durable store.
+2. Add endpoint-level integration tests for `/api/v1/command/allocations` and `/api/v1/command/timeline`.
+3. Decide whether the Foresight `Staged Actions` queue should reflect backend agency status after approval/contact or remain a local staging receipt.
+4. Extend deterministic Foresight rules to include hospital pressure from hospital datasets and multi-hazard correlation.
+5. Update root `README.md`; it still describes a scaffold-only repo.
+6. Decide which remaining visual-only controls should be implemented versus clearly marked as demo-only.
+
+### Notes
+- This implementation keeps the demo operational without requiring a database, but the service boundary is intentionally shaped like a future repository layer.
+- Command timeline entries are created server-side so the timeline remains consistent no matter which frontend control changed the status.
+- The frontend keeps optimistic local UI updates and falls back gracefully if command-state persistence fails.
+---
+
+---
+## Session: 2026-06-04
+
+### Built
+- `backend/node-api/scripts/migrations/002_command_state.sql`
+- `backend/node-api/src/repositories/command.repo.ts`
+- `backend/node-api/src/modules/command/command.service.ts`
+- `backend/node-api/src/modules/command/command.controller.ts`
+- `backend/node-api/tests/unit/command.repo.test.ts`
+- `backend/node-api/tests/unit/command.service.test.ts`
+- `PROGRESS.md`
+
+### Current app state
+- Command allocations, agency statuses, and command timeline entries now use a Supabase repository when `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are configured.
+- Added SQL migration `002_command_state.sql` for `command_allocations`, `command_allocation_agencies`, and `command_timeline_entries`.
+- Command service now reads from Supabase first and keeps the existing in-memory command state as a local fallback if Supabase is absent or a repository call fails.
+- Creating a Foresight allocation persists the allocation, agency rows, and staged timeline entry when Supabase tables exist.
+- Approving, rejecting, or contacting agencies persists updated agency statuses and appends server-generated command timeline entries.
+- Added repository tests for Supabase row mapping and upsert payloads.
+- Verification is green: frontend test passes, frontend production build passes, backend typecheck passes, and backend unit tests pass: 8 suites, 20 tests.
+- Still mock/hardcoded: agency contact remains a status update, not a real external notification; persistence only becomes durable after the Supabase migration is run in the target database.
+
+### Still to do
+1. Run `backend/node-api/scripts/migrations/002_command_state.sql` in the Supabase SQL editor for the deployed/project database.
+2. Add endpoint-level integration tests for `/api/v1/command/allocations` and `/api/v1/command/timeline`.
+3. Decide whether the Foresight `Staged Actions` queue should reflect backend agency status after approval/contact or remain a local staging receipt.
+4. Extend deterministic Foresight rules to include hospital pressure from hospital datasets and multi-hazard correlation.
+5. Update root `README.md`; it still describes a scaffold-only repo.
+6. Decide which remaining visual-only controls should be implemented versus clearly marked as demo-only.
+
+### Notes
+- The command service still works without Supabase, so local demos will not break if env vars or tables are missing.
+- Repository failures are logged and fall back to memory rather than failing the dispatcher workflow, which is intentional for demo resilience.
+- Supabase table names are `command_allocations`, `command_allocation_agencies`, and `command_timeline_entries`.
+---

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { allocationRecommendations } from '../data/dashboardData';
 
 const STATUS_LABEL = {
@@ -16,10 +16,21 @@ function buildInitialSelection(agencies) {
   return Object.fromEntries(agencies.map((agency) => [agency.id, agency.status !== 'rejected']));
 }
 
-export function AllocationApprovalPanel({ recommendation = allocationRecommendations[0] }) {
+export function AllocationApprovalPanel({
+  recommendation = allocationRecommendations[0],
+  commandStateStatus = 'done',
+  onAgencyStatusChange,
+}) {
   const [agencyStatus, setAgencyStatus] = useState(() => buildInitialStatus(recommendation.agencies));
   const [selectedAgencies, setSelectedAgencies] = useState(() => buildInitialSelection(recommendation.agencies));
   const [draftMessage, setDraftMessage] = useState(recommendation.draftMessage);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    setAgencyStatus(buildInitialStatus(recommendation.agencies));
+    setSelectedAgencies(buildInitialSelection(recommendation.agencies));
+    setDraftMessage(recommendation.draftMessage);
+  }, [recommendation]);
 
   const counts = useMemo(() => {
     return recommendation.agencies.reduce(
@@ -44,14 +55,29 @@ export function AllocationApprovalPanel({ recommendation = allocationRecommendat
       .filter((item) => item.status !== 'pending_approval');
   }, [agencyStatus, recommendation.agencies]);
 
-  function updateAgencyStatus(agencyId, status) {
+  async function persistAgencyStatus(agencyIds, status) {
+    if (!onAgencyStatusChange || !recommendation.id) return null;
+    setIsSyncing(true);
+    try {
+      return await onAgencyStatusChange(recommendation.id, agencyIds, status);
+    } finally {
+      setIsSyncing(false);
+    }
+  }
+
+  async function updateAgencyStatus(agencyId, status) {
     setAgencyStatus((current) => ({ ...current, [agencyId]: status }));
     if (status === 'rejected') {
       setSelectedAgencies((current) => ({ ...current, [agencyId]: false }));
     }
+    await persistAgencyStatus([agencyId], status);
   }
 
-  function approveSelected() {
+  async function approveSelected() {
+    const agencyIds = recommendation.agencies
+      .filter((agency) => selectedAgencies[agency.id] && agencyStatus[agency.id] === 'pending_approval')
+      .map((agency) => agency.id);
+
     setAgencyStatus((current) => {
       const next = { ...current };
       recommendation.agencies.forEach((agency) => {
@@ -61,9 +87,14 @@ export function AllocationApprovalPanel({ recommendation = allocationRecommendat
       });
       return next;
     });
+    if (agencyIds.length) await persistAgencyStatus(agencyIds, 'approved');
   }
 
-  function contactApproved() {
+  async function contactApproved() {
+    const agencyIds = recommendation.agencies
+      .filter((agency) => selectedAgencies[agency.id] && agencyStatus[agency.id] === 'approved')
+      .map((agency) => agency.id);
+
     setAgencyStatus((current) => {
       const next = { ...current };
       recommendation.agencies.forEach((agency) => {
@@ -73,6 +104,7 @@ export function AllocationApprovalPanel({ recommendation = allocationRecommendat
       });
       return next;
     });
+    if (agencyIds.length) await persistAgencyStatus(agencyIds, 'contacted');
   }
 
   function toggleSelected(agencyId) {
@@ -89,6 +121,20 @@ export function AllocationApprovalPanel({ recommendation = allocationRecommendat
         </div>
         <span className="allocation-risk-pill">{recommendation.severity}</span>
       </div>
+
+      {recommendation.generatedFrom && (
+        <div className="allocation-origin">
+          <span>{recommendation.generatedFrom}</span>
+          {recommendation.linkedPrediction && <strong>{recommendation.linkedPrediction}</strong>}
+          <em>
+            {commandStateStatus === 'error'
+              ? 'Local fallback'
+              : commandStateStatus === 'loading'
+                ? 'Loading command state'
+                : 'Saved to command state'}
+          </em>
+        </div>
+      )}
 
       <div className="allocation-incident">
         <div>
@@ -143,7 +189,7 @@ export function AllocationApprovalPanel({ recommendation = allocationRecommendat
                 <button
                   type="button"
                   className="allocation-mini-button"
-                  disabled={status !== 'pending_approval'}
+                  disabled={status !== 'pending_approval' || isSyncing}
                   onClick={() => updateAgencyStatus(agency.id, 'approved')}
                 >
                   Approve
@@ -151,7 +197,7 @@ export function AllocationApprovalPanel({ recommendation = allocationRecommendat
                 <button
                   type="button"
                   className="allocation-mini-button muted"
-                  disabled={status !== 'pending_approval'}
+                  disabled={status !== 'pending_approval' || isSyncing}
                   onClick={() => updateAgencyStatus(agency.id, 'rejected')}
                 >
                   Reject
@@ -181,7 +227,7 @@ export function AllocationApprovalPanel({ recommendation = allocationRecommendat
           <button
             type="button"
             className="ghost-button compact-button"
-            disabled={counts.pending === 0 || counts.selected === 0}
+            disabled={counts.pending === 0 || counts.selected === 0 || isSyncing}
             onClick={approveSelected}
           >
             Approve selected
@@ -189,7 +235,7 @@ export function AllocationApprovalPanel({ recommendation = allocationRecommendat
           <button
             type="button"
             className="primary-button compact-button"
-            disabled={counts.approved === 0}
+            disabled={counts.approved === 0 || isSyncing}
             onClick={contactApproved}
           >
             Contact agencies

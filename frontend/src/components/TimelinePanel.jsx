@@ -1,16 +1,18 @@
 import { timelineItems } from '../data/dashboardData';
 
-export function TimelinePanel() {
+export function TimelinePanel({ commandItems = [] }) {
+  const items = [...commandItems, ...timelineItems];
+
   return (
     <section className="panel">
       <div className="section-heading">
         <h2>Live Event Timeline</h2>
-        <span className="pill">Live feed</span>
+        <span className="pill">{commandItems.length ? 'Command + live feed' : 'Live feed'}</span>
       </div>
 
       <div className="timeline-list">
-        {timelineItems.map((item) => (
-          <article key={`${item.time}-${item.title}`} className="timeline-item">
+        {items.map((item) => (
+          <article key={item.id ?? `${item.time}-${item.title}`} className="timeline-item">
             <div className={`timeline-dot severity-${item.severity}`} />
             <div className="timeline-body">
               <div className="timeline-meta-row">

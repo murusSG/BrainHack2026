@@ -2970,6 +2970,40 @@ h1 {
   background: rgba(0, 0, 0, 0.32);
 }
 
+.allocation-origin {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(85, 167, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(85, 167, 255, 0.06);
+  padding: 9px 11px;
+}
+
+.allocation-origin span,
+.allocation-origin strong,
+.allocation-origin em {
+  font-size: 0.8rem;
+}
+
+.allocation-origin span {
+  color: var(--blue);
+  font-weight: 800;
+}
+
+.allocation-origin strong {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.allocation-origin em {
+  margin-left: auto;
+  color: #c7d2fe;
+  font-style: normal;
+  font-weight: 800;
+}
+
 .allocation-code,
 .allocation-model {
   display: inline-flex;
@@ -3747,6 +3781,126 @@ h1 {
   gap: 16px;
 }
 
+.foresight-leader-brief {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+  gap: 16px;
+  border: 1px solid rgba(85, 167, 255, 0.18);
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(85, 167, 255, 0.12), rgba(25, 211, 154, 0.05)),
+    rgba(7, 7, 7, 0.74);
+  padding: 16px;
+}
+
+.foresight-leader-copy {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.foresight-brief-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.foresight-brief-badges .posture-heightened_watch {
+  border-color: rgba(246, 186, 82, 0.3);
+  color: var(--amber);
+  background: rgba(246, 186, 82, 0.08);
+}
+
+.foresight-brief-badges .posture-stage_resources,
+.foresight-brief-badges .posture-escalate_command {
+  border-color: rgba(255, 91, 91, 0.3);
+  color: var(--red);
+  background: rgba(255, 91, 91, 0.08);
+}
+
+.foresight-leader-copy h3,
+.foresight-leader-copy p,
+.foresight-priority-item p,
+.foresight-tradeoff {
+  margin: 0;
+}
+
+.foresight-leader-copy h3 {
+  font-size: 1.26rem;
+  line-height: 1.2;
+}
+
+.foresight-leader-copy p {
+  color: var(--text);
+  line-height: 1.55;
+}
+
+.foresight-tradeoff {
+  color: var(--muted) !important;
+  font-size: 0.92rem;
+}
+
+.foresight-brief-notes {
+  display: grid;
+  gap: 6px;
+}
+
+.foresight-brief-notes p {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.foresight-brief-notes strong {
+  color: var(--text);
+}
+
+.foresight-priority-list {
+  display: grid;
+  gap: 10px;
+}
+
+.foresight-priority-item {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 10px;
+}
+
+.foresight-priority-item span {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(85, 167, 255, 0.12);
+  color: var(--blue);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.foresight-priority-item p,
+.foresight-priority-item small {
+  display: block;
+}
+
+.foresight-priority-item p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.foresight-priority-item small {
+  margin-top: 5px;
+  color: rgba(244, 241, 235, 0.48);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
 .foresight-strip-heading h3 {
   font-size: 1.18rem;
 }
@@ -3848,6 +4002,22 @@ h1 {
   color: #18140a;
 }
 
+.foresight-refresh-button {
+  min-height: 30px;
+  border: 1px solid rgba(85, 167, 255, 0.34);
+  border-radius: 999px;
+  padding: 0 12px;
+  background: rgba(85, 167, 255, 0.08);
+  color: var(--blue);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.foresight-refresh-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .foresight-action-status {
   margin: 0;
   border: 1px solid rgba(85, 167, 255, 0.14);
@@ -3856,6 +4026,77 @@ h1 {
   color: var(--muted);
   padding: 10px 12px;
   font-size: 0.92rem;
+}
+
+.foresight-evidence-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.foresight-evidence-list span {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.foresight-staged-actions {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(25, 211, 154, 0.16);
+  border-radius: 10px;
+  background: rgba(25, 211, 154, 0.05);
+  padding: 12px;
+}
+
+.foresight-staged-actions h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.foresight-staged-list {
+  display: grid;
+  gap: 8px;
+}
+
+.foresight-staged-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(7, 7, 7, 0.58);
+  padding: 10px;
+}
+
+.foresight-staged-item p,
+.foresight-staged-item span {
+  margin: 0;
+}
+
+.foresight-staged-item p {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.foresight-staged-item span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.foresight-staged-item strong {
+  flex: 0 0 auto;
+  color: var(--green);
+  font-size: 0.78rem;
+  text-align: right;
 }
 
 .foresight-simulator {
@@ -3940,6 +4181,7 @@ h1 {
 @media (max-width: 1200px) {
   .foresight-alert-grid,
   .foresight-simulator,
+  .foresight-leader-brief,
   .foresight-outcomes {
     grid-template-columns: 1fr;
   }

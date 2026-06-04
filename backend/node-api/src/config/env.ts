@@ -1,12 +1,18 @@
 import { z } from "zod";
 import dotenv from "dotenv";
+import path from "node:path";
 
-// Load .env.local outside tests, then fall back to .env.
+const envDir = path.resolve(__dirname, "../..");
+
+// Load ignored secrets first, then .env.local outside tests, then fall back to .env.
 // dotenv does not overwrite already-set vars, so the earlier call wins.
 if (process.env.NODE_ENV !== "test") {
-  dotenv.config({ path: ".env.local" });
+  dotenv.config({ path: path.join(envDir, ".env.secrets") });
 }
-dotenv.config();
+if (process.env.NODE_ENV !== "test") {
+  dotenv.config({ path: path.join(envDir, ".env.local") });
+}
+dotenv.config({ path: path.join(envDir, ".env") });
 
 const blankToUndefined = (value: unknown) => (value === "" ? undefined : value);
 const optionalString = z.preprocess(blankToUndefined, z.string().min(1).optional());
@@ -34,7 +40,10 @@ const schema = z.object({
   ONEMAP_EMAIL: optionalString,
   ONEMAP_PASSWORD: optionalString,
   ONEMAP_TOKEN_CACHE_PATH: z.string().min(1).default(".cache/onemap-token.json"),
-  EXTERNAL_API_TIMEOUT_SECONDS: z.coerce.number().positive().default(10),
+  LLM_API_KEY: optionalString,
+  LLM_API_BASE_URL: z.string().url().default("https://api.vectorengine.ai/v1"),
+  LLM_MODEL: z.string().min(1).default("gpt-5.5:stable"),
+  EXTERNAL_API_TIMEOUT_SECONDS: z.coerce.number().positive().default(30),
   CACHE_TTL_SECONDS: z.coerce.number().positive().default(3600),
   ENABLE_MOCK_SCDF_INCIDENTS: envBoolean(false),
   ENABLE_MOCK_DORSCON: envBoolean(true),

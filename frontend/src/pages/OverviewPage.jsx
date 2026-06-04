@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { AgencyFeedPanel } from '../components/AgencyFeedPanel';
 import { AllocationApprovalPanel } from '../components/AllocationApprovalPanel';
 import { ForesightEngine } from '../components/ForesightEngine';
@@ -14,9 +15,13 @@ import {
   topStats
 } from '../data/dashboardData';
 import { useEvents } from '../hooks/useEvents';
+import { api } from '../services/api';
 
 export function OverviewPage() {
   const { events, status } = useEvents();
+  const [foresightRecommendation, setForesightRecommendation] = useState(null);
+  const [commandTimeline, setCommandTimeline] = useState([]);
+  const [commandStateStatus, setCommandStateStatus] = useState('loading');
   const demoEventCount = events.filter((event) => event.isDemo).length;
   const liveEventCount = events.length - demoEventCount;
   const activeIncidentDelta =
@@ -35,6 +40,55 @@ export function OverviewPage() {
         }
       : stat
   );
+
+  async function refreshCommandState() {
+    try {
+      const [allocations, timeline] = await Promise.all([
+        api.commandAllocations(),
+        api.commandTimeline(),
+      ]);
+      setForesightRecommendation(allocations[0] ?? null);
+      setCommandTimeline(timeline ?? []);
+      setCommandStateStatus('done');
+    } catch {
+      setCommandStateStatus('error');
+    }
+  }
+
+  useEffect(() => {
+    refreshCommandState();
+  }, []);
+
+  async function handleStageAction(action) {
+    const recommendation = buildForesightRecommendation(action);
+    setForesightRecommendation(recommendation);
+    try {
+      const saved = await api.createCommandAllocation(recommendation);
+      setForesightRecommendation(saved);
+      const timeline = await api.commandTimeline();
+      setCommandTimeline(timeline ?? []);
+      setCommandStateStatus('done');
+    } catch {
+      setCommandStateStatus('error');
+    }
+  }
+
+  async function handleAgencyStatusChange(recommendationId, agencyIds, status) {
+    try {
+      const saved = await api.updateCommandAllocationAgencies(recommendationId, {
+        agencyIds,
+        status,
+      });
+      setForesightRecommendation(saved);
+      const timeline = await api.commandTimeline();
+      setCommandTimeline(timeline ?? []);
+      setCommandStateStatus('done');
+      return saved;
+    } catch {
+      setCommandStateStatus('error');
+      return null;
+    }
+  }
 
   return (
     <div className="overview-page">
@@ -63,7 +117,7 @@ export function OverviewPage() {
         ))}
       </section>
 
-      <ForesightEngine />
+      <ForesightEngine onStageAction={handleStageAction} />
 
       <section className="status-banner panel">
         <div className="status-mark" />
@@ -84,12 +138,16 @@ export function OverviewPage() {
 
       <section className="content-grid">
         <div className="left-column">
-          <TimelinePanel />
+          <TimelinePanel commandItems={commandTimeline} />
           <AgencyFeedPanel />
         </div>
         <div className="right-column">
           <RecommendationPanel recommendations={recommendations} />
-          <AllocationApprovalPanel />
+          <AllocationApprovalPanel
+            recommendation={foresightRecommendation ?? undefined}
+            commandStateStatus={commandStateStatus}
+            onAgencyStatusChange={handleAgencyStatusChange}
+          />
         </div>
       </section>
 
@@ -146,4 +204,120 @@ export function OverviewPage() {
       </section>
     </div>
   );
+}
+
+function buildForesightRecommendation(action) {
+  const owner = action.owner ?? 'Command';
+  const supportAgencies = agenciesForOwner(owner);
+  return {
+    id: `FORESIGHT-${Date.now()}`,
+    incidentId: 'FORESIGHT',
+    incidentTitle: action.linkedPrediction,
+    severity: severityForAllocation(action.severity),
+    confidence: action.confidence ?? 72,
+    generatedAt: 'just now',
+    generatedFrom: 'Generated from Foresight staged action',
+    linkedPrediction: action.linkedPrediction,
+    modelVersion: 'MURUS-FORESIGHT-ALLOC-1.0',
+    triggerSignals: [
+      `Forecast source: ${action.source}`,
+      `Recommended owner: ${owner}`,
+      action.evidence?.[0] ?? 'Deterministic Foresight signal selected by command',
+    ],
+    draftMessage:
+      `Foresight has staged the following action for dispatcher review: ${sentence(action.title)} ` +
+      `Please confirm agency availability and response window for ${action.linkedPrediction}.`,
+    agencies: supportAgencies.map((agency, index) => ({
+      id: agency.id,
+      agency: agency.agency,
+      channel: agency.channel,
+      confidence: Math.max(62, (action.confidence ?? 74) - index * 6),
+      reason: agency.reason(action),
+      suggestedAction: agency.suggestedAction(action),
+      status: 'pending_approval',
+    })),
+  };
+}
+
+function agenciesForOwner(owner) {
+  const common = {
+    command: {
+      id: 'command',
+      agency: 'CMD',
+      channel: 'Ops Command',
+      reason: () => 'Command review is required before operational tasking is issued.',
+      suggestedAction: (action) => `Approve staged action: ${action.title}`,
+    },
+  };
+
+  const catalog = {
+    NEA: [
+      {
+        id: 'nea',
+        agency: 'NEA',
+        channel: 'Public Health / Environmental Ops',
+        reason: (action) => `${action.linkedPrediction} is owned by NEA signal context.`,
+        suggestedAction: (action) => action.title,
+      },
+      common.command,
+    ],
+    PUB: [
+      {
+        id: 'pub',
+        agency: 'PUB',
+        channel: 'Drainage Ops',
+        reason: (action) => `${action.linkedPrediction} indicates flood or water-risk escalation.`,
+        suggestedAction: (action) => action.title,
+      },
+      {
+        id: 'lta',
+        agency: 'LTA',
+        channel: 'Traffic Ops',
+        reason: () => 'Traffic diversion may be required if access routes degrade.',
+        suggestedAction: () => 'Prepare diversion messaging and route control support.',
+      },
+      common.command,
+    ],
+    LTA: [
+      {
+        id: 'lta',
+        agency: 'LTA',
+        channel: 'Traffic Ops',
+        reason: (action) => `${action.linkedPrediction} may affect responder routing.`,
+        suggestedAction: (action) => action.title,
+      },
+      common.command,
+    ],
+    MOH: [
+      {
+        id: 'moh',
+        agency: 'MOH',
+        channel: 'Healthcare Ops',
+        reason: (action) => `${action.linkedPrediction} may affect hospital or care capacity.`,
+        suggestedAction: (action) => action.title,
+      },
+      {
+        id: 'scdf',
+        agency: 'SCDF',
+        channel: 'Emergency Medical Dispatch',
+        reason: () => 'Ambulance or field response posture may need adjustment.',
+        suggestedAction: () => 'Confirm ambulance routing and standby status.',
+      },
+      common.command,
+    ],
+  };
+
+  return catalog[owner] ?? [common.command];
+}
+
+function severityForAllocation(severity) {
+  if (severity === 'critical' || severity === 'danger') return 'critical';
+  if (severity === 'warning' || severity === 'high') return 'high';
+  return 'medium';
+}
+
+function sentence(value = '') {
+  const text = value.trim();
+  if (!text) return '';
+  return /[.!?]$/.test(text) ? text : `${text}.`;
 }
