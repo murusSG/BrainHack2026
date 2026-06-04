@@ -1,4 +1,4 @@
-export function QuickActionsPanel({ actions }) {
+export function QuickActionsPanel({ actions, onAction, activeAction }) {
   return (
     <section className="quick-actions-panel">
       <div className="section-heading quick-actions-heading">
@@ -13,7 +13,10 @@ export function QuickActionsPanel({ actions }) {
           <button
             key={action.label}
             type="button"
-            className={`quick-action-button ${action.featured ? 'featured' : ''}`}
+            className={`quick-action-button ${action.featured ? 'featured' : ''} ${
+              activeAction === action.label ? 'active' : ''
+            }`}
+            onClick={() => onAction?.(action)}
           >
             <span className={`quick-action-icon icon-${action.icon}`} aria-hidden="true" />
             <span className="quick-action-copy">

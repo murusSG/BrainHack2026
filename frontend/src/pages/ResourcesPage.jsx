@@ -5,6 +5,7 @@ import {
   resourceTrend
 } from '../data/dashboardData';
 import { useScdfResources } from '../hooks/useScdfResources';
+import { useMemo, useState } from 'react';
 
 function resourceSymbol(icon) {
   if (icon === 'fleet') {
@@ -49,6 +50,17 @@ function buildTrendArea(values, max, height) {
 
 export function ResourcesPage() {
   const { status, error, summaryCards, ledgerEntries, ledgerMeta } = useScdfResources();
+  const [ledgerQuery, setLedgerQuery] = useState('');
+  const [activeLedgerTab, setActiveLedgerTab] = useState(resourceLedgerTabs[0].id);
+  const [resourceNotice, setResourceNotice] = useState('Resource desk ready for allocation review.');
+  const [shortageStatus, setShortageStatus] = useState('recommended');
+  const [requestForm, setRequestForm] = useState({
+    resourceType: interAgencyRequestForm.resourceTypes[0],
+    quantity: '0',
+    priority: interAgencyRequestForm.priorities[0],
+    reason: '',
+  });
+  const [stagedRequests, setStagedRequests] = useState([]);
   const chartHeight = 100;
   const stockPath = buildTrendPath(resourceTrend.currentStock, resourceTrend.yMax, chartHeight);
   const stockArea = buildTrendArea(resourceTrend.currentStock, resourceTrend.yMax, chartHeight);
@@ -59,6 +71,57 @@ export function ResourcesPage() {
       : status === 'error'
         ? 'Planning fallback'
         : ledgerMeta.syncStatus;
+  const activeTabLabel =
+    resourceLedgerTabs.find((tab) => tab.id === activeLedgerTab)?.label ?? resourceLedgerTabs[0].label;
+  const filteredLedgerEntries = useMemo(() => {
+    const normalizedQuery = ledgerQuery.trim().toLowerCase();
+    return ledgerEntries.filter((entry) => {
+      const matchesActiveTab = resourceEntryMatchesTab(entry, activeLedgerTab);
+      const searchable = [
+        entry.unitId,
+        entry.type,
+        entry.baseStation,
+        entry.crew,
+        entry.status,
+        activeTabLabel,
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return matchesActiveTab && (!normalizedQuery || searchable.includes(normalizedQuery));
+    });
+  }, [activeLedgerTab, activeTabLabel, ledgerEntries, ledgerQuery]);
+
+  function updateRequestField(field, value) {
+    setRequestForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  function handleSubmitRequest(event) {
+    event.preventDefault();
+    const quantity = Number(requestForm.quantity);
+    if (!Number.isFinite(quantity) || quantity < 1) {
+      setResourceNotice('Request needs a quantity above zero before dispatch review.');
+      return;
+    }
+
+    const request = {
+      id: `REQ-${Date.now().toString().slice(-5)}`,
+      resourceType: requestForm.resourceType,
+      quantity,
+      priority: requestForm.priority,
+      reason: requestForm.reason.trim() || 'No additional reason supplied.',
+    };
+    setStagedRequests((current) => [request, ...current].slice(0, 3));
+    setRequestForm((current) => ({
+      ...current,
+      quantity: '0',
+      reason: '',
+    }));
+    setResourceNotice(`${request.id} staged for dispatcher review.`);
+  }
 
   return (
     <div className="resources-page">
@@ -71,17 +134,31 @@ export function ResourcesPage() {
         </div>
         <div className="hero-actions">
           <span className="pill">{syncLabel}</span>
-          <button type="button" className="ghost-button">
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={() => setResourceNotice('Resource export staged for this planning snapshot.')}
+          >
             Export Report
           </button>
-          <button type="button" className="ghost-button">
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={() => setResourceNotice(`Filter lens set to ${activeTabLabel}.`)}
+          >
             Filters
           </button>
-          <button type="button" className="primary-button">
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() => setResourceNotice('Operational log view queued for the current desk.')}
+          >
             Log View
           </button>
         </div>
       </section>
+
+      <p className="resource-action-notice">{resourceNotice}</p>
 
       {status === 'error' && (
         <p className="feed-warning">
@@ -111,7 +188,11 @@ export function ResourcesPage() {
                 <h2>{resourceTrend.title}</h2>
                 <p>{resourceTrend.subtitle}</p>
               </div>
-              <button type="button" className="ghost-button compact-button">
+              <button
+                type="button"
+                className="ghost-button compact-button"
+                onClick={() => setResourceNotice(`${resourceTrend.timeframe} trend window selected.`)}
+              >
                 {resourceTrend.timeframe}
               </button>
             </div>
@@ -170,16 +251,22 @@ export function ResourcesPage() {
                   type="text"
                   placeholder={ledgerMeta.searchPlaceholder}
                   aria-label="Search resource ledger"
+                  value={ledgerQuery}
+                  onChange={(event) => setLedgerQuery(event.target.value)}
                 />
               </label>
             </div>
 
             <div className="resource-ledger-tabs">
-              {resourceLedgerTabs.map((tab, index) => (
+              {resourceLedgerTabs.map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
-                  className={`resource-tab ${index === 0 ? 'active' : ''}`}
+                  className={`resource-tab ${tab.id === activeLedgerTab ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveLedgerTab(tab.id);
+                    setResourceNotice(`${tab.label} selected for allocation review.`);
+                  }}
                 >
                   {tab.label}
                 </button>
@@ -197,7 +284,7 @@ export function ResourcesPage() {
                 <span>Actions</span>
               </div>
 
-              {ledgerEntries.map((entry) => (
+              {filteredLedgerEntries.map((entry) => (
                 <div key={entry.unitId} className="resource-ledger-row">
                   <span className="ledger-strong">{entry.unitId}</span>
                   <span>{entry.type}</span>
@@ -212,16 +299,30 @@ export function ResourcesPage() {
                   <span>
                     <span className={`ledger-status status-${entry.statusTone}`}>{entry.status}</span>
                   </span>
-                  <button type="button" className="ledger-menu-button" aria-label={`Actions for ${entry.unitId}`}>
-                    ⋮
+                  <button
+                    type="button"
+                    className="ledger-menu-button"
+                    aria-label={`Actions for ${entry.unitId}`}
+                    onClick={() =>
+                      setResourceNotice(`${entry.unitId} selected for transfer review.`)
+                    }
+                  >
+                    ...
                   </button>
                 </div>
               ))}
+              {filteredLedgerEntries.length === 0 && (
+                <p className="resource-empty-state">No ledger records match this view.</p>
+              )}
             </div>
 
             <div className="resource-ledger-footer">
               <span>{ledgerMeta.syncStatus}</span>
-              <button type="button" className="inline-link">
+              <button
+                type="button"
+                className="inline-link"
+                onClick={() => setResourceNotice('Audit log snapshot loaded for review.')}
+              >
                 {ledgerMeta.auditLabel}
               </button>
             </div>
@@ -234,11 +335,26 @@ export function ResourcesPage() {
             <div className="resource-alert-copy">
               <h2>{resourceShortageAlert.title}</h2>
               <p>{resourceShortageAlert.message}</p>
+              <span className="resource-shortage-state">Status: {shortageStatus}</span>
               <div className="resource-alert-actions">
-                <button type="button" className="alert-primary">
+                <button
+                  type="button"
+                  className="alert-primary"
+                  onClick={() => {
+                    setShortageStatus('transfer staged');
+                    setResourceNotice('Shortage transfer staged for approval.');
+                  }}
+                >
                   Initiate Transfer
                 </button>
-                <button type="button" className="alert-secondary">
+                <button
+                  type="button"
+                  className="alert-secondary"
+                  onClick={() => {
+                    setShortageStatus('monitoring');
+                    setResourceNotice('Shortage recommendation moved to monitoring.');
+                  }}
+                >
                   Ignore
                 </button>
               </div>
@@ -255,50 +371,100 @@ export function ResourcesPage() {
               </div>
             </div>
 
-            <div className="resource-form-grid">
-              <label className="resource-field full">
-                <span>Resource Type</span>
-                <select defaultValue={interAgencyRequestForm.resourceTypes[0]}>
-                  {interAgencyRequestForm.resourceTypes.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
+            <form onSubmit={handleSubmitRequest}>
+              <div className="resource-form-grid">
+                <label className="resource-field full">
+                  <span>Resource Type</span>
+                  <select
+                    value={requestForm.resourceType}
+                    onChange={(event) => updateRequestField('resourceType', event.target.value)}
+                  >
+                    {interAgencyRequestForm.resourceTypes.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-              <label className="resource-field">
-                <span>Quantity</span>
-                <input type="number" defaultValue="0" />
-              </label>
+                <label className="resource-field">
+                  <span>Quantity</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={requestForm.quantity}
+                    onChange={(event) => updateRequestField('quantity', event.target.value)}
+                  />
+                </label>
 
-              <label className="resource-field">
-                <span>Priority Level</span>
-                <select defaultValue={interAgencyRequestForm.priorities[0]}>
-                  {interAgencyRequestForm.priorities.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                <label className="resource-field">
+                  <span>Priority Level</span>
+                  <select
+                    value={requestForm.priority}
+                    onChange={(event) => updateRequestField('priority', event.target.value)}
+                  >
+                    {interAgencyRequestForm.priorities.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-              <label className="resource-field full">
-                <span>Reason for Request</span>
-                <textarea
-                  rows="4"
-                  placeholder="Describe the incident requirements..."
-                  defaultValue=""
-                />
-              </label>
-            </div>
+                <label className="resource-field full">
+                  <span>Reason for Request</span>
+                  <textarea
+                    rows="4"
+                    placeholder="Describe the incident requirements..."
+                    value={requestForm.reason}
+                    onChange={(event) => updateRequestField('reason', event.target.value)}
+                  />
+                </label>
+              </div>
 
-            <button type="button" className="resource-submit-button">
-              + Submit Request
-            </button>
+              <button type="submit" className="resource-submit-button">
+                + Submit Request
+              </button>
+            </form>
+
+            {stagedRequests.length > 0 && (
+              <div className="staged-request-list">
+                {stagedRequests.map((request) => (
+                  <article key={request.id} className="staged-request-card">
+                    <div>
+                      <strong>{request.id}</strong>
+                      <p>
+                        {request.quantity} x {request.resourceType}
+                      </p>
+                    </div>
+                    <span className="ledger-status status-dispatched">{request.priority}</span>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
         </aside>
       </section>
     </div>
   );
 }
+
+function resourceEntryMatchesTab(entry, activeTab) {
+  const type = entry.type.toLowerCase();
+  if (activeTab === 'shelters') {
+    return type.includes('shelter');
+  }
+
+  if (activeTab === 'supplies') {
+    return (
+      type.includes('blood') ||
+      type.includes('ppe') ||
+      type.includes('ventilator') ||
+      type.includes('water') ||
+      type.includes('aed')
+    );
+  }
+
+  return !type.includes('shelter');
+}
+

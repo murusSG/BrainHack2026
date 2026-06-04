@@ -326,3 +326,66 @@
 - Supabase verification is waiting on teammate-provided project credentials.
 - The hospital-pressure feature improves the Foresight centerpiece while keeping the LLM as narration only.
 ---
+
+---
+## Session: 2026-06-04
+
+### Built
+- `frontend/src/pages/AlertsPage.jsx`
+- `frontend/src/pages/ResourcesPage.jsx`
+- `frontend/src/pages/OverviewPage.jsx`
+- `frontend/src/components/QuickActionsPanel.jsx`
+- `frontend/src/styles/globals.css`
+- `PROGRESS.md`
+
+### Current app state
+- Alerts page controls are now interactive: search filters the feed, tabs switch alert views, alert cards load the detail pane, and acknowledge/escalate update local alert status.
+- Alerts page advisory and smart-template actions now leave visible staged-state notices instead of behaving like dead controls.
+- Resources page controls are now interactive: ledger search works, ledger tabs filter resource categories, row actions stage transfer review notices, shortage actions update recommendation state, and inter-agency requests validate and stage local request cards.
+- Overview quick actions now stage a visible command-workspace status and keep the selected shortcut highlighted.
+- Verification is green: frontend test passes and frontend production build passes.
+- Still mock/hardcoded: alert and resource actions are frontend-local only; staged resource requests are not persisted; export/log/audit/advisory/guideline actions show local staged notices rather than opening full workflows; agency contact remains simulated status updates.
+
+### Still to do
+1. Run `backend/node-api/scripts/migrations/002_command_state.sql` in Supabase once teammate credentials are available.
+2. Replace frontend-local alert/resource staged actions with backend-backed records if these flows need persistence across refreshes.
+3. Replace simulated agency contact with a real notification path or clearly label it as simulated.
+4. Continue cleaning remaining visual-only controls on Hospitals, Incident Map, Topbar, and Responder route recommendation areas.
+5. Add a browser smoke script after the final demo path is locked.
+
+### Notes
+- This implementation prioritized demo honesty while Supabase credentials are pending: controls now either filter, select, stage, or update local state.
+- Resource tabs now filter by available ledger categories instead of merely changing active styling.
+- Backend was not changed for this task, so backend tests were not rerun.
+---
+
+---
+## Session: 2026-06-04
+
+### Built
+- `frontend/src/components/Topbar.jsx`
+- `frontend/src/pages/HospitalsPage.jsx`
+- `frontend/src/pages/IncidentMapPage.jsx`
+- `frontend/src/pages/ResponderPage.jsx`
+- `frontend/src/styles/globals.css`
+- `PROGRESS.md`
+
+### Current app state
+- Topbar search now routes operators to the most relevant command page based on query terms, and notification/profile controls update the live status pill.
+- Hospitals page controls are now interactive: search filters facility cards, region/status filter cycles views, broadcast/export/detail/transfer actions leave staged notices, and registry actions select rows for review.
+- Incident Map floating toolbar now has a working search input and hazard filter cycle; both map markers and incident list use the filtered event set.
+- Responder route recommendation now derives from the selected/highest-priority incident and hazard type instead of the fixed cardiac/Bishan copy.
+- Verification is green: frontend test passes and frontend production build passes.
+- Still mock/hardcoded: hospital actions are frontend-local staged notices; map filters are local only; Topbar notifications/profile are local status updates; responder route recommendations are heuristic copy, not a live routing engine.
+
+### Still to do
+1. Run `backend/node-api/scripts/migrations/002_command_state.sql` in Supabase once teammate credentials are available.
+2. Replace frontend-local alert/resource/hospital staged actions with backend-backed records if these flows need persistence across refreshes.
+3. Replace simulated agency contact with a real notification path or clearly label it as simulated.
+4. Decide whether responder routing should call a real routing/capacity service or remain a transparent heuristic demo.
+5. Add a browser smoke script after the final demo path is locked.
+
+### Notes
+- This continues the visual-control cleanup pass so fewer dashboard controls behave like inert mockups.
+- Backend was not changed for this task, so backend tests were not rerun.
+---

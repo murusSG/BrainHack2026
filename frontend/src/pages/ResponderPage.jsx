@@ -55,6 +55,52 @@ function severityTone(severity) {
   return 'support';
 }
 
+function buildRouteRecommendation(incident) {
+  if (!incident) {
+    return {
+      title: 'No route recommendation',
+      chain: 'Select an incident to generate a capacity-aware destination.',
+      destination: 'dispatcher review',
+    };
+  }
+
+  const destinationByHazard = {
+    medical: {
+      destination: 'NUH',
+      chain: 'TTSH near capacity (94%) -> reroute to NUH (23 min, receiving capacity available)',
+    },
+    flood: {
+      destination: 'SCDF Alpha staging',
+      chain: 'Avoid low-lying access roads -> stage via higher-ground response corridor',
+    },
+    fire: {
+      destination: 'nearest SCDF fire post',
+      chain: 'Route around smoke perimeter -> dispatch nearest available fire appliance',
+    },
+    haze: {
+      destination: 'NEA field post',
+      chain: 'Approach from upwind corridor -> support public-health advisory sweep',
+    },
+    dengue: {
+      destination: 'NEA vector team zone',
+      chain: 'Prioritise cluster perimeter -> dispatch vector-control support route',
+    },
+    traffic: {
+      destination: 'LTA diversion node',
+      chain: 'Bypass congestion radius -> coordinate access-control route',
+    },
+  };
+  const route = destinationByHazard[incident.hazardType] ?? {
+    destination: 'command staging',
+    chain: 'Use safest available corridor -> confirm destination with dispatcher',
+  };
+
+  return {
+    title: `${incident.title} at ${incident.location}`,
+    ...route,
+  };
+}
+
 export function ResponderPage() {
   const { events, status, error } = useEvents();
   const [selected, setSelected] = useState(null);
@@ -85,6 +131,7 @@ export function ResponderPage() {
   }, [events]);
 
   const activeIncident = selected ?? sortedIncidents[0];
+  const routeRecommendation = buildRouteRecommendation(activeIncident);
 
   return (
     <div className="responder-page">
@@ -126,11 +173,13 @@ export function ResponderPage() {
         <div>
           <div className="responder-route-kicker">
             <p className="eyebrow">Capacity-aware route</p>
-            <span className="demo-chip">Demo route</span>
+            <span className="demo-chip">
+              {activeIncident?.isDemo ? 'Demo route' : 'Live route'}
+            </span>
           </div>
-          <h2>Cardiac case at Bishan</h2>
+          <h2>{routeRecommendation.title}</h2>
           <p className="responder-route-chain">
-            TTSH at capacity (94%) -&gt; Reroute to NUH (23 min, 12% capacity)
+            {routeRecommendation.chain}
           </p>
         </div>
         <div className="responder-route-actions">
@@ -153,7 +202,7 @@ export function ResponderPage() {
           {routingStatus === 'pending'
             ? 'Awaiting responder decision'
             : routingStatus === 'accepted'
-              ? 'Route accepted - NUH destination locked'
+              ? `Route accepted - ${routeRecommendation.destination} destination locked`
               : 'Route declined - dispatcher review requested'}
         </p>
       </section>

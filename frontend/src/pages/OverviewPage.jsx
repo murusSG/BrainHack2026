@@ -22,6 +22,8 @@ export function OverviewPage() {
   const [foresightRecommendation, setForesightRecommendation] = useState(null);
   const [commandTimeline, setCommandTimeline] = useState([]);
   const [commandStateStatus, setCommandStateStatus] = useState('loading');
+  const [quickActionNotice, setQuickActionNotice] = useState('Command shortcuts ready.');
+  const [activeQuickAction, setActiveQuickAction] = useState(null);
   const demoEventCount = events.filter((event) => event.isDemo).length;
   const liveEventCount = events.length - demoEventCount;
   const activeIncidentDelta =
@@ -90,6 +92,11 @@ export function OverviewPage() {
     }
   }
 
+  function handleQuickAction(action) {
+    setActiveQuickAction(action.label);
+    setQuickActionNotice(`${action.label} staged in the command workspace.`);
+  }
+
   return (
     <div className="overview-page">
       <section className="hero-panel">
@@ -127,10 +134,15 @@ export function OverviewPage() {
             Moderate risk of widespread transmission. Public health measures remain at Stage 2.
             Frontline units are on standby while Jurong West and Toa Payoh run elevated watch.
           </p>
+          <p className="quick-action-status">{quickActionNotice}</p>
         </div>
         <div className="status-meta">
           <span className="pill">Updated 2m ago</span>
-          <button type="button" className="inline-link">
+          <button
+            type="button"
+            className="inline-link"
+            onClick={() => setQuickActionNotice('Response guideline snapshot loaded.')}
+          >
             View guidelines
           </button>
         </div>
@@ -152,7 +164,11 @@ export function OverviewPage() {
       </section>
 
       <section className="overview-support-grid">
-        <QuickActionsPanel actions={quickActions} />
+        <QuickActionsPanel
+          actions={quickActions}
+          activeAction={activeQuickAction}
+          onAction={handleQuickAction}
+        />
 
         <div className="panel">
           <div className="section-heading">

@@ -5,10 +5,25 @@ import {
   alertsPageMeta,
   broadcastSteps
 } from '../data/dashboardData';
+import { useMemo, useState } from 'react';
 
-function AlertFeedCard({ item }) {
+function AlertFeedCard({ item, selected, onSelect }) {
+  function handleKeyDown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onSelect(item.id);
+    }
+  }
+
   return (
-    <article className={`alert-feed-card ${item.active ? 'active' : ''}`}>
+    <article
+      className={`alert-feed-card ${selected ? 'active' : ''}`}
+      onClick={() => onSelect(item.id)}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-current={selected ? 'true' : undefined}
+    >
       <div className="alert-feed-top">
         <p className="alert-feed-id">{item.id}</p>
         <span className={`alert-severity-pill severity-${item.severity}`}>{item.severity}</span>
@@ -39,6 +54,59 @@ function SpatialMapCard() {
 }
 
 export function AlertsPage() {
+  const initialAlertId = alertsFeed.find((item) => item.active)?.id ?? alertsFeed[0]?.id;
+  const [query, setQuery] = useState('');
+  const [activeTab, setActiveTab] = useState(alertsPageMeta.tabs[0]);
+  const [selectedAlertId, setSelectedAlertId] = useState(initialAlertId);
+  const [statusOverrides, setStatusOverrides] = useState({});
+  const [actionNotice, setActionNotice] = useState('Alert feed ready for dispatcher review.');
+
+  const alertsWithStatus = useMemo(
+    () =>
+      alertsFeed.map((item) => ({
+        ...item,
+        status: statusOverrides[item.id] ?? item.status,
+      })),
+    [statusOverrides]
+  );
+
+  const selectedAlert =
+    alertsWithStatus.find((item) => item.id === selectedAlertId) ?? alertsWithStatus[0];
+  const selectedDetail = buildAlertDetail(selectedAlert);
+
+  const filteredAlerts = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return alertsWithStatus.filter((item) => {
+      const matchesTab =
+        activeTab === 'All Alerts' ||
+        (activeTab === 'Critical Only' && item.severity === 'critical') ||
+        (activeTab === 'By Region' && item.region === selectedAlert.region) ||
+        (activeTab === 'Unacknowledged' && item.status === 'unacknowledged');
+      const searchable = [item.id, item.title, item.region, item.source, item.status, item.severity]
+        .join(' ')
+        .toLowerCase();
+
+      return matchesTab && (!normalizedQuery || searchable.includes(normalizedQuery));
+    });
+  }, [activeTab, alertsWithStatus, query, selectedAlert.region]);
+
+  function updateSelectedStatus(status) {
+    setStatusOverrides((current) => ({
+      ...current,
+      [selectedAlert.id]: status,
+    }));
+  }
+
+  function handleAcknowledge() {
+    updateSelectedStatus('acknowledged');
+    setActionNotice(`${selectedAlert.id} acknowledged and kept in the command feed.`);
+  }
+
+  function handleEscalate() {
+    updateSelectedStatus('escalated');
+    setActionNotice(`${selectedAlert.id} escalated to command review.`);
+  }
+
   return (
     <div className="alerts-page">
       <section className="alerts-topbar">
@@ -56,12 +124,22 @@ export function AlertsPage() {
               type="text"
               placeholder={alertsPageMeta.filterPlaceholder}
               aria-label="Filter alert feed"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
             />
           </label>
-          <button type="button" className="ghost-button">
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={() => setActiveTab('Unacknowledged')}
+          >
             {alertsPageMeta.filterLabel}
           </button>
-          <button type="button" className="primary-button">
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() => setActionNotice('New advisory draft staged from the selected alert.')}
+          >
             {alertsPageMeta.advisoryLabel}
           </button>
         </div>
@@ -70,17 +148,33 @@ export function AlertsPage() {
       <section className="alerts-layout">
         <aside className="alerts-feed-panel">
           <div className="alerts-tabs">
-            {alertsPageMeta.tabs.map((tab, index) => (
-              <button key={tab} type="button" className={`alerts-tab ${index === 0 ? 'active' : ''}`}>
+            {alertsPageMeta.tabs.map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                className={`alerts-tab ${tab === activeTab ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab)}
+              >
                 {tab}
               </button>
             ))}
           </div>
 
           <div className="alerts-feed-list">
-            {alertsFeed.map((item) => (
-              <AlertFeedCard key={item.id} item={item} />
+            {filteredAlerts.map((item) => (
+              <AlertFeedCard
+                key={item.id}
+                item={item}
+                selected={item.id === selectedAlert.id}
+                onSelect={(id) => {
+                  setSelectedAlertId(id);
+                  setActionNotice(`${id} loaded into the detail pane.`);
+                }}
+              />
             ))}
+            {filteredAlerts.length === 0 && (
+              <p className="alert-empty-state">No alerts match this view.</p>
+            )}
           </div>
         </aside>
 
@@ -88,25 +182,37 @@ export function AlertsPage() {
           <div className="alerts-detail-head">
             <div>
               <div className="alerts-case-row">
-                <span className="alert-severity-pill severity-critical">{alertDetail.severity}</span>
-                <span className="alerts-case-id">{alertsPageMeta.caseLabel}</span>
+                <span className={`alert-severity-pill severity-${selectedDetail.severity}`}>
+                  {selectedDetail.severity}
+                </span>
+                <span className="alerts-case-id">CASE ID: {selectedDetail.caseId}</span>
+                <span className="alert-status-pill">{selectedAlert.status}</span>
               </div>
-              <h2>{alertDetail.title}</h2>
-              <p className="alerts-summary">{alertDetail.summary}</p>
+              <h2>{selectedDetail.title}</h2>
+              <p className="alerts-summary">{selectedDetail.summary}</p>
+              <p className="alert-action-notice">{actionNotice}</p>
             </div>
 
             <div className="alerts-detail-actions">
-              <button type="button" className="primary-button detail-action-button">
+              <button
+                type="button"
+                className="primary-button detail-action-button"
+                onClick={handleAcknowledge}
+              >
                 Acknowledge Alert
               </button>
-              <button type="button" className="ghost-button detail-action-button">
+              <button
+                type="button"
+                className="ghost-button detail-action-button"
+                onClick={handleEscalate}
+              >
                 Escalate to Command
               </button>
             </div>
           </div>
 
           <div className="alert-facts-grid">
-            {alertDetail.facts.map((fact) => (
+            {selectedDetail.facts.map((fact) => (
               <article key={fact.label} className="alert-fact-card">
                 <p>{fact.label}</p>
                 <strong>{fact.value}</strong>
@@ -142,7 +248,13 @@ export function AlertsPage() {
           <section className="broadcast-center-panel">
             <div className="broadcast-center-head">
               <h3>{alertsPageMeta.registryTitle}</h3>
-              <button type="button" className="inline-link">
+              <button
+                type="button"
+                className="inline-link"
+                onClick={() =>
+                  setActionNotice(`Smart broadcast template applied for ${selectedAlert.id}.`)
+                }
+              >
                 {alertsPageMeta.smartTemplate}
               </button>
             </div>
@@ -162,4 +274,36 @@ export function AlertsPage() {
       </section>
     </div>
   );
+}
+
+function buildAlertDetail(item) {
+  if (!item) {
+    return alertDetail;
+  }
+
+  if (item.id === alertDetail.caseId) {
+    return {
+      ...alertDetail,
+      severity: item.severity,
+      facts: [
+        ...alertDetail.facts.slice(0, 2),
+        { label: 'Current status', value: item.status },
+        { label: 'Data source', value: item.source },
+      ],
+    };
+  }
+
+  return {
+    severity: item.severity,
+    caseId: item.id,
+    title: item.title,
+    summary: `${item.source} reported ${item.title.toLowerCase()} in ${item.region}. Current command status is ${item.status}.`,
+    facts: [
+      { label: 'Incident location', value: item.region },
+      { label: 'Time detected', value: item.timeAgo },
+      { label: 'Current status', value: item.status },
+      { label: 'Data source', value: item.source },
+    ],
+    mapLabel: alertDetail.mapLabel,
+  };
 }

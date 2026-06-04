@@ -2,6 +2,7 @@ import {
   hospitalTrackerMeta,
 } from '../data/dashboardData';
 import { useHospitalData } from '../hooks/useHospitalData';
+import { useMemo, useState } from 'react';
 
 function hospitalSymbol(icon) {
   if (icon === 'alert') {
@@ -48,6 +49,10 @@ export function HospitalsPage() {
     liveOccupancyCount,
     liveReferenceCount,
   } = useHospitalData();
+  const [query, setQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [selectedFacility, setSelectedFacility] = useState(null);
+  const [hospitalNotice, setHospitalNotice] = useState('Hospital desk ready for capacity review.');
   const hasLiveData = liveOccupancyCount > 0 || liveReferenceCount > 0;
   const syncLabel =
     status === 'loading'
@@ -55,6 +60,36 @@ export function HospitalsPage() {
       : hasLiveData
         ? `${liveOccupancyCount + liveReferenceCount} live records`
         : 'Planning fallback';
+  const filteredFacilityCards = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return facilityCards.filter((facility) => {
+      const matchesFilter =
+        activeFilter === 'all' ||
+        facility.tone === activeFilter ||
+        facility.region.toLowerCase().includes(activeFilter);
+      const searchable = [
+        facility.name,
+        facility.region,
+        facility.status,
+        facility.directLine,
+        facility.ventilators,
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return matchesFilter && (!normalizedQuery || searchable.includes(normalizedQuery));
+    });
+  }, [activeFilter, facilityCards, query]);
+
+  const selectedFacilityName = selectedFacility?.name ?? filteredFacilityCards[0]?.name;
+
+  function cycleFilter() {
+    const filters = ['all', 'critical', 'warning', 'west', 'central'];
+    const nextIndex = (filters.indexOf(activeFilter) + 1) % filters.length;
+    const nextFilter = filters[nextIndex];
+    setActiveFilter(nextFilter);
+    setHospitalNotice(`Hospital filter set to ${filterLabel(nextFilter)}.`);
+  }
 
   return (
     <div className="hospitals-page">
@@ -65,14 +100,22 @@ export function HospitalsPage() {
         </div>
         <div className="hero-actions">
           <span className="pill">{syncLabel}</span>
-          <button type="button" className="ghost-button">
+          <button type="button" className="ghost-button" onClick={cycleFilter}>
             {hospitalTrackerMeta.filterLabel}
           </button>
-          <button type="button" className="primary-button">
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() =>
+              setHospitalNotice(`Capacity broadcast staged for ${selectedFacilityName ?? 'current view'}.`)
+            }
+          >
             {hospitalTrackerMeta.broadcastLabel}
           </button>
         </div>
       </section>
+
+      <p className="hospital-action-notice">{hospitalNotice}</p>
 
       {status === 'error' && (
         <p className="feed-warning">
@@ -105,22 +148,35 @@ export function HospitalsPage() {
             type="text"
             placeholder={hospitalTrackerMeta.searchPlaceholder}
             aria-label="Search hospitals"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
           />
         </label>
 
         <div className="hospital-toolbar-actions">
-          <button type="button" className="hospital-pill-button">
+          <button
+            type="button"
+            className="hospital-pill-button"
+            onClick={() => {
+              setActiveFilter('all');
+              setHospitalNotice('Reference and transfer view reset to all facilities.');
+            }}
+          >
             <span className="transfer-count">{liveReferenceCount || 3}</span>
             {liveReferenceCount ? 'Reference Records' : hospitalTrackerMeta.pendingTransfers}
           </button>
-          <button type="button" className="ghost-button">
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={() => setHospitalNotice('Hospital capacity export staged for current filters.')}
+          >
             {hospitalTrackerMeta.exportLabel}
           </button>
         </div>
       </section>
 
       <section className="hospital-cards-grid">
-        {facilityCards.map((facility) => (
+        {filteredFacilityCards.map((facility) => (
           <article key={facility.name} className="hospital-card">
             <div className="hospital-card-header">
               <div>
@@ -145,21 +201,42 @@ export function HospitalsPage() {
             </div>
 
             <div className="hospital-card-actions">
-              <button type="button" className="ghost-button hospital-card-button">
+              <button
+                type="button"
+                className="ghost-button hospital-card-button"
+                onClick={() => {
+                  setSelectedFacility(facility);
+                  setHospitalNotice(`${facility.name} details loaded for capacity review.`);
+                }}
+              >
                 Details
               </button>
-              <button type="button" className="primary-button hospital-card-button">
+              <button
+                type="button"
+                className="primary-button hospital-card-button"
+                onClick={() => {
+                  setSelectedFacility(facility);
+                  setHospitalNotice(`Transfer request staged for ${facility.name}.`);
+                }}
+              >
                 Transfer
               </button>
             </div>
           </article>
         ))}
+        {filteredFacilityCards.length === 0 && (
+          <p className="hospital-empty-state">No facilities match this view.</p>
+        )}
       </section>
 
       <section className="panel facility-registry-panel">
         <div className="facility-registry-head">
           <h2>{hospitalTrackerMeta.registryTitle}</h2>
-          <button type="button" className="inline-link">
+          <button
+            type="button"
+            className="inline-link"
+            onClick={() => setHospitalNotice('Full specialized registry staged for review.')}
+          >
             {hospitalTrackerMeta.registryAction}
           </button>
         </div>
@@ -185,7 +262,11 @@ export function HospitalsPage() {
               <span>
                 <span className="registry-level-pill">{facility.traumaCenter}</span>
               </span>
-              <button type="button" className="inline-link registry-manage-link">
+              <button
+                type="button"
+                className="inline-link registry-manage-link"
+                onClick={() => setHospitalNotice(`${facility.name} registry row selected.`)}
+              >
                 Manage
               </button>
             </div>
@@ -194,4 +275,11 @@ export function HospitalsPage() {
       </section>
     </div>
   );
+}
+
+function filterLabel(filter) {
+  if (filter === 'all') return 'all facilities';
+  if (filter === 'west') return 'west region';
+  if (filter === 'central') return 'central region';
+  return filter;
 }
