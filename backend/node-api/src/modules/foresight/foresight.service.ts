@@ -1,7 +1,9 @@
 import axios from "axios";
 import { env } from "../../config/env";
 import { aggregateEvents } from "../crisis/crisis.service";
+import { publicHospitalDataService } from "../hospitals/hospitals.service";
 import { severityRank, type CrisisEvent } from "../../../../shared/types/crisisEvent";
+import type { HospitalMetric } from "../hospitals/hospitals.types";
 import type {
   ForesightInterventions,
   ForesightLeaderBrief,
@@ -55,8 +57,8 @@ const SEVERITY_TO_UI: Record<CrisisEvent["severity"], ForesightSeverity> = {
 };
 
 export async function getForesightPredictions(interventions: ForesightInterventions): Promise<ForesightResponse> {
-  const events = await aggregateEvents();
-  const livePredictions = buildDeterministicPredictions(events);
+  const [events, hospitalSignals] = await Promise.all([aggregateEvents(), getHospitalPressureSignals()]);
+  const livePredictions = buildDeterministicPredictions(events, hospitalSignals);
   const deterministic = livePredictions.length > 0 ? livePredictions : demoFallbackPredictions();
   const predictions = deterministic.slice(0, 3);
   const outcomes = calculateOutcomes(interventions);
@@ -96,12 +98,196 @@ export function calculateOutcomes(interventions: ForesightInterventions): Foresi
   };
 }
 
-function buildDeterministicPredictions(events: CrisisEvent[]): ForesightPrediction[] {
-  return events.flatMap((event) => predictionForEvent(event)).sort((left, right) => {
+function buildDeterministicPredictions(
+  events: CrisisEvent[],
+  hospitalSignals: HospitalPressureSignal[] = []
+): ForesightPrediction[] {
+  return [
+    ...events.flatMap((event) => predictionForEvent(event)),
+    ...hospitalSignals.map(predictionForHospitalPressure),
+  ].concat(buildMultiHazardPredictions(events, hospitalSignals)).sort((left, right) => {
     const severityDelta = uiSeverityRank(right.severity) - uiSeverityRank(left.severity);
     if (severityDelta !== 0) return severityDelta;
     return right.confidence - left.confidence;
   });
+}
+
+interface HospitalPressureSignal {
+  id: string;
+  facilityName: string;
+  pressureType: "bed_occupancy" | "ed_waiting_time";
+  value: number;
+  unit?: string;
+  severity: ForesightSeverity;
+  confidence: number;
+  evidence: string[];
+  sourceMetric: HospitalMetric;
+}
+
+async function getHospitalPressureSignals(): Promise<HospitalPressureSignal[]> {
+  const [occupancy, waitingTimes] = await Promise.allSettled([
+    publicHospitalDataService.getOccupancy(),
+    publicHospitalDataService.getWaitingTimes(),
+  ]);
+
+  const occupancyMetrics = occupancy.status === "fulfilled" ? occupancy.value.data : [];
+  const waitingMetrics = waitingTimes.status === "fulfilled" ? waitingTimes.value.data : [];
+
+  return [
+    ...occupancyMetrics.flatMap(hospitalPressureFromOccupancy),
+    ...waitingMetrics.flatMap(hospitalPressureFromWaitingTime),
+  ].sort((left, right) => {
+    const severityDelta = uiSeverityRank(right.severity) - uiSeverityRank(left.severity);
+    if (severityDelta !== 0) return severityDelta;
+    return right.confidence - left.confidence;
+  }).slice(0, 3);
+}
+
+function hospitalPressureFromOccupancy(metric: HospitalMetric): HospitalPressureSignal[] {
+  if (metric.metric_name !== "Beds Occupancy Rate") return [];
+  const value = Number(metric.value);
+  if (!metric.facility_name || !Number.isFinite(value) || value < 85) return [];
+
+  const severity: ForesightSeverity = value >= 95 ? "critical" : value >= 92 ? "danger" : "warning";
+  return [
+    {
+      id: `hospital-pressure:occupancy:${slug(metric.facility_name)}`,
+      facilityName: metric.facility_name,
+      pressureType: "bed_occupancy",
+      value,
+      unit: metric.unit,
+      severity,
+      confidence: clamp(Math.round(48 + value * 0.45), 62, 92),
+      evidence: [
+        `MOH public bed occupancy metric at ${value}${metric.unit ?? ""}`,
+        metric.notes ?? "Public hospital pressure statistic; not real-time operational capacity.",
+        metric.last_updated ? `Last updated: ${metric.last_updated}` : "Last updated unavailable",
+      ],
+      sourceMetric: metric,
+    },
+  ];
+}
+
+function hospitalPressureFromWaitingTime(metric: HospitalMetric): HospitalPressureSignal[] {
+  if (metric.metric_name !== "Emergency Department Waiting Time" && metric.metric_name !== "Waiting Time for Admission to Ward") {
+    return [];
+  }
+  if (!metric.facility_name) return [];
+
+  const minutes = waitingTimeMinutes(metric);
+  if (!Number.isFinite(minutes) || minutes < 180) return [];
+
+  const severity: ForesightSeverity = minutes >= 480 ? "danger" : minutes >= 300 ? "warning" : "advisory";
+  return [
+    {
+      id: `hospital-pressure:waiting:${slug(metric.facility_name)}`,
+      facilityName: metric.facility_name,
+      pressureType: "ed_waiting_time",
+      value: Math.round(minutes),
+      unit: "minutes",
+      severity,
+      confidence: clamp(Math.round(54 + minutes / 14), 62, 88),
+      evidence: [
+        `Public hospital waiting-time metric at ${Math.round(minutes)} minutes`,
+        metric.notes ?? "Public waiting-time statistic; not real-time queue telemetry.",
+        metric.last_updated ? `Last updated: ${metric.last_updated}` : "Last updated unavailable",
+      ],
+      sourceMetric: metric,
+    },
+  ];
+}
+
+function predictionForHospitalPressure(signal: HospitalPressureSignal): ForesightPrediction {
+  const label =
+    signal.pressureType === "bed_occupancy"
+      ? `Hospital bed pressure watch - ${signal.facilityName}`
+      : `ED waiting-time pressure watch - ${signal.facilityName}`;
+  const action =
+    signal.pressureType === "bed_occupancy"
+      ? "Prepare transfer coordination, review surge-bed options, and pre-alert ambulance diversion owners."
+      : "Monitor ED admission flow, prepare diversion playbook, and confirm surge triage staffing.";
+
+  return {
+    id: `foresight:health_system_pressure:${signal.id}`,
+    riskType: "health_system_pressure",
+    title: label,
+    source: "MOH",
+    severity: signal.severity,
+    confidence: signal.confidence,
+    horizonMinutes: signal.pressureType === "bed_occupancy" ? 240 : 120,
+    horizonLabel: signal.pressureType === "bed_occupancy" ? "4 hrs" : "2 hrs",
+    area: signal.facilityName,
+    location: null,
+    evidence: signal.evidence,
+    linkedEventIds: [],
+    recommendedAction: action,
+    publicAction: "Use emergency departments only for urgent symptoms; consider non-emergency care channels when appropriate.",
+    scenarioSource: "live",
+    deterministicModel: {
+      name: "MURUS_RULES_V1",
+      inputs: ["MOH", signal.pressureType, signal.severity],
+    },
+    narrative: fallbackNarrative(label, action, "Use emergency departments only for urgent symptoms; consider non-emergency care channels when appropriate.", "not_configured"),
+  };
+}
+
+function buildMultiHazardPredictions(
+  events: CrisisEvent[],
+  hospitalSignals: HospitalPressureSignal[]
+): ForesightPrediction[] {
+  const floodOrTraffic = events.find((event) =>
+    ["flood-alert", "traffic-incident"].includes(event.category) &&
+    severityRank(event.severity) >= severityRank("warning")
+  );
+  const biological = events.find((event) =>
+    event.category === "dengue-cluster" &&
+    severityRank(event.severity) >= severityRank("warning")
+  );
+  const hospital = hospitalSignals.find((signal) => uiSeverityRank(signal.severity) >= uiSeverityRank("warning"));
+
+  const linkedInputs = [floodOrTraffic, biological, hospital].filter(Boolean);
+  if (linkedInputs.length < 2) return [];
+
+  const linkedEventIds = [floodOrTraffic?.id, biological?.id].filter((id): id is string => Boolean(id));
+  const labels = [
+    floodOrTraffic ? `${floodOrTraffic.source} ${floodOrTraffic.category}` : null,
+    biological ? "NEA dengue cluster" : null,
+    hospital ? `MOH ${hospital.facilityName}` : null,
+  ].filter(Boolean);
+  const confidence = clamp(64 + linkedInputs.length * 7 + (hospital ? 5 : 0), 70, 90);
+  const severity: ForesightSeverity = hospital && floodOrTraffic ? "danger" : "warning";
+  const title = `Multi-hazard operations watch - ${labels.join(" + ")}`;
+  const action =
+    "Open cross-agency watch, check responder access routes, and review hospital diversion or public advisory triggers.";
+
+  return [
+    {
+      id: `foresight:multi_hazard_watch:${linkedEventIds.join(":") || hospital?.id}`,
+      riskType: "multi_hazard_watch",
+      title,
+      source: "MURUS",
+      severity,
+      confidence,
+      horizonMinutes: 180,
+      horizonLabel: "3 hrs",
+      area: floodOrTraffic?.area ?? biological?.area ?? hospital?.facilityName ?? "Singapore",
+      location: floodOrTraffic?.location ?? biological?.location ?? null,
+      evidence: [
+        floodOrTraffic ? `${floodOrTraffic.source} ${floodOrTraffic.category} at ${floodOrTraffic.severity} severity` : undefined,
+        biological ? `NEA dengue cluster at ${biological.severity} severity` : undefined,
+        hospital ? `${hospital.facilityName} hospital pressure signal at ${hospital.severity} severity` : undefined,
+      ].filter((item): item is string => Boolean(item)),
+      linkedEventIds,
+      recommendedAction: action,
+      publicAction: "Monitor official advisories; follow route, health, and locality-specific instructions if issued.",
+      scenarioSource: "live",
+      deterministicModel: {
+        name: "MURUS_RULES_V1",
+        inputs: labels as string[],
+      },
+      narrative: fallbackNarrative(title, action, "Monitor official advisories; follow route, health, and locality-specific instructions if issued.", "not_configured"),
+    },
+  ];
 }
 
 function predictionForEvent(event: CrisisEvent): ForesightPrediction[] {
@@ -630,6 +816,22 @@ function formatHorizon(minutes: number): string {
   if (minutes < 60) return `${minutes} min`;
   if (minutes < 1440) return `${Math.round(minutes / 60)} hrs`;
   return `${Math.round(minutes / 1440)} days`;
+}
+
+function waitingTimeMinutes(metric: HospitalMetric): number {
+  const raw = Number(String(metric.value ?? "").replace(/[^\d.]/g, ""));
+  if (!Number.isFinite(raw)) return Number.NaN;
+  const unit = metric.unit?.toLowerCase() ?? "";
+  if (unit.includes("hour") || unit.includes("hr")) return raw * 60;
+  return raw;
+}
+
+function slug(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
 }
 
 function clampNumber(value: number, min: number, max: number): number {

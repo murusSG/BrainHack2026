@@ -249,3 +249,80 @@
 - `npm install` reported one high-severity backend dependency audit item. No forced audit fix was applied because it can introduce breaking changes and should be reviewed deliberately.
 - Backend test logs include requestLogger output during integration tests; this is harmless but can be quieted later with a test logger toggle if desired.
 ---
+
+---
+## Session: 2026-06-04
+
+### Built
+- `PROGRESS.md`
+
+### Current app state
+- Added a standing project instruction: after every completed task, append a session entry to `PROGRESS.md` using the established session format.
+- This progress update is now part of the definition of done for all future project work.
+- No application code changed in this session.
+- Still mock/hardcoded: unchanged from previous session.
+
+### Still to do
+1. Run `backend/node-api/scripts/migrations/002_command_state.sql` in the Supabase SQL editor for the deployed/project database.
+2. Decide whether the Foresight `Staged Actions` queue should reflect backend agency status after approval/contact or remain a local staging receipt.
+3. Extend deterministic Foresight rules to include hospital pressure from hospital datasets and multi-hazard correlation.
+4. Implement or clearly label remaining visual-only controls before final judging.
+
+### Notes
+- Non-negotiable handoff rule: always update `PROGRESS.md` before considering any future task complete.
+---
+
+---
+## Session: 2026-06-04
+
+### Built
+- `PROGRESS.md`
+
+### Current app state
+- Reviewed the latest handoff notes to identify remaining unimplemented or partially implemented features.
+- No application code changed in this session.
+- Current highest-value implemented workflow remains: Foresight prediction -> staged command allocation -> dispatcher approval/contact -> command timeline.
+- Still mock/hardcoded: agency contact is simulated as status updates, some dashboard controls are visual-only, Foresight is deterministic rules plus optional LLM narration rather than trained ML.
+
+### Still to do
+1. Run `backend/node-api/scripts/migrations/002_command_state.sql` in Supabase so command allocations and timeline persist durably in the project database.
+2. Decide whether the Foresight `Staged Actions` queue should reflect backend agency status after approval/contact or remain a local staging receipt.
+3. Extend deterministic Foresight rules with hospital pressure and multi-hazard correlation.
+4. Implement or clearly label remaining visual-only controls before final judging.
+5. Replace simulated agency contact with a real notification/integration path or label it clearly as simulated.
+6. Consider a final browser smoke script after the demo route is locked.
+
+### Notes
+- This was an analysis/handoff task, so no tests were run.
+- The next implementation should probably be either Foresight hospital-pressure rules or visual-only control cleanup, depending on whether the goal is stronger intelligence or demo honesty polish.
+---
+
+---
+## Session: 2026-06-04
+
+### Built
+- `backend/node-api/src/modules/foresight/foresight.service.ts`
+- `backend/node-api/tests/integration/foresight.routes.test.ts`
+- `PROGRESS.md`
+
+### Current app state
+- Foresight now includes deterministic hospital-pressure predictions from public hospital occupancy and waiting-time metrics.
+- High bed occupancy generates `health_system_pressure` predictions with MOH ownership, hospital-specific evidence, confidence, severity, and recommended transfer/diversion actions.
+- Long ED or ward-admission waiting-time metrics can also generate hospital-pressure predictions.
+- Foresight now adds a `multi_hazard_watch` prediction when multiple operationally relevant signals overlap, such as flood/traffic, dengue, and hospital pressure.
+- The leader brief fallback now prioritizes the highest-severity hospital-pressure or multi-hazard prediction when present.
+- Updated Foresight endpoint integration test to assert hospital-pressure and multi-hazard predictions.
+- Verification is green: frontend test passes, frontend production build passes, backend typecheck passes, and backend tests pass: 10 suites, 23 tests.
+- Still mock/hardcoded: hospital pressure uses public statistical datasets, not real-time operational bed/ED telemetry; multi-hazard correlation is rule-based, not ML.
+
+### Still to do
+1. Run `backend/node-api/scripts/migrations/002_command_state.sql` in the Supabase SQL editor for the deployed/project database once credentials are available.
+2. Decide whether the Foresight `Staged Actions` queue should reflect backend agency status after approval/contact or remain a local staging receipt.
+3. Implement or clearly label remaining visual-only controls before final judging.
+4. Replace simulated agency contact with a real notification path or clear simulation label.
+5. Consider a final browser smoke script after the demo route is locked.
+
+### Notes
+- Supabase verification is waiting on teammate-provided project credentials.
+- The hospital-pressure feature improves the Foresight centerpiece while keeping the LLM as narration only.
+---
