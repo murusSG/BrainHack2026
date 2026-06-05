@@ -1,0 +1,14 @@
+{
+  "builds": [
+    {
+      "src": "server/flask-api/wsgi.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "server/flask-api/wsgi.py"
+    }
+  ]
+}
