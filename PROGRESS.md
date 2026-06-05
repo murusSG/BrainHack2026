@@ -474,3 +474,24 @@
 - `origin/feat/merged-workspace2` included generated `.vite` cache files and older/deleted app modules; those were intentionally not ported.
 - The temporary frontend dev server used for browser smoke ran on `http://127.0.0.1:5174`.
 ---
+---
+## Session: 2026-06-05
+
+### Built
+- `PROGRESS.md`
+
+### Current app state
+- Committed the ported login/public dashboard/light-red theme work as `64ab1e6 Port login and light public dashboard`.
+- Merged `origin/main` into the latest app branch with unrelated histories allowed, preserving the current app README and gitignore.
+- Pushed the latest app version to `origin/main` at `9cd9046`.
+- `main` now contains the current command/foresight/auth/public-dashboard implementation instead of the older scaffold-only state.
+- Added this handoff entry as a progress-only follow-up for the publish step.
+
+### Still to do
+1. Leave `backend/node-api/.env.local` uncommitted because it contains local secret material.
+2. Continue with Supabase migrations and frontend auth wiring decisions when ready.
+
+### Notes
+- `main` was updated without force push.
+- The local feature branch still has an unstaged `.env.local` modification that should not be committed.
+---
