@@ -1,18 +1,13 @@
 import { useState } from 'react';
-
-function inferRole(loginId) {
-  const value = loginId.trim().toLowerCase();
-  if (value.includes('responder') || value.includes('scdf') || value.includes('field')) return 'responder';
-  if (value.includes('public') || value.includes('resident')) return 'public';
-  return 'leader';
-}
+import { signIn } from '../services/auth';
 
 export function LoginPage({ onAuthenticate, onOpenPublicDashboard }) {
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
     if (!loginId.trim() || !password.trim()) {
@@ -20,10 +15,16 @@ export function LoginPage({ onAuthenticate, onOpenPublicDashboard }) {
       return;
     }
 
-    onAuthenticate?.({
-      identity: loginId.trim(),
-      role: inferRole(loginId),
-    });
+    setError('');
+    setLoading(true);
+    try {
+      const session = await signIn(loginId.trim(), password.trim());
+      onAuthenticate?.(session);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -62,25 +63,23 @@ export function LoginPage({ onAuthenticate, onOpenPublicDashboard }) {
               <h1 className="login-card-title">Login to continue</h1>
             </div>
             <p className="login-card-copy">
-              This demo gate records your session locally. Backend bearer-token profile roles are available through
-              the Node API when Supabase auth is wired.
+              Authenticated via Supabase. Role is assigned per your operator profile.
             </p>
           </div>
 
           <form className="login-form" onSubmit={handleSubmit}>
             <div className="login-form-grid">
               <label className="login-field">
-                <span className="login-label">Login ID</span>
+                <span className="login-label">Email</span>
                 <div className="login-input-shell">
-                  <span className="login-input-icon" aria-hidden="true">
-                    ID
-                  </span>
+                  <span className="login-input-icon" aria-hidden="true">ID</span>
                   <input
-                    type="text"
+                    type="email"
                     value={loginId}
                     onChange={(event) => setLoginId(event.target.value)}
                     placeholder="leader.ops@murus.sg"
                     autoComplete="username"
+                    disabled={loading}
                   />
                 </div>
               </label>
@@ -88,15 +87,14 @@ export function LoginPage({ onAuthenticate, onOpenPublicDashboard }) {
               <label className="login-field">
                 <span className="login-label">Password</span>
                 <div className="login-input-shell">
-                  <span className="login-input-icon" aria-hidden="true">
-                    *
-                  </span>
+                  <span className="login-input-icon" aria-hidden="true">*</span>
                   <input
                     type="password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Enter demo password"
+                    placeholder="Enter password"
                     autoComplete="current-password"
+                    disabled={loading}
                   />
                 </div>
               </label>
@@ -105,10 +103,15 @@ export function LoginPage({ onAuthenticate, onOpenPublicDashboard }) {
             {error ? <p className="login-error">{error}</p> : null}
 
             <div className="login-actions">
-              <button type="submit" className="login-submit-button">
-                Login
+              <button type="submit" className="login-submit-button" disabled={loading}>
+                {loading ? 'Signing in…' : 'Login'}
               </button>
-              <button type="button" className="login-public-button" onClick={() => onOpenPublicDashboard?.()}>
+              <button
+                type="button"
+                className="login-public-button"
+                onClick={() => onOpenPublicDashboard?.()}
+                disabled={loading}
+              >
                 Open Public Dashboard
               </button>
             </div>
