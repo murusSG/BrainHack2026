@@ -69,10 +69,11 @@ export default function App() {
   const [restoring, setRestoring] = useState(true);
 
   useEffect(() => {
-    getSession().then((restored) => {
-      if (restored) setSession(restored);
-      setRestoring(false);
-    });
+    getSession()
+      .then((restored) => {
+        if (restored) setSession(restored);
+      })
+      .finally(() => setRestoring(false));
   }, []);
 
   async function handleSignOut() {
