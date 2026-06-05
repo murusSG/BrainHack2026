@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { getSession, signOut } from './services/auth';
 import { AlertsPage } from './pages/AlertsPage';
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { HospitalsPage } from './pages/HospitalsPage';
@@ -64,7 +65,14 @@ function PublicDashboardRoute({ session }) {
 export default function App() {
   const [session, setSession] = useState(null);
 
-  function handleSignOut() {
+  useEffect(() => {
+    getSession().then((restored) => {
+      if (restored) setSession(restored);
+    });
+  }, []);
+
+  async function handleSignOut() {
+    await signOut();
     setSession(null);
   }
 
