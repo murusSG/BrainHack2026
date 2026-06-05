@@ -30,8 +30,10 @@ function CommandShell({ page, session, onSignOut }) {
   );
 }
 
-function ProtectedCommandShell({ page, session, onSignOut }) {
+function ProtectedCommandShell({ page, session, onSignOut, restoring }) {
   const location = useLocation();
+
+  if (restoring) return null;
 
   if (!session) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
@@ -64,10 +66,12 @@ function PublicDashboardRoute({ session }) {
 
 export default function App() {
   const [session, setSession] = useState(null);
+  const [restoring, setRestoring] = useState(true);
 
   useEffect(() => {
     getSession().then((restored) => {
       if (restored) setSession(restored);
+      setRestoring(false);
     });
   }, []);
 
@@ -84,23 +88,23 @@ export default function App() {
         <Route path="/resident" element={<ResidentPage />} />
         <Route path="/responder" element={<ResponderPage />} />
 
-        <Route path="/" element={<ProtectedCommandShell page="overview" session={session} onSignOut={handleSignOut} />} />
+        <Route path="/" element={<ProtectedCommandShell page="overview" session={session} onSignOut={handleSignOut} restoring={restoring} />} />
         <Route
           path="/incident-map"
-          element={<ProtectedCommandShell page="incident-map" session={session} onSignOut={handleSignOut} />}
+          element={<ProtectedCommandShell page="incident-map" session={session} onSignOut={handleSignOut} restoring={restoring} />}
         />
         <Route
           path="/resources"
-          element={<ProtectedCommandShell page="resources" session={session} onSignOut={handleSignOut} />}
+          element={<ProtectedCommandShell page="resources" session={session} onSignOut={handleSignOut} restoring={restoring} />}
         />
         <Route
           path="/hospitals"
-          element={<ProtectedCommandShell page="hospitals" session={session} onSignOut={handleSignOut} />}
+          element={<ProtectedCommandShell page="hospitals" session={session} onSignOut={handleSignOut} restoring={restoring} />}
         />
-        <Route path="/alerts" element={<ProtectedCommandShell page="alerts" session={session} onSignOut={handleSignOut} />} />
+        <Route path="/alerts" element={<ProtectedCommandShell page="alerts" session={session} onSignOut={handleSignOut} restoring={restoring} />} />
         <Route
           path="/system-flow"
-          element={<ProtectedCommandShell page="system-flow" session={session} onSignOut={handleSignOut} />}
+          element={<ProtectedCommandShell page="system-flow" session={session} onSignOut={handleSignOut} restoring={restoring} />}
         />
 
         <Route path="*" element={<Navigate to="/" replace />} />
