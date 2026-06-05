@@ -31,6 +31,7 @@ export async function signIn(email, password) {
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw new Error(error.message);
+  if (!data.session) throw new Error('Sign-in succeeded but no session was returned. Check that your email is confirmed.');
 
   const token = data.session.access_token;
   const profile = await fetchProfile(token);
