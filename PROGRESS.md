@@ -438,3 +438,39 @@
 - This task preserved the current command/foresight implementation instead of merging the backend auth branch, because that branch was missing newer demo-critical modules.
 - `backend/node-api/.env.local` already contains local secret material and should remain uncommitted/ignored.
 ---
+---
+## Session: 2026-06-05
+
+### Built
+- `frontend/src/App.jsx`
+- `frontend/src/pages/LoginPage.jsx`
+- `frontend/src/pages/PublicDashboardPage.jsx`
+- `frontend/src/components/OneMapPreviewMap.jsx`
+- `frontend/src/components/SidebarNav.jsx`
+- `frontend/src/components/Topbar.jsx`
+- `frontend/src/layouts/DashboardLayout.jsx`
+- `frontend/src/data/dashboardData.js`
+- `frontend/src/styles/globals.css`
+- `PROGRESS.md`
+
+### Current app state
+- Audited `origin/feat/merged-workspace2` before porting.
+- Ported the new login page as a demo-local operations gate while preserving the current backend Supabase bearer-token auth work.
+- Added `/login` and `/public-dashboard` routes.
+- Command routes now redirect to `/login` until a local demo session exists; `/resident`, `/responder`, and `/public-dashboard` remain reachable without command login.
+- Ported the branch's CivicRelay public dashboard and OneMap preview component as additive public-facing UI.
+- Added Public Dashboard links from the sidebar and topbar, plus topbar sign-out/session initials.
+- Applied the branch's light/red visual direction as a stylesheet override at the end of `globals.css`, so the current richer command/foresight/responder/resident components remain intact.
+- Verification is green: frontend test passes, frontend production build passes, and browser smoke passed for login -> public dashboard -> login -> command overview.
+- Deliberately did not merge the branch wholesale because it would remove or downgrade current command, foresight, crisis aggregation, responder, resident, and test modules.
+
+### Still to do
+1. Decide whether the demo-local login gate should be replaced with real Supabase frontend auth now that backend `/auth/me` exists.
+2. Run `002_command_state.sql` and `003_profiles_roles.sql` in Supabase when credentials/table access are available.
+3. Review the light/red theme visually across all pages and tighten any remaining contrast or spacing issues before final judging.
+4. Decide whether frontend-local alert/resource/hospital staged actions need backend-backed persistence.
+
+### Notes
+- `origin/feat/merged-workspace2` included generated `.vite` cache files and older/deleted app modules; those were intentionally not ported.
+- The temporary frontend dev server used for browser smoke ran on `http://127.0.0.1:5174`.
+---

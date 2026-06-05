@@ -1,16 +1,18 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AlertsPage } from './pages/AlertsPage';
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { HospitalsPage } from './pages/HospitalsPage';
 import { IncidentMapPage } from './pages/IncidentMapPage';
+import { LoginPage } from './pages/LoginPage';
 import { OverviewPage } from './pages/OverviewPage';
+import { PublicDashboardPage } from './pages/PublicDashboardPage';
 import { ResourcesPage } from './pages/ResourcesPage';
 import { ResidentPage } from './pages/ResidentPage';
 import { ResponderPage } from './pages/ResponderPage';
 import { SystemFlowPage } from './pages/SystemFlowPage';
 
-// Wraps the command dashboard pages in the existing sidebar layout
-function CommandShell({ page }) {
+function CommandShell({ page, session, onSignOut }) {
   const pages = {
     overview: <OverviewPage />,
     'incident-map': <IncidentMapPage />,
@@ -19,24 +21,79 @@ function CommandShell({ page }) {
     alerts: <AlertsPage />,
     'system-flow': <SystemFlowPage />,
   };
-  return <DashboardLayout activePage={page}>{pages[page]}</DashboardLayout>;
+
+  return (
+    <DashboardLayout activePage={page} session={session} onSignOut={onSignOut}>
+      {pages[page]}
+    </DashboardLayout>
+  );
+}
+
+function ProtectedCommandShell({ page, session, onSignOut }) {
+  const location = useLocation();
+
+  if (!session) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+
+  return <CommandShell page={page} session={session} onSignOut={onSignOut} />;
+}
+
+function LoginRoute({ onAuthenticate }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from || '/';
+
+  return (
+    <LoginPage
+      onAuthenticate={(session) => {
+        onAuthenticate(session);
+        navigate(from, { replace: true });
+      }}
+      onOpenPublicDashboard={() => navigate('/public-dashboard')}
+    />
+  );
+}
+
+function PublicDashboardRoute({ session }) {
+  const navigate = useNavigate();
+
+  return <PublicDashboardPage onReturnToOps={() => navigate(session ? '/' : '/login')} />;
 }
 
 export default function App() {
+  const [session, setSession] = useState(null);
+
+  function handleSignOut() {
+    setSession(null);
+  }
+
   return (
     <BrowserRouter>
       <Routes>
-        {/* Resident view — standalone, mobile-first, no command sidebar */}
+        <Route path="/login" element={<LoginRoute onAuthenticate={setSession} />} />
+        <Route path="/public-dashboard" element={<PublicDashboardRoute session={session} />} />
         <Route path="/resident" element={<ResidentPage />} />
         <Route path="/responder" element={<ResponderPage />} />
 
-        {/* Command (leader) views — wrapped in the dashboard sidebar */}
-        <Route path="/" element={<CommandShell page="overview" />} />
-        <Route path="/incident-map" element={<CommandShell page="incident-map" />} />
-        <Route path="/resources" element={<CommandShell page="resources" />} />
-        <Route path="/hospitals" element={<CommandShell page="hospitals" />} />
-        <Route path="/alerts" element={<CommandShell page="alerts" />} />
-        <Route path="/system-flow" element={<CommandShell page="system-flow" />} />
+        <Route path="/" element={<ProtectedCommandShell page="overview" session={session} onSignOut={handleSignOut} />} />
+        <Route
+          path="/incident-map"
+          element={<ProtectedCommandShell page="incident-map" session={session} onSignOut={handleSignOut} />}
+        />
+        <Route
+          path="/resources"
+          element={<ProtectedCommandShell page="resources" session={session} onSignOut={handleSignOut} />}
+        />
+        <Route
+          path="/hospitals"
+          element={<ProtectedCommandShell page="hospitals" session={session} onSignOut={handleSignOut} />}
+        />
+        <Route path="/alerts" element={<ProtectedCommandShell page="alerts" session={session} onSignOut={handleSignOut} />} />
+        <Route
+          path="/system-flow"
+          element={<ProtectedCommandShell page="system-flow" session={session} onSignOut={handleSignOut} />}
+        />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -48,6 +48,10 @@ export function SidebarNav() {
           <span className="nav-icon nav-icon-resident" aria-hidden="true" />
           <span>Resident View</span>
         </Link>
+        <Link to="/public-dashboard" className="nav-item persona-jump">
+          <span className="nav-icon nav-icon-resident" aria-hidden="true" />
+          <span>Public Dashboard</span>
+        </Link>
       </div>
     </aside>
   );

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-export function Topbar() {
+export function Topbar({ session, onSignOut }) {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [topbarNotice, setTopbarNotice] = useState('Systems online');
@@ -45,12 +45,41 @@ export function Topbar() {
           type="button"
           className="profile-button"
           aria-label="User profile"
-          onClick={() => setTopbarNotice('Dispatcher profile active')}
+          onClick={() => setTopbarNotice(`${session?.identity ?? 'Dispatcher'} profile active`)}
         >
-          DS
+          {initialsFor(session?.identity)}
+        </button>
+        <button
+          type="button"
+          className="ghost-button topbar-link-button"
+          onClick={() => navigate('/public-dashboard')}
+        >
+          Public
+        </button>
+        <button
+          type="button"
+          className="ghost-button topbar-link-button"
+          onClick={() => {
+            onSignOut?.();
+            navigate('/login');
+          }}
+        >
+          Sign out
         </button>
       </div>
     </header>
+  );
+}
+
+function initialsFor(identity) {
+  if (!identity) return 'DS';
+  return (
+    identity
+      .split(/[\s.@_-]+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('') || 'DS'
   );
 }
 

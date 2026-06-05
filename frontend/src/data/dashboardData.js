@@ -666,3 +666,116 @@ export const broadcastSteps = [
   '2. Broadcast Instructions & Map Data',
   '3. Confirm Audience Radius'
 ];
+
+export const publicDashboardMeta = {
+  brand: 'CivicRelay',
+  subtitle: 'Official Advisory Hub',
+  breadcrumb: 'Public Dashboard',
+  breadcrumbCurrent: 'Active Response',
+  signal: 'Relay Signal: Active',
+  incidentLevel: 'Current incident level',
+  incidentBannerTitle: 'Level 4: Extreme Flood Warning',
+  incidentBannerNote: 'Effective across Central and North-East Districts',
+  lastUpdated: 'Last Updated: 14:45 SGT',
+  advisoriesTitle: 'Active Advisories',
+  advisoryCount: '4 active notifications',
+  reportLabel: 'Report an Issue',
+  reportCopy: 'Send field updates to HQ',
+  tipsLabel: 'Preparedness Tips',
+  tipsCopy: 'Safety guides',
+};
+
+export const publicLanguages = ['English', 'Bahasa Melayu', 'Chinese', 'Tamil'];
+
+export const publicSubscriptions = [
+  { label: 'SMS Alerts (Immediate)', checked: true },
+  { label: 'Email Summaries', checked: false },
+  { label: 'Push Notifications', checked: true },
+];
+
+export const publicAdvisories = [
+  {
+    type: 'Immediate action required',
+    title: 'Flash Flood Evacuation: Kallang Basin',
+    body:
+      'Rising water levels have exceeded the safety threshold. Residents in low-lying blocks should move to higher ground and follow official ward-level instructions.',
+    tone: 'critical',
+    expanded: true,
+    actions: ['View Evacuation Routes', 'Contact Field Liaison'],
+  },
+  {
+    type: 'Public advisory',
+    title: 'Public Transport Service Disruptions',
+    body: 'Expect diversions near flood-prone roads and allow additional travel time.',
+    tone: 'info',
+    expanded: false,
+    actions: [],
+  },
+  {
+    type: 'Update',
+    title: 'Central Power Grid Stabilized',
+    body: 'Power supply has stabilized in the affected central sector.',
+    tone: 'safe',
+    expanded: false,
+    actions: [],
+  },
+];
+
+export const publicAffectedAreas = {
+  title: 'Affected Neighborhoods',
+  subtitle: 'Live spatial overview of reported incidents',
+  legend: [
+    { label: 'Active Hazard', tone: 'hazard' },
+    { label: 'Safe Zone', tone: 'safe' },
+    { label: 'Restricted Access', tone: 'restricted' },
+  ],
+};
+
+export const publicLocationIntelligence = {
+  title: 'Location Intelligence',
+  location: 'Near Kallang Basin, Singapore',
+  chips: ['Kallang Basin', 'Geylang West', 'Mountbatten'],
+  privacy: 'Your precise location data is processed locally for this demo and is not stored.',
+};
+
+export const publicResources = [
+  {
+    title: 'General Hospital A&E',
+    detail: 'Wait time: 15 mins',
+    status: 'Normal',
+    tone: 'safe',
+  },
+  {
+    title: 'Main Emergency Hotline',
+    detail: 'Dial: 995',
+    status: 'High volume',
+    tone: 'critical',
+  },
+  {
+    title: 'Civic Relief Line',
+    detail: 'Dial: 1800-RELAY-00',
+    status: 'Available',
+    tone: 'neutral',
+  },
+];
+
+export const publicShelters = [
+  {
+    name: 'Central Sports Complex',
+    distance: '0.8 km',
+    capacity: '1,200 / 1,500 capacity',
+    status: 'Open',
+  },
+  {
+    name: 'Grand Civic Plaza',
+    distance: '1.2 km',
+    capacity: '3,000 / 10,000 capacity',
+    status: 'Open',
+  },
+];
+
+export const publicProfessionalNotice = {
+  title: 'Notice to Healthcare Workers',
+  copy: 'All off-duty medical personnel are requested to check the internal relay for mobilization orders.',
+  cta: 'Access Professional Relay',
+};

@@ -1,12 +1,12 @@
 import { SidebarNav } from '../components/SidebarNav';
 import { Topbar } from '../components/Topbar';
 
-export function DashboardLayout({ children }) {
+export function DashboardLayout({ children, session, onSignOut }) {
   return (
     <div className="app-shell">
       <SidebarNav />
       <div className="main-shell">
-        <Topbar />
+        <Topbar session={session} onSignOut={onSignOut} />
         <main className="main-content">{children}</main>
         <footer className="command-footer">
           <span>2024 MURUS SG COMMAND</span>
