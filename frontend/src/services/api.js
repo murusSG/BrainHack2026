@@ -4,10 +4,10 @@
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api/v1';
 
-async function request(path, { unwrap = true, method = 'GET', body } = {}) {
+async function request(path, { unwrap = true, method = 'GET', body, headers: extraHeaders } = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...extraHeaders },
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
@@ -35,14 +35,7 @@ async function getRaw(path) {
 }
 
 async function authedGet(path, token) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) {
-    throw new Error(`API ${path} failed: ${res.status} ${res.statusText}`);
-  }
-  const json = await res.json();
-  return json.data ?? json;
+  return request(path, { headers: { Authorization: `Bearer ${token}` } });
 }
 
 function withQuery(path, params = {}) {
