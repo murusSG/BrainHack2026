@@ -47,6 +47,10 @@ Purpose:
 Expected files:
 - Module folders such as `incidents/`, `resources/`, each containing module-local handlers/services/schemas.
 
+Current incident grouping modules:
+- `incidents/`: public report ingestion, AI extraction orchestration, similarity grouping, in-memory clusters, and cluster reads.
+- `resourceAllocation/`: dispatcher approval endpoint for AI recommendations. It records approval state only; real agency notification is intentionally not implemented.
+
 ### `node-api/src/repositories/`
 Purpose:
 - Data access layer.

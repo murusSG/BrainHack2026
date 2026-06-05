@@ -5,6 +5,8 @@ import compression from "compression";
 import { requestLogger } from "./middlewares/requestLogger";
 import { errorHandler } from "./middlewares/errorHandler";
 import { v1Router } from "./routes/v1";
+import { incidentRouter } from "./modules/incidents/incident.routes";
+import { resourceAllocationRouter } from "./modules/resourceAllocation/resourceAllocation.routes";
 
 export function createApp() {
   const app = express();
@@ -28,6 +30,8 @@ export function createApp() {
   });
 
   app.use("/api/v1", v1Router);
+  app.use("/api/incidents", incidentRouter);
+  app.use("/api/resource-allocation", resourceAllocationRouter);
 
   app.use(errorHandler);
 

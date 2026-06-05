@@ -20,6 +20,8 @@ export function AllocationApprovalPanel({
   recommendation = allocationRecommendations[0],
   commandStateStatus = 'done',
   onAgencyStatusChange,
+  showContactAction = true,
+  showGeneratedAt = true,
 }) {
   const [agencyStatus, setAgencyStatus] = useState(() => buildInitialStatus(recommendation.agencies));
   const [selectedAgencies, setSelectedAgencies] = useState(() => buildInitialSelection(recommendation.agencies));
@@ -141,7 +143,8 @@ export function AllocationApprovalPanel({
           <span className="allocation-code">{recommendation.incidentId}</span>
           <h3>{recommendation.incidentTitle}</h3>
           <p>
-            {recommendation.confidence}% model confidence / generated {recommendation.generatedAt}
+            {recommendation.confidence}% model confidence
+            {showGeneratedAt ? ` / generated ${recommendation.generatedAt}` : ''}
           </p>
         </div>
         <span className="allocation-model">{recommendation.modelVersion}</span>
@@ -232,14 +235,16 @@ export function AllocationApprovalPanel({
           >
             Approve selected
           </button>
-          <button
-            type="button"
-            className="primary-button compact-button"
-            disabled={counts.approved === 0 || isSyncing}
-            onClick={contactApproved}
-          >
-            Contact agencies
-          </button>
+          {showContactAction && (
+            <button
+              type="button"
+              className="primary-button compact-button"
+              disabled={counts.approved === 0 || isSyncing}
+              onClick={contactApproved}
+            >
+              Contact agencies
+            </button>
+          )}
         </div>
       </div>
 

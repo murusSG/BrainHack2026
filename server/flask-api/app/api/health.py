@@ -15,7 +15,7 @@ def health() -> tuple:
     return (
         jsonify(
             status="ok",
-            service="flask-api",
+            service="flask-ai",
             timestamp=datetime.now(timezone.utc).isoformat(),
         ),
         200,

@@ -78,6 +78,15 @@ export const api = {
   updateCommandAllocationAgencies: (id, payload) =>
     patch(`/command/allocations/${encodeURIComponent(id)}/agencies`, payload),
 
+  // AI-assisted incident grouping and dispatcher approval
+  reportIncident: (payload) => post('/incidents/report', payload),
+  incidentClusters: async () => {
+    const response = await get('/incidents/clusters');
+    return response.clusters ?? [];
+  },
+  incidentCluster: (incidentId) => get(`/incidents/clusters/${encodeURIComponent(incidentId)}`),
+  approveResourceAllocation: (payload) => post('/resource-allocation/approve', payload),
+
   // SCDF public resources
   scdfResources: (type) => get(withQuery('/scdf/resources', { type })),
   scdfNearest: (lat, lng, type) => get(withQuery('/scdf/nearest', { lat, lng, type })),

@@ -18,8 +18,10 @@ vi.mock('../../src/services/api', () => ({
     foresightPredictions: vi.fn(),
     commandAllocations: vi.fn(),
     commandTimeline: vi.fn(),
+    incidentClusters: vi.fn(),
     createCommandAllocation: vi.fn(),
     updateCommandAllocationAgencies: vi.fn(),
+    approveResourceAllocation: vi.fn(),
   },
 }));
 
@@ -87,6 +89,7 @@ describe('Foresight to allocation review flow', () => {
   it('stages a forecast action into the dispatcher review queue', async () => {
     api.foresightPredictions.mockResolvedValue(foresightPayload);
     api.commandAllocations.mockResolvedValue([]);
+    api.incidentClusters.mockResolvedValue([]);
     api.commandTimeline
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([

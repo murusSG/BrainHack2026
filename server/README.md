@@ -2,7 +2,22 @@
 
 This folder is reserved for Python Flask service logic.
 
-Current state: directory scaffold only (no generated boilerplate code yet).
+Current state: `flask-api/` contains the Flask AI microservice used by the Node API for public incident extraction and resource-allocation recommendations.
+
+## Flask AI endpoints
+
+- `GET /health`
+- `POST /agent/extract-report`
+- `POST /agent/resource-allocation`
+
+The frontend must not call these endpoints directly. React calls the Node API, and Node calls Flask internally with server-side AI provider keys.
+
+Run locally:
+
+```powershell
+cd server/flask-api
+python -m flask --app app.main run --host 0.0.0.0 --port 5001
+```
 
 ## Folder guide
 

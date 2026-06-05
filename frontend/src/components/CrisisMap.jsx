@@ -23,6 +23,7 @@ const HAZARD_LABEL = {
   mrt: 'MRT',
   weather: 'Weather',
   lightning: 'Lightning',
+  incident: 'Incident',
 };
 
 const SG_CENTER = [1.3521, 103.8198];
