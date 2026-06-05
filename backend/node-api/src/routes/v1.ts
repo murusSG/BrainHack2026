@@ -12,6 +12,8 @@ import { crisisRouter } from "../modules/crisis/crisis.routes";
 import { foresightRouter } from "../modules/foresight/foresight.routes";
 import { commandRouter } from "../modules/command/command.routes";
 import { authRouter } from "../modules/auth/auth.routes";
+import { incidentRouter } from "../modules/incidents/incident.routes";
+import { resourceAllocationRouter } from "../modules/resourceAllocation/resourceAllocation.routes";
 
 export const v1Router = Router();
 
@@ -29,3 +31,5 @@ v1Router.use("/crisis", crisisRouter);
 v1Router.use("/foresight", foresightRouter);
 v1Router.use("/command", commandRouter);
 v1Router.use("/auth", authRouter);
+v1Router.use("/incidents", incidentRouter);
+v1Router.use("/resource-allocation", resourceAllocationRouter);

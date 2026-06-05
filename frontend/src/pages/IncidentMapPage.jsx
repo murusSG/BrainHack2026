@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CrisisMap } from '../components/CrisisMap';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
 import { useEvents } from '../hooks/useEvents';
+import { api } from '../services/api';
+import { normaliseIncidentClusters } from '../services/incidentClusterAdapter';
 
 const HAZARD_LABEL = {
   flood: 'Flood',
@@ -14,15 +16,23 @@ const HAZARD_LABEL = {
   mrt: 'MRT',
   weather: 'Weather',
   lightning: 'Lightning',
+  incident: 'Incident',
 };
 
 export function IncidentMapPage() {
-  const { events, status, error } = useEvents();
+  const { events, status, error } = useEvents({ includeDemo: false });
+  const [clusterEvents, setClusterEvents] = useState([]);
+  const [clusterStatus, setClusterStatus] = useState('loading');
   const [selected, setSelected] = useState(null);
   const [query, setQuery] = useState('');
   const [hazardFilter, setHazardFilter] = useState('all');
-  const isLoading = status === 'loading';
-  const filteredEvents = events.filter((event) => {
+  const isLoading = status === 'loading' || clusterStatus === 'loading';
+  const mapEvents = useMemo(() => {
+    const byId = new Map(events.map((event) => [event.id, event]));
+    clusterEvents.forEach((event) => byId.set(event.id, event));
+    return Array.from(byId.values());
+  }, [events, clusterEvents]);
+  const filteredEvents = mapEvents.filter((event) => {
     const normalizedQuery = query.trim().toLowerCase();
     const matchesHazard = hazardFilter === 'all' || event.hazardType === hazardFilter;
     const searchable = [
@@ -39,16 +49,37 @@ export function IncidentMapPage() {
   });
   const activeHazardCount =
     hazardFilter === 'all'
-      ? new Set(events.map((event) => event.hazardType).filter(Boolean)).size
+      ? new Set(mapEvents.map((event) => event.hazardType).filter(Boolean)).size
       : filteredEvents.length;
-  const demoEventCount = events.filter((event) => event.isDemo).length;
-  const liveEventCount = events.length - demoEventCount;
+  const liveEventCount = mapEvents.length;
   const feedLabel =
-    status === 'loading'
+    isLoading
       ? 'Syncing'
-      : status === 'error'
-        ? 'Demo fallback'
-        : `${liveEventCount} live / ${demoEventCount} demo`;
+      : status === 'error' || clusterStatus === 'error'
+        ? 'Feed issue'
+        : `${liveEventCount} live`;
+
+  async function refreshIncidentClusters() {
+    try {
+      const clusters = await api.incidentClusters();
+      const nextEvents = await normaliseIncidentClusters(clusters ?? [], api);
+      setClusterEvents(nextEvents);
+      setClusterStatus('done');
+    } catch {
+      setClusterStatus('error');
+    }
+  }
+
+  useEffect(() => {
+    refreshIncidentClusters();
+    const intervalId = window.setInterval(refreshIncidentClusters, 5000);
+    window.addEventListener('focus', refreshIncidentClusters);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', refreshIncidentClusters);
+    };
+  }, []);
 
   return (
     <div className="incident-map-page">
@@ -70,7 +101,7 @@ export function IncidentMapPage() {
                 <button
                   type="button"
                   className="map-filter-button"
-                  onClick={() => setHazardFilter((current) => nextHazardFilter(current, events))}
+                  onClick={() => setHazardFilter((current) => nextHazardFilter(current, mapEvents))}
                 >
                   {hazardFilter === 'all'
                     ? `${activeHazardCount} hazard filters`
@@ -87,9 +118,9 @@ export function IncidentMapPage() {
             </div>
           </section>
 
-          {status === 'error' && (
+          {(status === 'error' || clusterStatus === 'error') && (
             <p className="feed-warning">
-              Live feed unavailable ({error}). Showing demo scenarios only.
+              Live feed unavailable{error ? ` (${error})` : ''}. Check the Node API connection.
             </p>
           )}
         </div>
@@ -141,6 +172,7 @@ export function IncidentMapPage() {
                       {incident.vicinityRadiusMeters
                         ? ` | ${incident.vicinityRadiusMeters}m radius`
                         : ''}
+                      {incident.dispatchLog ? ` | ${incident.dispatchLog}` : ''}
                     </p>
                   </article>
                 ))}

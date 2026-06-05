@@ -7,7 +7,7 @@ MURUS SG is a Singapore crisis-response dashboard for BrainHack 2026. It gives c
 - React command dashboard in `frontend`.
 - TypeScript/Express API in `backend/node-api`.
 - Shared crisis-event contracts in `backend/shared`.
-- Flask scaffold remains in `server/flask-api`, but the active application path is React + Node API.
+- Flask AI microservice in `server/flask-api` for report extraction and resource allocation support.
 
 The strongest current demo path is:
 
@@ -19,6 +19,17 @@ The strongest current demo path is:
 6. Dispatcher approves/contact agencies.
 7. Command timeline records staged, approved, and contacted events.
 
+New AI-assisted incident grouping path:
+
+1. Public user submits a natural-language incident report from the public dashboard.
+2. React calls only the Node API: `POST /api/v1/incidents/report`.
+3. Node calls Flask internally at `/agent/extract-report`.
+4. Node compares the extracted incident against recent in-memory incident clusters.
+5. Similar reports are grouped with the existing cluster and do not trigger duplicate allocation.
+6. New clusters call Flask `/agent/resource-allocation`.
+7. The Responder View shows the AI-assisted recommendation queue and approves selected agencies with `POST /api/v1/resource-allocation/approve`.
+8. No real agency notification is sent in this implementation.
+
 ## What Is Real vs Simulated
 
 Working now:
@@ -27,7 +38,11 @@ Working now:
 - Foresight endpoint: `/api/v1/foresight/predictions`
 - Command allocation state: `/api/v1/command/allocations`
 - Command timeline: `/api/v1/command/timeline`
+- Public report ingestion and grouping: `/api/v1/incidents/report`
+- Incident clusters: `/api/v1/incidents/clusters`
+- Dispatcher approval for AI recommendations: `/api/v1/resource-allocation/approve`
 - Optional LLM leader brief layer
+- Flask AI extraction/allocation with OpenAI/OpenRouter support and deterministic local fallbacks
 - Supabase-backed command persistence when the command-state migration is applied
 - In-memory fallback when Supabase is not configured
 - Frontend smoke test for Foresight -> Dispatcher -> Timeline
@@ -37,6 +52,7 @@ Still simulated or partial:
 
 - Foresight is deterministic rules plus optional LLM narration, not a trained ML model.
 - Agency contact is a status update, not a real external notification.
+- AI resource allocation remains decision support; dispatcher approval is mandatory.
 - Some dashboard controls remain visual-only.
 - Command persistence requires running `backend/node-api/scripts/migrations/002_command_state.sql` in Supabase.
 
@@ -46,7 +62,7 @@ Still simulated or partial:
 frontend/                  React/Vite dashboard
 backend/node-api/           Express + TypeScript API
 backend/shared/             Shared crisis/event types
-server/flask-api/           Python scaffold, not the active app path
+server/flask-api/           Flask AI microservice
 docs/                       Pitch docs, diagrams, and supporting materials
 PROGRESS.md                 Session handoff history
 ```
@@ -57,6 +73,7 @@ PROGRESS.md                 Session handoff history
 - npm
 - Optional: Supabase project for durable command state
 - Optional: VectorEngine/OpenAI-compatible API key for LLM leader briefs
+- Optional: OpenAI or OpenRouter API key for Flask AI extraction/allocation
 
 ## Environment
 
@@ -78,6 +95,33 @@ SUPABASE_SERVICE_ROLE_KEY=...
 ```
 
 The backend loads `.env.secrets`, then `.env.local`, then `.env`.
+
+Node also uses these AI-service settings:
+
+```env
+FLASK_AI_URL=http://localhost:5001
+INCIDENT_SIMILARITY_TIME_WINDOW_MINUTES=60
+INCIDENT_SIMILARITY_THRESHOLD=0.75
+AI_SERVICE_TIMEOUT_MS=30000
+```
+
+Flask AI service:
+
+```powershell
+cd server/flask-api
+copy .env.example .env.local
+```
+
+```env
+PORT=5001
+AI_PROVIDER=openai
+AI_MODEL=gpt-4.1-mini
+OPENAI_API_KEY=
+OPENROUTER_API_KEY=
+EXTRACTION_CONFIDENCE_THRESHOLD=0.65
+```
+
+When no AI key is configured, Flask uses deterministic local fallbacks for demo safety. Real keys belong in ignored `.env.local`, not in tracked files.
 
 ## Supabase Setup
 
@@ -106,11 +150,19 @@ npm install
 npm run dev
 ```
 
+Flask AI service:
+
+```powershell
+cd server/flask-api
+python -m flask --app app.main run --host 0.0.0.0 --port 5001
+```
+
 Default URLs:
 
 - Frontend: `http://localhost:5173`
 - Backend: `http://localhost:3000`
 - Health: `http://localhost:3000/api/v1/health`
+- Flask AI health: `http://localhost:5001/health`
 
 If `5173` is busy, Vite will choose the next available port.
 
@@ -120,6 +172,27 @@ If `5173` is busy, Vite will choose the next available port.
 Invoke-RestMethod "http://localhost:3000/api/v1/foresight/predictions?surgeBeds=10&qrtCount=2"
 Invoke-RestMethod "http://localhost:3000/api/v1/command/allocations"
 Invoke-RestMethod "http://localhost:3000/api/v1/command/timeline"
+```
+
+Incident grouping and approval:
+
+```powershell
+$report = @{
+  report_text = "I saw thick black smoke coming from Block 123 Tampines Street 11. People are gathering downstairs and someone said there may be elderly residents trapped."
+  source = "public"
+  reporter_location = @{ lat = 1.3521; lng = 103.8198 }
+} | ConvertTo-Json -Depth 5
+
+Invoke-RestMethod "http://localhost:3000/api/v1/incidents/report" -Method Post -ContentType "application/json" -Body $report
+Invoke-RestMethod "http://localhost:3000/api/v1/incidents/clusters"
+
+$approval = @{
+  incident_id = "INC-001"
+  dispatcher_id = "DISP-001"
+  approved_agencies = @("SCDF", "SPF", "MOH")
+} | ConvertTo-Json
+
+Invoke-RestMethod "http://localhost:3000/api/v1/resource-allocation/approve" -Method Post -ContentType "application/json" -Body $approval
 ```
 
 ## Tests
@@ -140,12 +213,21 @@ npm run typecheck
 npm test -- --runInBand
 ```
 
+Flask:
+
+```powershell
+cd server/flask-api
+python -m pytest
+```
+
 Current coverage includes:
 
 - Command service unit tests
 - Command Supabase repository mapping tests
 - Command HTTP route integration tests
+- Incident grouping and resource approval route integration tests
 - Foresight HTTP route integration test
+- Flask AI service fallback and rules tests
 - Existing SCDF, MOH, hospital, population, OneMap, and data.gov.sg unit tests
 - Frontend Foresight-to-dispatcher flow test
 

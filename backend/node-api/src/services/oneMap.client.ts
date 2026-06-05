@@ -20,7 +20,7 @@ export class OneMapClient {
   }
 
   async search(query: string): Promise<unknown> {
-    return this.get("/api/common/elastic/search", {
+    return this.getPublic("/api/common/elastic/search", {
       searchVal: query,
       returnGeom: "Y",
       getAddrDetails: "Y",
@@ -51,6 +51,19 @@ export class OneMapClient {
         params,
         headers: { Authorization: token },
       });
+      return res.data;
+    } catch (err) {
+      throw new UpstreamApiError("OneMap request failed.", {
+        provider: "OneMap",
+        path,
+        errorType: err instanceof Error ? err.name : typeof err,
+      });
+    }
+  }
+
+  private async getPublic(path: string, params: Record<string, string | number>): Promise<unknown> {
+    try {
+      const res = await this.client.get(path, { params });
       return res.data;
     } catch (err) {
       throw new UpstreamApiError("OneMap request failed.", {
