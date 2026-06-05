@@ -34,6 +34,17 @@ async function getRaw(path) {
   return request(path, { unwrap: false });
 }
 
+async function authedGet(path, token) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    throw new Error(`API ${path} failed: ${res.status} ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.data ?? json;
+}
+
 function withQuery(path, params = {}) {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -46,6 +57,8 @@ function withQuery(path, params = {}) {
 }
 
 export const api = {
+  authedGet,
+
   // NEA environmental
   psi: () => get('/environmental/psi'),
   pm25: () => get('/environmental/pm25'),
