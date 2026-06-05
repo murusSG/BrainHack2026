@@ -1,14 +1,16 @@
 {
+  "version": 2,
+  "framework": null,
   "builds": [
     {
-      "src": "server/flask-api/wsgi.py",
+      "src": "wsgi.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "server/flask-api/wsgi.py"
+      "dest": "wsgi.py"
     }
   ]
 }
