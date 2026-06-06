@@ -1,12 +1,17 @@
 import { BadRequestError } from "../../utils/apiError";
 import { env } from "../../config/env";
+import { z } from "zod";
 import { extractReport } from "./incidentExtraction.service";
 import {
   attachReportToCluster,
   createIncidentCluster,
   getIncidentCluster,
   getRecentIncidentClusters,
+  listPriorityQueue,
+  listResponderIncidents,
+  listResponderLogs,
   listIncidentClusters,
+  addResponderLog,
   updateClusterResourceAllocation,
 } from "./incidentCluster.service";
 import { findSimilarIncidentCluster } from "./incidentSimilarity.service";
@@ -19,6 +24,7 @@ import type {
   IncidentClusterResponse,
   IncidentReportResult,
   PublicIncidentReport,
+  ResponderIncidentLog,
 } from "./incident.types";
 
 const EXTRACTION_CONFIDENCE_THRESHOLD = 0.65;
@@ -29,12 +35,31 @@ export async function submitIncidentReport(input: unknown): Promise<IncidentRepo
 
   try {
     extractedIncident = await extractReport(report);
-  } catch (error) {
+  } catch {
+    const reason = "AI extraction service unavailable or returned invalid data.";
+    const fallbackIncident: ExtractedIncident = {
+      incident_type: "unknown",
+      location_text: "",
+      severity: "unknown",
+      description: report.report_text.slice(0, 280),
+      possible_casualties: false,
+      hazards: [],
+      confidence: 0,
+      missing_fields: ["incident_type", "location", "severity"],
+    };
+    const recommendations = manualReviewRecommendations(reason);
+    const cluster = createIncidentCluster(
+      report,
+      fallbackIncident,
+      recommendations,
+      "needs_manual_review"
+    );
     console.warn("[incident-report] extraction failed; manual review required", {
       reportId: report.report_id,
+      incidentId: cluster.incident_id,
       resourceAllocationCalled: false,
     });
-    return manualReviewResult("AI extraction service unavailable or returned invalid data.", {});
+    return manualReviewResult(cluster.incident_id, reason, fallbackIncident, recommendations);
   }
 
   console.info("[incident-report] extraction complete", {
@@ -44,12 +69,20 @@ export async function submitIncidentReport(input: unknown): Promise<IncidentRepo
 
   const manualReviewReason = manualReviewReasonForExtraction(extractedIncident);
   if (manualReviewReason) {
+    const recommendations = manualReviewRecommendations(manualReviewReason);
+    const cluster = createIncidentCluster(
+      report,
+      extractedIncident,
+      recommendations,
+      "needs_manual_review"
+    );
     console.info("[incident-report] low-confidence extraction; resource allocation skipped", {
       reportId: report.report_id,
+      incidentId: cluster.incident_id,
       confidence: extractedIncident.confidence,
       resourceAllocationCalled: false,
     });
-    return manualReviewResult(manualReviewReason, extractedIncident);
+    return manualReviewResult(cluster.incident_id, manualReviewReason, extractedIncident, recommendations);
   }
 
   const cutoffIso = new Date(
@@ -109,7 +142,7 @@ export async function submitIncidentReport(input: unknown): Promise<IncidentRepo
       resource_allocation_status: updatedCluster.resource_allocation_status,
       recommendations: updatedCluster.recommendations,
     };
-  } catch (error) {
+  } catch {
     const fallback = manualReviewRecommendations(
       "AI resource allocation unavailable. Dispatcher review is required before any agency notification."
     );
@@ -136,6 +169,43 @@ export function getIncidentClusters(): IncidentClusterResponse[] {
 
 export function getIncidentClusterDetails(incidentId: string): IncidentClusterResponse | undefined {
   return getIncidentCluster(incidentId);
+}
+
+export function getDispatcherPriorityQueue(): IncidentClusterResponse[] {
+  return listPriorityQueue();
+}
+
+export function getResponderIncidentList(): IncidentClusterResponse[] {
+  return listResponderIncidents();
+}
+
+export function getResponderIncidentLogs(incidentId: string): ResponderIncidentLog[] {
+  return listResponderLogs(incidentId);
+}
+
+const responderLogSchema = z.object({
+  agency: z.string().trim().min(1).max(32),
+  author: z.string().trim().max(80).optional(),
+  message: z.string().trim().min(1).max(2000),
+  category: z
+    .enum(["hazard", "medical", "evacuation", "security", "resource_update", "general"])
+    .default("general"),
+});
+
+export function createResponderIncidentLog(
+  incidentId: string,
+  input: unknown
+): ResponderIncidentLog {
+  const parsed = responderLogSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new BadRequestError("agency and message are required for responder updates.", {
+      issues: parsed.error.flatten().fieldErrors,
+    });
+  }
+  return addResponderLog({
+    incidentId,
+    ...parsed.data,
+  });
 }
 
 function normaliseReport(input: unknown): PublicIncidentReport {
@@ -202,13 +272,18 @@ function isActionableStructuredReport(extractedIncident: ExtractedIncident): boo
 }
 
 function manualReviewResult(
+  incidentId: string,
   reason: string,
-  extractedIncident: Partial<ExtractedIncident>
+  extractedIncident: Partial<ExtractedIncident>,
+  recommendations: ReturnType<typeof manualReviewRecommendations>
 ): IncidentReportResult {
   return {
     status: "needs_manual_review",
+    incident_id: incidentId,
     reason,
     extracted_incident: extractedIncident,
+    resource_allocation_status: "needs_manual_review",
+    recommendations,
     message: "Incident report requires dispatcher review before resource allocation.",
   };
 }

@@ -4,15 +4,14 @@ import path from "node:path";
 
 const envDir = path.resolve(__dirname, "../..");
 
-// Load ignored secrets first, then .env.local outside tests, then fall back to .env.
+// Tests use explicit process variables and defaults so they never inherit live local credentials.
+// Outside tests, load ignored secrets first, then .env.local, then fall back to .env.
 // dotenv does not overwrite already-set vars, so the earlier call wins.
 if (process.env.NODE_ENV !== "test") {
   dotenv.config({ path: path.join(envDir, ".env.secrets") });
-}
-if (process.env.NODE_ENV !== "test") {
   dotenv.config({ path: path.join(envDir, ".env.local") });
+  dotenv.config({ path: path.join(envDir, ".env") });
 }
-dotenv.config({ path: path.join(envDir, ".env") });
 
 const blankToUndefined = (value: unknown) => (value === "" ? undefined : value);
 const optionalString = z.preprocess(blankToUndefined, z.string().min(1).optional());

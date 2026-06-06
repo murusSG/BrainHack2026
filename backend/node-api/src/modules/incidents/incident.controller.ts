@@ -3,6 +3,10 @@ import { ApiError } from "../../utils/apiError";
 import {
   getIncidentClusterDetails,
   getIncidentClusters,
+  getDispatcherPriorityQueue,
+  getResponderIncidentList,
+  getResponderIncidentLogs,
+  createResponderIncidentLog,
   submitIncidentReport,
 } from "./incident.service";
 
@@ -33,6 +37,39 @@ export function getIncidentClusterById(req: Request, res: Response, next: NextFu
       });
     }
     res.json(cluster);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function getPriorityQueue(_req: Request, res: Response, next: NextFunction) {
+  try {
+    res.json({ items: getDispatcherPriorityQueue() });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function getResponderIncidents(_req: Request, res: Response, next: NextFunction) {
+  try {
+    res.json({ incidents: getResponderIncidentList() });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function getResponderLogs(req: Request, res: Response, next: NextFunction) {
+  try {
+    res.json({ logs: getResponderIncidentLogs(String(req.params.incidentId)) });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function postResponderLog(req: Request, res: Response, next: NextFunction) {
+  try {
+    const log = createResponderIncidentLog(String(req.params.incidentId), req.body ?? {});
+    res.status(201).json(log);
   } catch (error) {
     next(error);
   }

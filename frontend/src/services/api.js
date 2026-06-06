@@ -2,7 +2,13 @@
 // Bridge between the React frontend and the Node API backend.
 // Every backend endpoint wraps its payload as { data, source, fetchedAt }.
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api/v1';
+const configuredApiBase = (import.meta.env.VITE_API_BASE || 'http://localhost:3000').replace(
+  /\/+$/,
+  ''
+);
+const API_BASE = configuredApiBase.endsWith('/api/v1')
+  ? configuredApiBase
+  : `${configuredApiBase}/api/v1`;
 
 async function request(path, { unwrap = true, method = 'GET', body, headers: extraHeaders } = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -90,8 +96,23 @@ export const api = {
     const response = await get('/incidents/clusters');
     return response.clusters ?? [];
   },
+  incidentPriorityQueue: async () => {
+    const response = await get('/incidents/priority-queue');
+    return response.items ?? [];
+  },
+  responderIncidents: async () => {
+    const response = await get('/incidents/responder');
+    return response.incidents ?? [];
+  },
   incidentCluster: (incidentId) => get(`/incidents/clusters/${encodeURIComponent(incidentId)}`),
   approveResourceAllocation: (payload) => post('/resource-allocation/approve', payload),
+  decideResourceAllocation: (payload) => post('/resource-allocation/decision', payload),
+  responderLogs: async (incidentId) => {
+    const response = await get(`/incidents/${encodeURIComponent(incidentId)}/logs`);
+    return response.logs ?? [];
+  },
+  createResponderLog: (incidentId, payload) =>
+    post(`/incidents/${encodeURIComponent(incidentId)}/logs`, payload),
 
   // SCDF public resources
   scdfResources: (type) => get(withQuery('/scdf/resources', { type })),

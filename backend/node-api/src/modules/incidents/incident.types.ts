@@ -40,7 +40,41 @@ export type ResourceAllocationRecommendations = {
 export type ResourceAllocationStatus =
   | "pending_dispatcher_approval"
   | "needs_manual_review"
-  | "approved";
+  | "approved"
+  | "declined";
+
+export type IncidentLifecycleStatus =
+  | "pending_approval"
+  | "dispatched"
+  | "declined"
+  | "closed";
+
+export type DispatchDecision = {
+  incident_id: string;
+  decision: "approved" | "declined";
+  approved_resources: string[];
+  dispatcher_note?: string;
+  dispatcher_id: string;
+  timestamp: string;
+};
+
+export type ResponderLogCategory =
+  | "hazard"
+  | "medical"
+  | "evacuation"
+  | "security"
+  | "resource_update"
+  | "general";
+
+export type ResponderIncidentLog = {
+  id: string;
+  incident_id: string;
+  agency: string;
+  author?: string;
+  message: string;
+  category: ResponderLogCategory;
+  timestamp: string;
+};
 
 export type CanonicalResidentEvent = {
   id: string;
@@ -68,7 +102,7 @@ export type CanonicalResidentEvent = {
 
 export type StoredIncidentCluster = {
   incident_id: string;
-  status: ResourceAllocationStatus;
+  status: IncidentLifecycleStatus;
   created_at: string;
   updated_at: string;
   extracted_incident: ExtractedIncident;
@@ -76,12 +110,17 @@ export type StoredIncidentCluster = {
   recommendations: ResourceAllocationRecommendations;
   resource_allocation_status: ResourceAllocationStatus;
   canonical_event: CanonicalResidentEvent;
+  priority_score: number;
+  priority_reason: string;
   approved_agencies: string[];
   approved_by?: string;
   approved_at?: string;
+  dispatch_decision?: DispatchDecision;
+  responder_logs: ResponderIncidentLog[];
 };
 
 export type IncidentClusterResponse = Omit<StoredIncidentCluster, "reports"> & {
+  queue_position?: number;
   reports: Array<
     Omit<PublicIncidentReport, "reporter_location"> & {
       reporter_location?: ReporterLocation;
@@ -123,7 +162,10 @@ export type IncidentReportResult =
     }
   | {
       status: "needs_manual_review";
+      incident_id: string;
       reason: string;
       extracted_incident: Partial<ExtractedIncident>;
+      resource_allocation_status: "needs_manual_review";
+      recommendations: ResourceAllocationRecommendations;
       message: string;
     };

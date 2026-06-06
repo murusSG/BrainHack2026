@@ -8,6 +8,7 @@ import { IncidentMapPage } from './pages/IncidentMapPage';
 import { LoginPage } from './pages/LoginPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { PublicDashboardPage } from './pages/PublicDashboardPage';
+import { DispatcherPage } from './pages/DispatcherPage';
 import { ResourcesPage } from './pages/ResourcesPage';
 import { ResidentPage } from './pages/ResidentPage';
 import { ResponderPage } from './pages/ResponderPage';
@@ -64,6 +65,15 @@ function PublicDashboardRoute({ session }) {
   return <PublicDashboardPage onReturnToOps={() => navigate(session ? '/' : '/login')} />;
 }
 
+function ProtectedDispatcherRoute({ session, restoring }) {
+  const location = useLocation();
+  if (restoring) return null;
+  if (!session) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+  return <DispatcherPage session={session} />;
+}
+
 export default function App() {
   const [session, setSession] = useState(null);
   const [restoring, setRestoring] = useState(true);
@@ -88,6 +98,10 @@ export default function App() {
         <Route path="/public-dashboard" element={<PublicDashboardRoute session={session} />} />
         <Route path="/resident" element={<ResidentPage />} />
         <Route path="/responder" element={<ResponderPage />} />
+        <Route
+          path="/dispatcher"
+          element={<ProtectedDispatcherRoute session={session} restoring={restoring} />}
+        />
 
         <Route path="/" element={<ProtectedCommandShell page="overview" session={session} onSignOut={handleSignOut} restoring={restoring} />} />
         <Route

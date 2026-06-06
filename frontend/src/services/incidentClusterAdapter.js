@@ -14,13 +14,27 @@ const ADDRESS_COORDINATES = [
   },
 ];
 
-export async function normaliseIncidentClusters(clusters = [], api) {
-  const mapped = await Promise.all(clusters.map((cluster) => clusterToMapEvent(cluster, api)));
+const coordinateCache = new Map();
+
+export async function normaliseIncidentClusters(clusters = [], api, previousEvents = []) {
+  const operationalClusters = clusters.filter(
+    (cluster) => cluster.status !== 'declined' && cluster.status !== 'closed'
+  );
+  const previousByIncidentId = new Map(
+    previousEvents
+      .filter((event) => event.raw?.incident_id)
+      .map((event) => [event.raw.incident_id, event])
+  );
+  const mapped = await Promise.all(
+    operationalClusters.map((cluster) =>
+      clusterToMapEvent(cluster, api, previousByIncidentId.get(cluster.incident_id))
+    )
+  );
   return mapped.filter(Boolean);
 }
 
 export function isClusterPendingReview(cluster) {
-  return cluster.resource_allocation_status === 'pending_dispatcher_approval';
+  return cluster.status === 'pending_approval';
 }
 
 export function clusterToRecommendation(cluster) {
@@ -75,8 +89,8 @@ export function clusterToRecommendation(cluster) {
   };
 }
 
-async function clusterToMapEvent(cluster, api) {
-  const coordinates = await coordinatesForCluster(cluster, api);
+async function clusterToMapEvent(cluster, api, previousEvent) {
+  const coordinates = await coordinatesForCluster(cluster, api, previousEvent);
   if (!coordinates) return null;
 
   const extracted = cluster.extracted_incident ?? {};
@@ -100,46 +114,104 @@ async function clusterToMapEvent(cluster, api) {
     timestamp: cluster.updated_at ?? cluster.created_at,
     publicAction: dispatchLog,
     approvalStatus,
+    incidentStatus: cluster.status,
+    markerColor: cluster.status === 'dispatched' ? '#19d39a' : '#ff4d4f',
     dispatchLog,
     raw: cluster,
   };
 }
 
-async function coordinatesForCluster(cluster, api) {
+export function agenciesForCluster(cluster) {
+  const recommendations = cluster?.recommendations ?? {};
+  return [
+    ...(recommendations.mandatory_agencies ?? []),
+    ...(recommendations.suggested_agencies ?? []),
+  ].filter(
+    (agency, index, agencies) =>
+      agencies.findIndex((candidate) => candidate.agency === agency.agency) === index
+  );
+}
+
+export function incidentTitle(cluster) {
+  const extracted = cluster?.extracted_incident ?? {};
+  const location = extracted.location_text || 'Location pending';
+  return `${titleCase(extracted.incident_type || 'Incident')} - ${location}`;
+}
+
+async function coordinatesForCluster(cluster, api, previousEvent) {
   const canonicalLocation = cluster.canonical_event?.location;
   const canonicalLat = Number(canonicalLocation?.latitude);
   const canonicalLng = Number(canonicalLocation?.longitude);
   if (Number.isFinite(canonicalLat) && Number.isFinite(canonicalLng)) {
-    return { lat: canonicalLat, lng: canonicalLng };
+    return rememberCoordinates(cluster, { lat: canonicalLat, lng: canonicalLng });
   }
 
   const reportLocation = cluster.reports?.find((report) => report.reporter_location)?.reporter_location;
   const reportLat = Number(reportLocation?.lat);
   const reportLng = Number(reportLocation?.lng);
   if (Number.isFinite(reportLat) && Number.isFinite(reportLng)) {
-    return { lat: reportLat, lng: reportLng };
+    return rememberCoordinates(cluster, { lat: reportLat, lng: reportLng });
   }
 
   const locationText =
     cluster.extracted_incident?.location_text || cluster.canonical_event?.location?.addressText;
-  if (!locationText) return null;
+  const cacheKey = coordinateCacheKey(cluster, locationText);
+  const cachedCoordinates = coordinateCache.get(cacheKey);
+  if (cachedCoordinates) return { ...cachedCoordinates };
 
-  for (const query of geocodeQueries(locationText)) {
-    try {
-      const results = await api.oneMapSearch(query);
-      const first = Array.isArray(results) ? results[0] : results?.results?.[0];
-      const lat = Number(first?.latitude ?? first?.LATITUDE);
-      const lng = Number(first?.longitude ?? first?.LONGITUDE);
-      if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
-    } catch {
-      continue;
+  if (locationText) {
+    for (const query of geocodeQueries(locationText)) {
+      try {
+        const results = await api.oneMapSearch(query);
+        const first = Array.isArray(results) ? results[0] : results?.results?.[0];
+        const lat = Number(first?.latitude ?? first?.LATITUDE);
+        const lng = Number(first?.longitude ?? first?.LONGITUDE);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          return rememberCoordinates(cluster, { lat, lng }, locationText);
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    const knownAddress = ADDRESS_COORDINATES.find((item) => item.pattern.test(locationText));
+    if (knownAddress) {
+      return rememberCoordinates(
+        cluster,
+        { lat: knownAddress.lat, lng: knownAddress.lng },
+        locationText
+      );
     }
   }
 
-  const knownAddress = ADDRESS_COORDINATES.find((item) => item.pattern.test(locationText));
-  if (knownAddress) return { lat: knownAddress.lat, lng: knownAddress.lng };
-
+  const previousLat = Number(previousEvent?.lat);
+  const previousLng = Number(previousEvent?.lng);
+  if (Number.isFinite(previousLat) && Number.isFinite(previousLng)) {
+    return { lat: previousLat, lng: previousLng };
+  }
   return null;
+}
+
+function rememberCoordinates(cluster, coordinates, locationText) {
+  coordinateCache.set(coordinateCacheKey(cluster, locationText), coordinates);
+  return { ...coordinates };
+}
+
+function coordinateCacheKey(cluster, locationText) {
+  const normalizedLocation = String(
+    locationText ??
+      cluster.extracted_incident?.location_text ??
+      cluster.canonical_event?.location?.addressText ??
+      ''
+  )
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+  return `${cluster.incident_id}:${normalizedLocation}`;
+}
+
+export function clearIncidentCoordinateCacheForTests() {
+  coordinateCache.clear();
 }
 
 function geocodeQueries(locationText) {

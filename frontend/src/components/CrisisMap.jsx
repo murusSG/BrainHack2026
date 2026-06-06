@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Circle, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -28,15 +28,57 @@ const HAZARD_LABEL = {
 
 const SG_CENTER = [1.3521, 103.8198];
 
-// Auto-fit the map to show all events
+// Auto-fit only when marker geometry changes, not on every polling refresh.
 function FitBounds({ events }) {
   const map = useMap();
+  const lastGeometryKey = useRef('');
+  const lastGeometry = useRef(new Map());
+  const geometry = useMemo(
+    () =>
+      events
+        .filter((event) => event.lat != null && event.lng != null)
+        .map((event) => ({
+          id: event.id,
+          lat: Number(event.lat),
+          lng: Number(event.lng),
+        }))
+        .sort((left, right) => left.id.localeCompare(right.id)),
+    [events]
+  );
+  const geometryKey = geometry
+    .map((event) => `${event.id}:${event.lat.toFixed(6)}:${event.lng.toFixed(6)}`)
+    .join('|');
+
   useEffect(() => {
-    const pts = events.filter((e) => e.lat != null && e.lng != null).map((e) => [e.lat, e.lng]);
-    if (pts.length > 0) {
-      map.fitBounds(pts, { padding: [50, 50], maxZoom: 14 });
+    if (geometryKey === lastGeometryKey.current) return;
+
+    if (!geometry.length) {
+      lastGeometryKey.current = '';
+      lastGeometry.current = new Map();
+      return;
     }
-  }, [events, map]);
+
+    const previousGeometry = lastGeometry.current;
+    const shouldFit =
+      previousGeometry.size === 0 ||
+      geometry.some((event) => {
+        const previous = previousGeometry.get(event.id);
+        return !previous || previous.lat !== event.lat || previous.lng !== event.lng;
+      });
+    lastGeometryKey.current = geometryKey;
+    lastGeometry.current = new Map(
+      geometry.map((event) => [event.id, { lat: event.lat, lng: event.lng }])
+    );
+    if (!shouldFit) return;
+
+    const points = geometry.map((event) => [event.lat, event.lng]);
+    if (points.length === 1) {
+      map.setView(points[0], 13, { animate: false });
+    } else {
+      map.fitBounds(points, { padding: [50, 50], maxZoom: 14, animate: false });
+    }
+  }, [geometry, geometryKey, map]);
+
   return null;
 }
 
@@ -61,7 +103,7 @@ export function CrisisMap({ events = [], onSelect, selectedId, height = '100%' }
 
         {events.map((e) => {
           if (e.lat == null || e.lng == null) return null;
-          const color = SEVERITY_COLOR[e.severity] ?? '#55a7ff';
+          const color = e.markerColor ?? SEVERITY_COLOR[e.severity] ?? '#55a7ff';
           const isSelected = e.id === selectedId;
           const showCircle = isSelected && HYPERLOCAL_HAZARDS.has(e.hazardType);
           return (

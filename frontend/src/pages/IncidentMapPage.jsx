@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CrisisMap } from '../components/CrisisMap';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
@@ -26,6 +26,8 @@ export function IncidentMapPage() {
   const [selected, setSelected] = useState(null);
   const [query, setQuery] = useState('');
   const [hazardFilter, setHazardFilter] = useState('all');
+  const clusterEventsRef = useRef([]);
+  const clusterRefreshPromiseRef = useRef(null);
   const isLoading = status === 'loading' || clusterStatus === 'loading';
   const mapEvents = useMemo(() => {
     const byId = new Map(events.map((event) => [event.id, event]));
@@ -60,14 +62,28 @@ export function IncidentMapPage() {
         : `${liveEventCount} live`;
 
   async function refreshIncidentClusters() {
-    try {
-      const clusters = await api.incidentClusters();
-      const nextEvents = await normaliseIncidentClusters(clusters ?? [], api);
-      setClusterEvents(nextEvents);
-      setClusterStatus('done');
-    } catch {
-      setClusterStatus('error');
-    }
+    if (clusterRefreshPromiseRef.current) return clusterRefreshPromiseRef.current;
+
+    const refreshPromise = (async () => {
+      try {
+        const clusters = await api.incidentClusters();
+        const nextEvents = await normaliseIncidentClusters(
+          clusters ?? [],
+          api,
+          clusterEventsRef.current
+        );
+        clusterEventsRef.current = nextEvents;
+        setClusterEvents(nextEvents);
+        setClusterStatus('done');
+      } catch {
+        setClusterStatus('error');
+      } finally {
+        clusterRefreshPromiseRef.current = null;
+      }
+    })();
+
+    clusterRefreshPromiseRef.current = refreshPromise;
+    return refreshPromise;
   }
 
   useEffect(() => {

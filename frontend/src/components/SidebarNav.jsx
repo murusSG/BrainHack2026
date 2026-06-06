@@ -40,6 +40,10 @@ export function SidebarNav() {
       </nav>
 
       <div className="persona-jump-list">
+        <Link to="/dispatcher" className="nav-item persona-jump">
+          <span className="nav-icon nav-icon-responder" aria-hidden="true" />
+          <span>Dispatcher View</span>
+        </Link>
         <Link to="/responder" className="nav-item persona-jump">
           <span className="nav-icon nav-icon-responder" aria-hidden="true" />
           <span>Responder View</span>
