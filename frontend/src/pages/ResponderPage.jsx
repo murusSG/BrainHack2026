@@ -130,13 +130,13 @@ function ReportForm({ incidentId, token, existing, onSaved, onCancel }) {
     setSaving(true);
     setError(null);
     try {
+      const freshToken = await getAccessToken();
       let saved;
       if (existing) {
-        saved = await api.updateIncidentReport(incidentId, existing.id, token, buildPayload(status));
+        saved = await api.updateIncidentReport(incidentId, existing.id, freshToken, buildPayload(status));
       } else {
-        saved = await api.createIncidentReport(incidentId, token, buildPayload(status));
+        saved = await api.createIncidentReport(incidentId, freshToken, buildPayload(status));
       }
-      // Unwrap envelope { data: IncidentReport }
       onSaved(saved?.data ?? saved);
     } catch {
       setError('Could not save report. Check the Node API connection.');
@@ -276,15 +276,17 @@ export function ResponderPage() {
   }, []);
 
   const refreshReports = useCallback(async (incidentId) => {
-    if (!incidentId || !token) { setReports([]); return; }
+    if (!incidentId) { setReports([]); return; }
     try {
-      const next = await api.incidentReports(incidentId, token);
+      const freshToken = await getAccessToken();
+      if (!freshToken) { setReports([]); return; }
+      const next = await api.incidentReports(incidentId, freshToken);
       setReports(next ?? []);
       setReportStatus('idle');
     } catch {
       setReportStatus('error');
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     refreshIncidents();
@@ -301,12 +303,14 @@ export function ResponderPage() {
   }, [selectedIncident?.incident_id, refreshReports]);
 
   async function acknowledge(report) {
-    if (!token) return;
+    if (!selectedIncident) return;
     try {
+      const freshToken = await getAccessToken();
+      if (!freshToken) return;
       await api.updateIncidentReport(
         selectedIncident.incident_id,
         report.id,
-        token,
+        freshToken,
         { status: 'acknowledged' }
       );
       await refreshReports(selectedIncident.incident_id);
@@ -318,7 +322,7 @@ export function ResponderPage() {
   function handleReportSaved(saved) {
     setEditing(false);
     setSelectedAgency(saved.agency);
-    refreshReports(selectedIncident.incident_id);
+    if (selectedIncident) refreshReports(selectedIncident.incident_id);
   }
 
   function selectIncident(incidentId) {
