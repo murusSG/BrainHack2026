@@ -106,6 +106,43 @@ export const recommendations = [
   }
 ];
 
+export const dorsconStatus = {
+  level: 'orange',
+  updatedLabel: 'Updated 2m ago',
+  commandTitle: 'Current Status: Code Orange',
+  summary:
+    'Moderate risk of widespread transmission. Public health measures remain at Stage 2. Frontline units are on standby while Jurong West and Toa Payoh run elevated watch.',
+  impact: 'Moderate disruption: quarantine, temperature screening, and visitor restrictions at hospitals.',
+  publicAdvice: [
+    'Be socially responsible: if you are sick, stay at home',
+    'Maintain good personal hygiene',
+    'Look out for health advisories',
+    'Comply with control measures',
+  ],
+  referenceLevels: [
+    {
+      level: 'green',
+      label: 'Green',
+      summary: 'Disease is mild, or severe but does not spread easily from person to person.',
+    },
+    {
+      level: 'yellow',
+      label: 'Yellow',
+      summary: 'Disease is severe and spreads easily, but is occurring outside Singapore or is being contained.',
+    },
+    {
+      level: 'orange',
+      label: 'Orange',
+      summary: 'Disease is severe and spreads easily, but it is being contained and has not spread widely in Singapore.',
+    },
+    {
+      level: 'red',
+      label: 'Red',
+      summary: 'Disease is severe and spreading widely, with major disruption expected across daily life.',
+    },
+  ],
+};
+
 export const allocationRecommendations = [
   {
     id: 'ALLOC-1024',

@@ -158,13 +158,44 @@ export function ResourcesPage() {
         </div>
       </section>
 
-      <p className="resource-action-notice">{resourceNotice}</p>
-
       {status === 'error' && (
         <p className="feed-warning">
           SCDF public resource feed unavailable ({error}). Showing planning defaults.
         </p>
       )}
+
+      <section className="resource-alert-banner resource-alert-banner-full">
+        <div className="resource-alert-icon" aria-hidden="true">
+          !
+        </div>
+        <div className="resource-alert-copy">
+          <h2>{resourceShortageAlert.title}</h2>
+          <p>{resourceShortageAlert.message}</p>
+          <span className="resource-shortage-state">Status: {shortageStatus}</span>
+          <div className="resource-alert-actions">
+            <button
+              type="button"
+              className="alert-primary"
+              onClick={() => {
+                setShortageStatus('transfer staged');
+                setResourceNotice('Shortage transfer staged for approval.');
+              }}
+            >
+              Initiate Transfer
+            </button>
+            <button
+              type="button"
+              className="alert-secondary"
+              onClick={() => {
+                setShortageStatus('monitoring');
+                setResourceNotice('Shortage recommendation moved to monitoring.');
+              }}
+            >
+              Ignore
+            </button>
+          </div>
+        </div>
+      </section>
 
       <section className="resource-summary-grid">
         {summaryCards.map((card) => (
@@ -328,38 +359,6 @@ export function ResourcesPage() {
             </div>
           </section>
 
-          <section className="resource-alert-banner">
-            <div className="resource-alert-icon" aria-hidden="true">
-              !
-            </div>
-            <div className="resource-alert-copy">
-              <h2>{resourceShortageAlert.title}</h2>
-              <p>{resourceShortageAlert.message}</p>
-              <span className="resource-shortage-state">Status: {shortageStatus}</span>
-              <div className="resource-alert-actions">
-                <button
-                  type="button"
-                  className="alert-primary"
-                  onClick={() => {
-                    setShortageStatus('transfer staged');
-                    setResourceNotice('Shortage transfer staged for approval.');
-                  }}
-                >
-                  Initiate Transfer
-                </button>
-                <button
-                  type="button"
-                  className="alert-secondary"
-                  onClick={() => {
-                    setShortageStatus('monitoring');
-                    setResourceNotice('Shortage recommendation moved to monitoring.');
-                  }}
-                >
-                  Ignore
-                </button>
-              </div>
-            </div>
-          </section>
         </div>
 
         <aside className="resource-right-column">
@@ -467,4 +466,3 @@ function resourceEntryMatchesTab(entry, activeTab) {
 
   return !type.includes('shelter');
 }
-
