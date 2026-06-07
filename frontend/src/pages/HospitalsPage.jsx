@@ -258,7 +258,9 @@ export function HospitalsPage() {
               <span>{facility.isolationUnits}</span>
               <span>{facility.dialysisStations}</span>
               <span>
-                <span className="registry-level-pill">{facility.traumaCenter}</span>
+                <span className={`registry-level-pill ${traumaLevelClass(facility.traumaCenter)}`}>
+                  {facility.traumaCenter}
+                </span>
               </span>
               <button
                 type="button"
@@ -280,4 +282,9 @@ function filterLabel(filter) {
   if (filter === 'west') return 'west region';
   if (filter === 'central') return 'central region';
   return filter;
+}
+
+function traumaLevelClass(level) {
+  if (!level || level === 'N/A') return 'level-na';
+  return `level-${level.replace(/\s+/g, '-').toLowerCase()}`;
 }

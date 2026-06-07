@@ -1884,7 +1884,7 @@ h1 {
 }
 
 .hospital-summary-label {
-  color: #d6cfca;
+  color: #3f282e;
   text-transform: uppercase;
   font-size: 0.9rem;
   font-weight: 700;
@@ -1925,7 +1925,7 @@ h1 {
 
 .hospital-region {
   margin-top: 6px;
-  color: #d8d3cf;
+  color: #4a3036;
 }
 
 .hospital-status {
@@ -1934,22 +1934,28 @@ h1 {
   min-height: 32px;
   padding: 0 14px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(170, 48, 78, 0.14);
+  background: rgba(255, 248, 250, 0.98);
   font-weight: 700;
+  text-transform: none;
 }
 
 .hospital-status.status-critical {
-  background: rgba(255, 118, 118, 0.95);
-  border-color: rgba(255, 118, 118, 0.3);
-  color: #290707;
+  background: rgba(255, 236, 239, 0.98);
+  border-color: rgba(216, 31, 50, 0.18);
+  color: #d81f32;
 }
 
 .hospital-status.status-warning {
-  color: #f5efe8;
+  background: rgba(255, 246, 237, 0.98);
+  border-color: rgba(255, 146, 44, 0.2);
+  color: #cc6b1c;
 }
 
 .hospital-status.status-normal {
-  color: #e9ecef;
+  background: rgba(232, 250, 242, 0.98);
+  border-color: rgba(13, 148, 100, 0.22);
+  color: #0d9464;
 }
 
 .facility-metric {
@@ -1960,7 +1966,7 @@ h1 {
 
 .facility-metric-head span:first-child {
   text-transform: uppercase;
-  color: #d7cfca;
+  color: #3f282e;
   font-weight: 700;
 }
 
@@ -2038,7 +2044,7 @@ h1 {
 .facility-registry-header {
   min-height: 58px;
   border-top: 0;
-  color: #d7d2cf;
+  color: #3f282e;
   font-weight: 700;
 }
 
@@ -2053,14 +2059,53 @@ h1 {
 }
 
 .registry-type-pill {
-  color: #f0f0f0;
+  background: rgba(232, 196, 232, 0.72);
+  color: #4a3036;
+  border-color: rgba(211, 109, 117, 0.18);
+  font-weight: 700;
 }
 
 .registry-level-pill {
-  background: rgba(216, 250, 234, 0.98);
-  color: #0f7a5f;
-  border-color: rgba(216, 250, 234, 0.98);
+  background: rgba(248, 248, 248, 0.96);
+  color: #4a3036;
+  border-color: rgba(170, 48, 78, 0.16);
   font-weight: 700;
+}
+
+.registry-level-pill.level-level-1 {
+  background: #8de45f;
+  color: #1f4d12;
+  border-color: #8de45f;
+}
+
+.registry-level-pill.level-level-2 {
+  background: #feed47;
+  color: #5a4300;
+  border-color: #eed649;
+}
+
+.registry-level-pill.level-level-3 {
+  background: #ff922c;
+  color: #fff8ef;
+  border-color: #ff922c;
+}
+
+.registry-level-pill.level-level-4 {
+  background: #fd673a;
+  color: #fff8f4;
+  border-color: #fd673a;
+}
+
+.registry-level-pill.level-level-5 {
+  background: #ec204f;
+  color: #fff8fa;
+  border-color: #ec204f;
+}
+
+.registry-level-pill.level-na {
+  background: #d7d4d8;
+  color: #5f5961;
+  border-color: #d7d4d8;
 }
 
 .registry-manage-link {
@@ -2505,14 +2550,17 @@ h1 {
   display: grid;
   margin: -36px -48px -48px;
   min-height: calc(100vh - 88px - 52px);
+  height: calc(100vh - 88px - 52px);
+  overflow: hidden;
 }
 
 .incident-map-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr) 420px;
   gap: 0;
   align-items: stretch;
   min-height: inherit;
+  height: 100%;
 }
 
 .incident-map-main,
@@ -2520,15 +2568,18 @@ h1 {
 .incident-map-bottom {
   display: grid;
   gap: 0;
+  min-height: 0;
 }
 
 .incident-map-main {
   min-width: 0;
+  overflow: hidden;
 }
 
 .incident-map-sidebar {
   border-left: 1px solid rgba(255, 255, 255, 0.12);
   background: #201d1a;
+  overflow: hidden;
 }
 
 .incident-map-canvas {
@@ -2884,9 +2935,11 @@ h1 {
 }
 
 .incident-list-panel {
-  max-height: none;
   height: 100%;
-  overflow: auto;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -2894,6 +2947,10 @@ h1 {
 
 .incident-list-heading h2 {
   font-size: 1.7rem;
+}
+
+.incident-list-heading {
+  padding: 24px 24px 18px;
 }
 
 .incident-filter-row {
@@ -2920,6 +2977,13 @@ h1 {
 
 .incident-list-top .severity-chip {
   margin-left: auto;
+}
+
+.incident-list {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 24px 24px;
+  align-content: start;
 }
 
 .demo-chip,
@@ -2973,7 +3037,7 @@ h1 {
 .chip-support {
   background: rgba(25, 211, 154, 0.12);
   border-color: rgba(25, 211, 154, 0.28);
-  color: #8df2ce;
+  color: #0f8a5b;
 }
 
 .incident-location {
@@ -3760,19 +3824,28 @@ h1 {
 @media (max-width: 1100px) {
   .incident-map-page {
     margin: 0;
+    height: auto;
+    overflow: visible;
   }
 
   .incident-map-layout {
     grid-template-columns: 1fr;
+    height: auto;
   }
 
   .incident-map-sidebar {
     border-left: 0;
     border-top: 1px solid rgba(255, 255, 255, 0.12);
+    overflow: visible;
   }
 
   .incident-map-shell {
     min-height: 620px;
+  }
+
+  .incident-list-panel,
+  .incident-list {
+    overflow: visible;
   }
 }
 
@@ -4729,7 +4802,7 @@ h1 {
 .incident-map-shell {
   position: relative;
   height: 100%;
-  min-height: calc(100vh - 88px - 52px);
+  min-height: calc(100vh - 88px - 52px - 112px);
   background:
     radial-gradient(circle at center, rgba(85, 167, 255, 0.1), transparent 28%),
     #f5f7fb;
@@ -4822,6 +4895,7 @@ h1 {
 .incident-empty-state {
   color: var(--muted);
   background: rgba(255, 255, 255, 0.03);
+  margin: 0 24px 24px;
   padding: 18px;
 }
 
@@ -6018,6 +6092,24 @@ body {
 
 .alert-status-pill {
   color: #8b616d;
+}
+
+.alert-status-pill.status-urgent {
+  background: rgba(216, 31, 50, 0.12);
+  color: #d81f32;
+  border-color: rgba(216, 31, 50, 0.18);
+}
+
+.alert-status-pill.status-stable {
+  background: rgba(255, 248, 250, 0.98);
+  color: #8b616d;
+  border-color: rgba(170, 48, 78, 0.14);
+}
+
+.alert-status-pill.status-neutral {
+  background: rgba(255, 248, 250, 0.98);
+  color: #8b616d;
+  border-color: rgba(170, 48, 78, 0.14);
 }
 
 .alerts-detail-panel {
@@ -7594,6 +7686,270 @@ body {
   min-width: 0;
 }
 
+.report-layout {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.report-sidebar {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.report-sidebar-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(170, 48, 78, 0.2);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 249, 250, 0.98), rgba(255, 239, 243, 0.95));
+  color: #41262d;
+  padding: 12px;
+  text-align: left;
+  box-shadow: 0 10px 20px rgba(170, 48, 78, 0.06);
+}
+
+.report-sidebar-item.is-active {
+  border-color: rgba(211, 109, 117, 0.5);
+  background: linear-gradient(180deg, rgba(255, 241, 244, 1), rgba(255, 229, 235, 0.98));
+  box-shadow: 0 14px 24px rgba(170, 48, 78, 0.1);
+}
+
+.report-sidebar-add {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  border-style: dashed;
+  font-weight: 800;
+  color: #b51d35;
+}
+
+.report-agency-badge,
+.responder-incident-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  min-height: 58px;
+  padding: 0 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(136, 183, 246, 0.68);
+  background: linear-gradient(180deg, #f8fbff 0%, #edf4ff 100%);
+  color: #79a9ea;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
+.report-sidebar-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.report-sidebar-label,
+.report-author {
+  color: #3d2329;
+  font-weight: 850;
+}
+
+.report-status-text {
+  color: #8f6870;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.report-status-text.status-draft {
+  color: #d36d75;
+}
+
+.report-status-text.status-submitted {
+  color: #cc6b1c;
+}
+
+.report-status-text.status-acknowledged {
+  color: #0d9464;
+}
+
+.report-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #d36d75;
+}
+
+.report-status-dot.status-submitted {
+  background: #cc6b1c;
+}
+
+.report-status-dot.status-acknowledged {
+  background: #0d9464;
+}
+
+.report-pane,
+.report-detail,
+.report-form {
+  display: grid;
+  gap: 16px;
+}
+
+.report-pane {
+  min-width: 0;
+}
+
+.report-detail,
+.report-form {
+  border: 1px solid rgba(170, 48, 78, 0.16);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 252, 252, 0.98), rgba(255, 243, 246, 0.96));
+  padding: 20px;
+  box-shadow: 0 18px 36px rgba(170, 48, 78, 0.07);
+}
+
+.report-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.report-detail-header > div:first-child {
+  display: grid;
+  gap: 10px;
+}
+
+.report-detail-meta {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+  color: #8f6870;
+  font-size: 0.84rem;
+}
+
+.report-status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(170, 48, 78, 0.18);
+  background: rgba(255, 250, 251, 0.96);
+  color: #d36d75;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.report-status-badge.status-submitted {
+  color: #cc6b1c;
+}
+
+.report-status-badge.status-acknowledged {
+  color: #0d9464;
+}
+
+.report-fields {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(150px, 180px) minmax(0, 1fr);
+  gap: 10px 16px;
+}
+
+.report-fields dt {
+  color: #8f6870;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.report-fields dd {
+  margin: 0;
+  color: #4a3036;
+  line-height: 1.6;
+}
+
+.report-detail-actions,
+.report-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.report-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+
+.report-form-grid-secondary {
+  align-items: start;
+}
+
+.report-field,
+.report-casualties label {
+  display: grid;
+  gap: 8px;
+}
+
+.report-field span,
+.report-casualties span {
+  color: #5d3e45;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.report-field-full {
+  grid-column: 1 / -1;
+}
+
+.report-form input,
+.report-form textarea {
+  width: 100%;
+  border: 1px solid rgba(170, 48, 78, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #3f282e;
+  padding: 12px 14px;
+  outline: none;
+  resize: vertical;
+}
+
+.report-form input::placeholder,
+.report-form textarea::placeholder {
+  color: #ab8a91;
+}
+
+.report-form input:focus,
+.report-form textarea:focus {
+  border-color: rgba(211, 109, 117, 0.58);
+  box-shadow: 0 0 0 3px rgba(211, 109, 117, 0.12);
+}
+
+.report-casualties {
+  margin: 0;
+  padding: 14px 16px 16px;
+  border: 1px solid rgba(170, 48, 78, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 247, 249, 0.72);
+}
+
+.report-casualties legend {
+  padding: 0 8px;
+  color: #5d3e45;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.report-casualty-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .responder-log-list {
   display: grid;
   gap: 10px;
@@ -7683,6 +8039,15 @@ body {
   .dispatcher-grid {
     grid-template-columns: 1fr;
   }
+
+  .report-layout,
+  .report-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .report-sidebar {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
@@ -7697,13 +8062,21 @@ body {
   }
 
   .dispatcher-facts,
-  .responder-log-fields {
+  .responder-log-fields,
+  .report-fields,
+  .report-casualty-grid {
     grid-template-columns: 1fr;
   }
 
   .responder-log-meta time {
     width: 100%;
     margin-left: 0;
+  }
+
+  .report-detail-header,
+  .report-form-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 

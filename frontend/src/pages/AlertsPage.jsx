@@ -36,7 +36,7 @@ function AlertFeedCard({ item, selected, onSelect }) {
       </p>
       <div className="alert-feed-bottom">
         <p>Source: {item.source}</p>
-        <span className="alert-status-pill">{item.status}</span>
+        <span className={`alert-status-pill ${alertStatusTone(item.status)}`}>{item.status}</span>
       </div>
     </article>
   );
@@ -378,7 +378,9 @@ export function AlertsPage({ session }) {
                   {selectedDetail.severity}
                 </span>
                 <span className="alerts-case-id">CASE ID: {selectedDetail.caseId}</span>
-                <span className="alert-status-pill">{selectedAlert.status}</span>
+                <span className={`alert-status-pill ${alertStatusTone(selectedAlert.status)}`}>
+                  {selectedAlert.status}
+                </span>
               </div>
               <h2>{selectedDetail.title}</h2>
               <p className="alerts-summary">{selectedDetail.summary}</p>
@@ -466,6 +468,28 @@ export function AlertsPage({ session }) {
       </section>
     </div>
   );
+}
+
+function alertStatusTone(status) {
+  const normalized = String(status ?? '').toLowerCase();
+  if (
+    normalized.includes('unacknowledged') ||
+    normalized.includes('unbroadcasted') ||
+    normalized.includes('escalated') ||
+    normalized.includes('critical')
+  ) {
+    return 'status-urgent';
+  }
+
+  if (
+    normalized.includes('acknowledged') ||
+    normalized.includes('broadcasted') ||
+    normalized.includes('resolved')
+  ) {
+    return 'status-stable';
+  }
+
+  return 'status-neutral';
 }
 
 function buildAlertDetail(item) {

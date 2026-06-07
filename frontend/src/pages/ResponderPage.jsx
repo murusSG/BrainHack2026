@@ -35,7 +35,7 @@ function ReportDetail({ report, currentUserId, onAcknowledge, onEdit }) {
     <div className="report-detail">
       <div className="report-detail-header">
         <div>
-          <span className="agency-token">{report.agency}</span>
+          <span className="report-agency-badge">{report.agency}</span>
           <strong className="report-author">{report.author_name || 'Agency unit'}</strong>
         </div>
         <div className="report-detail-meta">
@@ -147,53 +147,68 @@ function ReportForm({ incidentId, token, existing, onSaved, onCancel }) {
 
   return (
     <form className="report-form" onSubmit={(e) => e.preventDefault()}>
-      <label>
-        <span>Author / unit</span>
-        <input value={fields.author_name} onChange={set('author_name')} placeholder="e.g. Alpha 21" />
-      </label>
+      <div className="report-form-grid">
+        <label className="report-field">
+          <span>Author / unit</span>
+          <input value={fields.author_name} onChange={set('author_name')} placeholder="e.g. Alpha 21" />
+        </label>
 
-      <label>
-        <span>Situation summary <span aria-hidden="true">*</span></span>
-        <textarea
-          rows={3}
-          required
-          value={fields.situation_summary}
-          onChange={set('situation_summary')}
-          placeholder="Current status and what happened"
-        />
-      </label>
+        <label className="report-field">
+          <span>On-ground location</span>
+          <input value={fields.location} onChange={set('location')} placeholder="e.g. Block 93, Toa Payoh Central" />
+        </label>
 
-      <label>
-        <span>On-ground location</span>
-        <input value={fields.location} onChange={set('location')} placeholder="e.g. Block 93, Toa Payoh Central" />
-      </label>
+        <label className="report-field report-field-full">
+          <span>Situation summary <span aria-hidden="true">*</span></span>
+          <textarea
+            rows={4}
+            required
+            value={fields.situation_summary}
+            onChange={set('situation_summary')}
+            placeholder="Current status and what happened"
+          />
+        </label>
+      </div>
 
       <fieldset className="report-casualties">
         <legend>Casualties</legend>
-        <label><span>Injured</span><input type="number" min={0} value={fields.injured} onChange={set('injured')} /></label>
-        <label><span>Deceased</span><input type="number" min={0} value={fields.deceased} onChange={set('deceased')} /></label>
-        <label><span>Missing</span><input type="number" min={0} value={fields.missing} onChange={set('missing')} /></label>
+        <div className="report-casualty-grid">
+          <label className="report-field">
+            <span>Injured</span>
+            <input type="number" min={0} value={fields.injured} onChange={set('injured')} />
+          </label>
+          <label className="report-field">
+            <span>Deceased</span>
+            <input type="number" min={0} value={fields.deceased} onChange={set('deceased')} />
+          </label>
+          <label className="report-field">
+            <span>Missing</span>
+            <input type="number" min={0} value={fields.missing} onChange={set('missing')} />
+          </label>
+        </div>
       </fieldset>
 
-      <label>
-        <span>Resources deployed</span>
-        <textarea rows={2} value={fields.resources_deployed} onChange={set('resources_deployed')} placeholder="Personnel, vehicles, equipment" />
-      </label>
+      <div className="report-form-grid report-form-grid-secondary">
+        <label className="report-field">
+          <span>Resources deployed</span>
+          <textarea rows={3} value={fields.resources_deployed} onChange={set('resources_deployed')} placeholder="Personnel, vehicles, equipment" />
+        </label>
 
-      <label>
-        <span>Actions taken</span>
-        <textarea rows={2} value={fields.actions_taken} onChange={set('actions_taken')} placeholder="What your agency has done so far" />
-      </label>
+        <label className="report-field">
+          <span>Actions taken</span>
+          <textarea rows={3} value={fields.actions_taken} onChange={set('actions_taken')} placeholder="What your agency has done so far" />
+        </label>
 
-      <label>
-        <span>Hazards (comma-separated)</span>
-        <input value={fields.hazards} onChange={set('hazards')} placeholder="e.g. smoke inhalation, structural risk" />
-      </label>
+        <label className="report-field">
+          <span>Hazards</span>
+          <input value={fields.hazards} onChange={set('hazards')} placeholder="e.g. smoke inhalation, structural risk" />
+        </label>
 
-      <label>
-        <span>Next steps</span>
-        <textarea rows={2} value={fields.next_steps} onChange={set('next_steps')} placeholder="Intended action plan" />
-      </label>
+        <label className="report-field">
+          <span>Next steps</span>
+          <textarea rows={3} value={fields.next_steps} onChange={set('next_steps')} placeholder="Intended action plan" />
+        </label>
+      </div>
 
       {error && <p className="allocation-command-note">{error}</p>}
 
@@ -376,7 +391,7 @@ export function ResponderPage() {
                 }`}
                 onClick={() => selectIncident(incident.incident_id)}
               >
-                <span className="agency-token">{incident.incident_id}</span>
+                <span className="responder-incident-code">{incident.incident_id}</span>
                 <span className="responder-incident-copy">
                   <span className="responder-incident-title">{incidentTitle(incident)}</span>
                   <span className="responder-incident-meta">
@@ -419,7 +434,11 @@ export function ResponderPage() {
                     className={`report-sidebar-item${selectedAgency === r.agency ? ' is-active' : ''}`}
                     onClick={() => { setSelectedAgency(r.agency); setEditing(false); }}
                   >
-                    <span className="agency-token">{r.agency}</span>
+                    <span className="report-agency-badge">{r.agency}</span>
+                    <span className="report-sidebar-copy">
+                      <span className="report-sidebar-label">{r.agency}</span>
+                      <span className={`report-status-text ${badge.cls}`}>{badge.label}</span>
+                    </span>
                     <span className={`report-status-dot ${badge.cls}`} title={badge.label} />
                   </button>
                 );

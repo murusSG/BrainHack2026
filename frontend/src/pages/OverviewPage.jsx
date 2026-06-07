@@ -118,14 +118,6 @@ export function OverviewPage() {
         </div>
       </section>
 
-      <section className="stats-grid">
-        {overviewStats.map((stat) => (
-          <MetricCard key={stat.label} {...stat} />
-        ))}
-      </section>
-
-      <ForesightEngine onStageAction={handleStageAction} />
-
       <section className={`status-banner panel status-banner-${dorsconStatus.level}`}>
         <div className="status-mark">Advisories</div>
         <div className="status-content">
@@ -168,6 +160,14 @@ export function OverviewPage() {
           </button>
         </div>
       </section>
+
+      <section className="stats-grid">
+        {overviewStats.map((stat) => (
+          <MetricCard key={stat.label} {...stat} />
+        ))}
+      </section>
+
+      <ForesightEngine onStageAction={handleStageAction} />
 
       <section className="content-grid">
         <div className="left-column">
