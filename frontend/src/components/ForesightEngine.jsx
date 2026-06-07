@@ -402,6 +402,14 @@ function severityTone(severity) {
 }
 
 function actionLabel(action = '') {
+  if (action.includes('Prepare ambulance diversion')) {
+    return 'Prepare ambulance diversion';
+  }
+
+  if (action.includes('Schedule vector control sweep')) {
+    return 'Schedule vector control sweep';
+  }
+
   const text = action.split(' and ')[0].replace(/\.$/, '');
   return text.length > 22 ? `${text.slice(0, 21)}...` : text || 'Review';
 }

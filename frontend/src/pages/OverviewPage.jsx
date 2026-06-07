@@ -9,6 +9,7 @@ import { RecommendationPanel } from '../components/RecommendationPanel';
 import { TimelinePanel } from '../components/TimelinePanel';
 import {
   dataSources,
+  dorsconStatus,
   quickActions,
   recommendations,
   roleViews,
@@ -22,8 +23,8 @@ export function OverviewPage() {
   const [foresightRecommendation, setForesightRecommendation] = useState(null);
   const [commandTimeline, setCommandTimeline] = useState([]);
   const [commandStateStatus, setCommandStateStatus] = useState('loading');
-  const [quickActionNotice, setQuickActionNotice] = useState('Command shortcuts ready.');
   const [activeQuickAction, setActiveQuickAction] = useState(null);
+  const [guidelinesVisible, setGuidelinesVisible] = useState(false);
   const demoEventCount = events.filter((event) => event.isDemo).length;
   const liveEventCount = events.length - demoEventCount;
   const activeIncidentDelta =
@@ -94,7 +95,6 @@ export function OverviewPage() {
 
   function handleQuickAction(action) {
     setActiveQuickAction(action.label);
-    setQuickActionNotice(`${action.label} staged in the command workspace.`);
   }
 
   return (
@@ -126,24 +126,45 @@ export function OverviewPage() {
 
       <ForesightEngine onStageAction={handleStageAction} />
 
-      <section className="status-banner panel">
-        <div className="status-mark" />
+      <section className={`status-banner panel status-banner-${dorsconStatus.level}`}>
+        <div className="status-mark">Advisories</div>
         <div className="status-content">
-          <p className="status-title">Current Status: Code Orange</p>
-          <p className="status-text">
-            Moderate risk of widespread transmission. Public health measures remain at Stage 2.
-            Frontline units are on standby while Jurong West and Toa Payoh run elevated watch.
-          </p>
-          <p className="quick-action-status">{quickActionNotice}</p>
+          <p className="status-title">{dorsconStatus.commandTitle}</p>
+          <p className="status-text">{dorsconStatus.summary}</p>
+          <div className="status-guidelines">
+            <p className="status-guideline-impact">
+              <strong>Impact on daily life:</strong> {dorsconStatus.impact}
+            </p>
+            <div className="status-guideline-list">
+              {dorsconStatus.publicAdvice.map((item) => (
+                <span key={item}>{item}</span>
+              ))}
+            </div>
+          </div>
+          {guidelinesVisible ? (
+            <div className="dorscon-reference-grid">
+              {dorsconStatus.referenceLevels.map((item) => (
+                <article
+                  key={item.level}
+                  className={`dorscon-reference-card dorscon-reference-${item.level} ${
+                    item.level === dorsconStatus.level ? 'active' : ''
+                  }`}
+                >
+                  <p className="dorscon-reference-label">{item.label}</p>
+                  <p className="dorscon-reference-copy">{item.summary}</p>
+                </article>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div className="status-meta">
-          <span className="pill">Updated 2m ago</span>
+          <span className="pill">{dorsconStatus.updatedLabel}</span>
           <button
             type="button"
             className="inline-link"
-            onClick={() => setQuickActionNotice('Response guideline snapshot loaded.')}
+            onClick={() => setGuidelinesVisible((current) => !current)}
           >
-            View guidelines
+            {guidelinesVisible ? 'Hide DORSCON guide' : 'View guidelines'}
           </button>
         </div>
       </section>
