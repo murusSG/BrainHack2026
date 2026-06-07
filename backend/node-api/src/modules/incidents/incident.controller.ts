@@ -5,10 +5,13 @@ import {
   getIncidentClusters,
   getDispatcherPriorityQueue,
   getResponderIncidentList,
-  getResponderIncidentLogs,
-  createResponderIncidentLog,
   submitIncidentReport,
 } from "./incident.service";
+import {
+  getIncidentReports,
+  createIncidentReport,
+  updateIncidentReport,
+} from "./incidentReport.service";
 
 export async function postIncidentReport(req: Request, res: Response, next: NextFunction) {
   try {
@@ -58,18 +61,53 @@ export function getResponderIncidents(_req: Request, res: Response, next: NextFu
   }
 }
 
-export function getResponderLogs(req: Request, res: Response, next: NextFunction) {
+export async function getReports(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    res.json({ logs: getResponderIncidentLogs(String(req.params.incidentId)) });
+    const { incidentId } = req.params;
+    const reports = await getIncidentReports(String(incidentId));
+    res.json({
+      data: { incident_id: incidentId, reports },
+      source: "node-api",
+      fetchedAt: new Date().toISOString(),
+    });
   } catch (error) {
     next(error);
   }
 }
 
-export function postResponderLog(req: Request, res: Response, next: NextFunction) {
+export async function postReport(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const log = createResponderIncidentLog(String(req.params.incidentId), req.body ?? {});
-    res.status(201).json(log);
+    const { incidentId } = req.params;
+    const report = await createIncidentReport(
+      String(incidentId),
+      req.user!.id,
+      req.user!.agency ?? "",
+      req.body ?? {}
+    );
+    res.status(201).json({
+      data: report,
+      source: "node-api",
+      fetchedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function patchReport(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { reportId } = req.params;
+    const report = await updateIncidentReport(
+      String(reportId),
+      req.user!.id,
+      req.user!.agency ?? "",
+      req.body ?? {}
+    );
+    res.json({
+      data: report,
+      source: "node-api",
+      fetchedAt: new Date().toISOString(),
+    });
   } catch (error) {
     next(error);
   }

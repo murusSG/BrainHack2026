@@ -7,6 +7,11 @@ export class ApiError extends Error {
   ) {
     super(message);
   }
+
+  /** Alias for `status` — used by test matchers (toMatchObject({ statusCode })) */
+  get statusCode(): number {
+    return this.status;
+  }
 }
 
 export class BadRequestError extends ApiError {
