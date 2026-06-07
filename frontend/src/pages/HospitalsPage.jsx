@@ -115,8 +115,6 @@ export function HospitalsPage() {
         </div>
       </section>
 
-      <p className="hospital-action-notice">{hospitalNotice}</p>
-
       {status === 'error' && (
         <p className="feed-warning">
           Hospital public datasets unavailable ({error}). Showing planning defaults.

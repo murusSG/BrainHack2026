@@ -49,3 +49,9 @@ export async function getSession() {
     token,
   };
 }
+
+export async function getAccessToken() {
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+}

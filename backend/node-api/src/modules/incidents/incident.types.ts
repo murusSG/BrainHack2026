@@ -169,3 +169,53 @@ export type IncidentReportResult =
       recommendations: ResourceAllocationRecommendations;
       message: string;
     };
+
+export type IncidentReportStatus = "draft" | "submitted" | "acknowledged";
+
+export type CasualtyCount = {
+  injured: number;
+  deceased: number;
+  missing: number;
+};
+
+export type IncidentReport = {
+  id: string;
+  incident_id: string;
+  agency: string;
+  author_id: string;
+  author_name?: string;
+  situation_summary: string;
+  casualties?: CasualtyCount;
+  location?: string;
+  resources_deployed?: string;
+  actions_taken?: string;
+  hazards: string[];
+  next_steps?: string;
+  status: IncidentReportStatus;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreateIncidentReportInput = {
+  author_name?: string;
+  situation_summary: string;
+  casualties?: CasualtyCount;
+  location?: string;
+  resources_deployed?: string;
+  actions_taken?: string;
+  hazards?: string[];
+  next_steps?: string;
+  status?: "draft" | "submitted";
+};
+
+export type UpdateIncidentReportInput = {
+  author_name?: string;
+  situation_summary?: string;
+  casualties?: CasualtyCount;
+  location?: string;
+  resources_deployed?: string;
+  actions_taken?: string;
+  hazards?: string[];
+  next_steps?: string;
+  status?: IncidentReportStatus;
+};

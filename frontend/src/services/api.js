@@ -40,20 +40,28 @@ async function patch(path, body) {
   return request(path, { method: 'PATCH', body });
 }
 
-async function authedPatch(path, body, token) {
-  return request(path, {
-    method: 'PATCH',
-    body,
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
-}
-
 async function getRaw(path) {
   return request(path, { unwrap: false });
 }
 
 async function authedGet(path, token) {
   return request(path, { headers: { Authorization: `Bearer ${token}` } });
+}
+
+async function authedPost(path, token, body) {
+  return request(path, {
+    method: 'POST',
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+async function authedPatch(path, token, body) {
+  return request(path, {
+    method: 'PATCH',
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
 }
 
 function withQuery(path, params = {}) {
@@ -69,6 +77,8 @@ function withQuery(path, params = {}) {
 
 export const api = {
   authedGet,
+  authedPost,
+  authedPatch,
 
   // NEA environmental
   psi: () => get('/environmental/psi'),
@@ -96,7 +106,7 @@ export const api = {
   residentAlerts: (params = {}) => get(withQuery('/resident-alerts', params)),
   publishResidentAlert: (payload, token) => post('/resident-alerts', payload, token),
   updateResidentAlert: (id, payload, token) =>
-    authedPatch(`/resident-alerts/${encodeURIComponent(id)}`, payload, token),
+    authedPatch(`/resident-alerts/${encodeURIComponent(id)}`, token, payload),
 
   // Deterministic foresight engine with optional LLM narrative layer
   foresightPredictions: (params = {}) => get(withQuery('/foresight/predictions', params)),
@@ -125,12 +135,25 @@ export const api = {
   incidentCluster: (incidentId) => get(`/incidents/clusters/${encodeURIComponent(incidentId)}`),
   approveResourceAllocation: (payload) => post('/resource-allocation/approve', payload),
   decideResourceAllocation: (payload) => post('/resource-allocation/decision', payload),
-  responderLogs: async (incidentId) => {
-    const response = await get(`/incidents/${encodeURIComponent(incidentId)}/logs`);
-    return response.logs ?? [];
+  incidentReports: async (incidentId, token) => {
+    const response = await authedGet(
+      `/incidents/${encodeURIComponent(incidentId)}/reports`,
+      token
+    );
+    return response.reports ?? [];
   },
-  createResponderLog: (incidentId, payload) =>
-    post(`/incidents/${encodeURIComponent(incidentId)}/logs`, payload),
+  createIncidentReport: (incidentId, token, payload) =>
+    authedPost(
+      `/incidents/${encodeURIComponent(incidentId)}/reports`,
+      token,
+      payload
+    ),
+  updateIncidentReport: (incidentId, reportId, token, payload) =>
+    authedPatch(
+      `/incidents/${encodeURIComponent(incidentId)}/reports/${encodeURIComponent(reportId)}`,
+      token,
+      payload
+    ),
 
   // SCDF public resources
   scdfResources: (type) => get(withQuery('/scdf/resources', { type })),

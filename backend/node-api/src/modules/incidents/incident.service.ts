@@ -1,6 +1,5 @@
 import { BadRequestError } from "../../utils/apiError";
 import { env } from "../../config/env";
-import { z } from "zod";
 import { extractReport } from "./incidentExtraction.service";
 import {
   attachReportToCluster,
@@ -9,9 +8,7 @@ import {
   getRecentIncidentClusters,
   listPriorityQueue,
   listResponderIncidents,
-  listResponderLogs,
   listIncidentClusters,
-  addResponderLog,
   updateClusterResourceAllocation,
 } from "./incidentCluster.service";
 import { findSimilarIncidentCluster } from "./incidentSimilarity.service";
@@ -24,7 +21,6 @@ import type {
   IncidentClusterResponse,
   IncidentReportResult,
   PublicIncidentReport,
-  ResponderIncidentLog,
 } from "./incident.types";
 
 const EXTRACTION_CONFIDENCE_THRESHOLD = 0.65;
@@ -177,35 +173,6 @@ export function getDispatcherPriorityQueue(): IncidentClusterResponse[] {
 
 export function getResponderIncidentList(): IncidentClusterResponse[] {
   return listResponderIncidents();
-}
-
-export function getResponderIncidentLogs(incidentId: string): ResponderIncidentLog[] {
-  return listResponderLogs(incidentId);
-}
-
-const responderLogSchema = z.object({
-  agency: z.string().trim().min(1).max(32),
-  author: z.string().trim().max(80).optional(),
-  message: z.string().trim().min(1).max(2000),
-  category: z
-    .enum(["hazard", "medical", "evacuation", "security", "resource_update", "general"])
-    .default("general"),
-});
-
-export function createResponderIncidentLog(
-  incidentId: string,
-  input: unknown
-): ResponderIncidentLog {
-  const parsed = responderLogSchema.safeParse(input);
-  if (!parsed.success) {
-    throw new BadRequestError("agency and message are required for responder updates.", {
-      issues: parsed.error.flatten().fieldErrors,
-    });
-  }
-  return addResponderLog({
-    incidentId,
-    ...parsed.data,
-  });
 }
 
 function normaliseReport(input: unknown): PublicIncidentReport {

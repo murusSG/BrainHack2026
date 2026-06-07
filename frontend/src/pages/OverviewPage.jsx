@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { AgencyFeedPanel } from '../components/AgencyFeedPanel';
 import { AllocationApprovalPanel } from '../components/AllocationApprovalPanel';
@@ -9,6 +9,7 @@ import { RecommendationPanel } from '../components/RecommendationPanel';
 import { TimelinePanel } from '../components/TimelinePanel';
 import {
   dataSources,
+  dorsconStatus,
   quickActions,
   recommendations,
   roleViews,
@@ -17,14 +18,13 @@ import {
 import { useEvents } from '../hooks/useEvents';
 import { api } from '../services/api';
 
-export function OverviewPage({ session }) {
-  const navigate = useNavigate();
+export function OverviewPage() {
   const { events, status } = useEvents();
   const [foresightRecommendation, setForesightRecommendation] = useState(null);
   const [commandTimeline, setCommandTimeline] = useState([]);
   const [commandStateStatus, setCommandStateStatus] = useState('loading');
-  const [quickActionNotice, setQuickActionNotice] = useState('Command shortcuts ready.');
   const [activeQuickAction, setActiveQuickAction] = useState(null);
+  const [guidelinesVisible, setGuidelinesVisible] = useState(false);
   const demoEventCount = events.filter((event) => event.isDemo).length;
   const liveEventCount = events.length - demoEventCount;
   const activeIncidentDelta =
@@ -95,27 +95,6 @@ export function OverviewPage({ session }) {
 
   function handleQuickAction(action) {
     setActiveQuickAction(action.label);
-    if (action.label !== 'Broadcast Emergency Alert') {
-      setQuickActionNotice(`${action.label} staged in the command workspace.`);
-      return;
-    }
-
-    setQuickActionNotice('Opening resident alert composer for command review.');
-    navigate('/alerts', {
-      state: {
-        openResidentAlertComposer: true,
-        residentAlertDraft: {
-          title: 'Emergency advisory for Toa Payoh residents',
-          body: 'Localised flood risk is elevated. Avoid low-lying walkways, basement access, and flooded road edges.',
-          publicAction: 'Avoid flood-prone paths and use alternate routes until agencies issue all-clear.',
-          severity: 'danger',
-          locationLabel: 'Toa Payoh',
-          lat: '1.3343',
-          lng: '103.8563',
-          radiusMeters: '1800',
-        },
-      },
-    });
   }
 
   return (
@@ -147,24 +126,45 @@ export function OverviewPage({ session }) {
 
       <ForesightEngine onStageAction={handleStageAction} />
 
-      <section className="status-banner panel">
-        <div className="status-mark" />
+      <section className={`status-banner panel status-banner-${dorsconStatus.level}`}>
+        <div className="status-mark">Advisories</div>
         <div className="status-content">
-          <p className="status-title">Current Status: Code Orange</p>
-          <p className="status-text">
-            Moderate risk of widespread transmission. Public health measures remain at Stage 2.
-            Frontline units are on standby while Jurong West and Toa Payoh run elevated watch.
-          </p>
-          <p className="quick-action-status">{quickActionNotice}</p>
+          <p className="status-title">{dorsconStatus.commandTitle}</p>
+          <p className="status-text">{dorsconStatus.summary}</p>
+          <div className="status-guidelines">
+            <p className="status-guideline-impact">
+              <strong>Impact on daily life:</strong> {dorsconStatus.impact}
+            </p>
+            <div className="status-guideline-list">
+              {dorsconStatus.publicAdvice.map((item) => (
+                <span key={item}>{item}</span>
+              ))}
+            </div>
+          </div>
+          {guidelinesVisible ? (
+            <div className="dorscon-reference-grid">
+              {dorsconStatus.referenceLevels.map((item) => (
+                <article
+                  key={item.level}
+                  className={`dorscon-reference-card dorscon-reference-${item.level} ${
+                    item.level === dorsconStatus.level ? 'active' : ''
+                  }`}
+                >
+                  <p className="dorscon-reference-label">{item.label}</p>
+                  <p className="dorscon-reference-copy">{item.summary}</p>
+                </article>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div className="status-meta">
-          <span className="pill">Updated 2m ago</span>
+          <span className="pill">{dorsconStatus.updatedLabel}</span>
           <button
             type="button"
             className="inline-link"
-            onClick={() => setQuickActionNotice('Response guideline snapshot loaded.')}
+            onClick={() => setGuidelinesVisible((current) => !current)}
           >
-            View guidelines
+            {guidelinesVisible ? 'Hide DORSCON guide' : 'View guidelines'}
           </button>
         </div>
       </section>
