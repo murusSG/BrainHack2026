@@ -47,3 +47,9 @@ export async function getSession() {
     role: profile?.role ?? 'public',
   };
 }
+
+export async function getAccessToken() {
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+}

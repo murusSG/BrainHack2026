@@ -44,6 +44,22 @@ async function authedGet(path, token) {
   return request(path, { headers: { Authorization: `Bearer ${token}` } });
 }
 
+async function authedPost(path, token, body) {
+  return request(path, {
+    method: 'POST',
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+async function authedPatch(path, token, body) {
+  return request(path, {
+    method: 'PATCH',
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 function withQuery(path, params = {}) {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -57,6 +73,8 @@ function withQuery(path, params = {}) {
 
 export const api = {
   authedGet,
+  authedPost,
+  authedPatch,
 
   // NEA environmental
   psi: () => get('/environmental/psi'),
@@ -107,12 +125,25 @@ export const api = {
   incidentCluster: (incidentId) => get(`/incidents/clusters/${encodeURIComponent(incidentId)}`),
   approveResourceAllocation: (payload) => post('/resource-allocation/approve', payload),
   decideResourceAllocation: (payload) => post('/resource-allocation/decision', payload),
-  responderLogs: async (incidentId) => {
-    const response = await get(`/incidents/${encodeURIComponent(incidentId)}/logs`);
-    return response.logs ?? [];
+  incidentReports: async (incidentId, token) => {
+    const response = await authedGet(
+      `/incidents/${encodeURIComponent(incidentId)}/reports`,
+      token
+    );
+    return response.reports ?? [];
   },
-  createResponderLog: (incidentId, payload) =>
-    post(`/incidents/${encodeURIComponent(incidentId)}/logs`, payload),
+  createIncidentReport: (incidentId, token, payload) =>
+    authedPost(
+      `/incidents/${encodeURIComponent(incidentId)}/reports`,
+      token,
+      payload
+    ),
+  updateIncidentReport: (incidentId, reportId, token, payload) =>
+    authedPatch(
+      `/incidents/${encodeURIComponent(incidentId)}/reports/${encodeURIComponent(reportId)}`,
+      token,
+      payload
+    ),
 
   // SCDF public resources
   scdfResources: (type) => get(withQuery('/scdf/resources', { type })),
