@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CrisisMap } from '../components/CrisisMap';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
@@ -23,7 +23,16 @@ const WATCH_POINTS = [
   { id: 'work', label: 'Work', sublabel: 'Orchard Road', lat: 1.3048, lng: 103.8318 },
 ];
 
-const SEVERITY_RANK = { info: 0, low: 1, medium: 2, high: 3, critical: 4 };
+const SEVERITY_RANK = {
+  info: 0,
+  low: 1,
+  advisory: 2,
+  medium: 2,
+  warning: 3,
+  high: 3,
+  danger: 4,
+  critical: 4,
+};
 
 function statusTone(severity) {
   if (!severity) return 'clear';
@@ -35,6 +44,10 @@ export function ResidentPage() {
   const [activePoint, setActivePoint] = useState(WATCH_POINTS[0].id);
   const [shelterNote, setShelterNote] = useState(null);
   const [shelterLoading, setShelterLoading] = useState(false);
+  const [residentAlerts, setResidentAlerts] = useState([]);
+  const [residentAlertStatus, setResidentAlertStatus] = useState('loading');
+  const [residentAlertError, setResidentAlertError] = useState(null);
+  const [acknowledgedAlertIds, setAcknowledgedAlertIds] = useState(() => new Set());
   const isLoading = status === 'loading';
   const demoEventCount = events.filter((event) => event.isDemo).length;
   const liveEventCount = events.length - demoEventCount;
@@ -44,6 +57,32 @@ export function ResidentPage() {
       : status === 'error'
         ? 'Demo fallback'
         : `${liveEventCount} live / ${demoEventCount} demo`;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadResidentAlerts() {
+      setResidentAlertStatus('loading');
+      try {
+        const alerts = await api.residentAlerts();
+        if (cancelled) return;
+        setResidentAlerts(Array.isArray(alerts) ? alerts : []);
+        setResidentAlertError(null);
+        setResidentAlertStatus('done');
+      } catch (err) {
+        if (cancelled) return;
+        setResidentAlerts([]);
+        setResidentAlertError(err.message);
+        setResidentAlertStatus('error');
+      }
+    }
+
+    loadResidentAlerts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const statusByPoint = useMemo(() => {
     return WATCH_POINTS.map((point) => {
@@ -60,8 +99,23 @@ export function ResidentPage() {
   }, [events]);
 
   const active = statusByPoint.find((statusItem) => statusItem.point.id === activePoint);
-  const activeSeverity = active?.affecting[0]?.severity;
-  const activeTone = isLoading ? 'loading' : statusTone(activeSeverity);
+  const alertsByPoint = useMemo(() => {
+    const sourceAlerts =
+      residentAlerts.length > 0 ? residentAlerts : events.map(eventToFallbackResidentAlert);
+
+    return WATCH_POINTS.map((point) => {
+      const affecting = sourceAlerts.filter((alert) => alertAffectsPoint(alert, point));
+      affecting.sort(
+        (a, b) => (SEVERITY_RANK[b.severity] ?? 0) - (SEVERITY_RANK[a.severity] ?? 0)
+      );
+      return { point, affecting };
+    });
+  }, [events, residentAlerts]);
+
+  const activeAlerts = alertsByPoint.find((statusItem) => statusItem.point.id === activePoint);
+  const activeSeverity = activeAlerts?.affecting[0]?.severity ?? active?.affecting[0]?.severity;
+  const activeTone = isLoading || residentAlertStatus === 'loading' ? 'loading' : statusTone(activeSeverity);
+  const alertFeedSource = residentAlerts.length > 0 ? 'Resident alert channel' : 'Event-derived fallback';
 
   async function handleNearestShelter(point) {
     setShelterLoading(true);
@@ -127,29 +181,40 @@ export function ResidentPage() {
       </div>
 
       <section className={`resident-crisis-card is-${activeTone}`}>
-        {isLoading ? (
+        {isLoading || residentAlertStatus === 'loading' ? (
           <>
-            <p className="resident-alert-count">Syncing live data</p>
+            <p className="resident-alert-count">Syncing resident alerts</p>
             <LoadingSkeleton rows={2} compact />
           </>
-        ) : active?.affecting.length === 0 ? (
+        ) : activeAlerts?.affecting.length === 0 ? (
           <>
             <span className="resident-clear-badge">CLEAR</span>
             <h2>All clear at {active.point.label}</h2>
-            <p>No active hazards in your area right now.</p>
+            <p>No active citizen alerts in your area right now.</p>
           </>
         ) : (
           <>
             <p className="resident-alert-count">
-              {active.affecting.length} alert{active.affecting.length > 1 ? 's' : ''} near{' '}
-              {active.point.label}
+              {activeAlerts.affecting.length} alert{activeAlerts.affecting.length > 1 ? 's' : ''} near{' '}
+              {activeAlerts.point.label}
             </p>
             <div className="resident-alert-list">
-              {active.affecting.map((event) => (
-                <article key={event.id} className="resident-alert-card">
-                  {event.isDemo && <span className="demo-chip">Demo event</span>}
-                  <h2>{event.title}</h2>
-                  <p className="resident-action-copy">Action: {event.publicAction}</p>
+              {activeAlerts.affecting.map((alert) => {
+                const acknowledged = acknowledgedAlertIds.has(alert.id);
+                return (
+                <article key={alert.id} className={`resident-alert-card ${acknowledged ? 'is-read' : ''}`}>
+                  <div className="resident-alert-meta">
+                    <span className={`resident-alert-source is-${alert.sourceType}`}>
+                      {alert.sourceType === 'command_broadcast' ? 'Command alert' : 'Incident active'}
+                    </span>
+                    <span className={`resident-alert-status is-${alert.status ?? 'active'}`}>
+                      {alert.status === 'resolved' ? 'All clear' : alert.status === 'updated' ? 'Updated' : 'Active'}
+                    </span>
+                    <span>{alert.locationLabel}</span>
+                  </div>
+                  <h2>{alert.title}</h2>
+                  <p>{alert.body}</p>
+                  <p className="resident-action-copy">Action: {alert.publicAction}</p>
                   <div className="resident-card-actions">
                     <Link to="/incident-map" className="resident-primary-button resident-button-link">
                       View on map
@@ -163,9 +228,25 @@ export function ResidentPage() {
                       {shelterLoading ? 'Finding shelter' : 'Nearest shelter'}
                     </button>
                   </div>
+                  <button
+                    type="button"
+                    className="resident-ack-button"
+                    onClick={() =>
+                      setAcknowledgedAlertIds((current) => {
+                        const next = new Set(current);
+                        next.add(alert.id);
+                        return next;
+                      })
+                    }
+                    disabled={acknowledged}
+                  >
+                    {acknowledged ? 'Acknowledged' : 'Mark as read'}
+                  </button>
                 </article>
-              ))}
+                );
+              })}
             </div>
+            <p className="resident-alert-footnote">Source: {alertFeedSource}</p>
           </>
         )}
       </section>
@@ -175,6 +256,12 @@ export function ResidentPage() {
       {status === 'error' && (
         <p className="resident-feed-warning">
           Live feed unavailable ({error}). Showing demo scenarios only.
+        </p>
+      )}
+
+      {residentAlertStatus === 'error' && (
+        <p className="resident-feed-warning">
+          Resident alert channel unavailable ({residentAlertError}). Showing event-derived alerts.
         </p>
       )}
 
@@ -195,4 +282,26 @@ function shelterForPoint(pointId) {
   if (pointId === 'work') return 'Orchard Gateway concourse, demo routing';
   if (pointId === 'parents') return 'Woodlands Community Club, demo routing';
   return 'Tampines Hub, demo routing';
+}
+
+function alertAffectsPoint(alert, point) {
+  if (alert.audience?.type === 'all') return true;
+  if (alert.lat == null || alert.lng == null) return false;
+  return distanceMeters(point, { lat: alert.lat, lng: alert.lng }) <= (alert.radiusMeters ?? 500);
+}
+
+function eventToFallbackResidentAlert(event) {
+  return {
+    id: `fallback:${event.id}`,
+    sourceType: event.isDemo ? 'command_broadcast' : 'incident_activated',
+    title: event.title,
+    body: `${event.source} signal near ${event.location}.`,
+    publicAction: event.publicAction,
+    severity: event.severity,
+    status: 'active',
+    locationLabel: event.location,
+    lat: event.lat,
+    lng: event.lng,
+    radiusMeters: event.vicinityRadiusMeters ?? 500,
+  };
 }

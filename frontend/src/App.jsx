@@ -16,11 +16,11 @@ import { SystemFlowPage } from './pages/SystemFlowPage';
 
 function CommandShell({ page, session, onSignOut }) {
   const pages = {
-    overview: <OverviewPage />,
+    overview: <OverviewPage session={session} />,
     'incident-map': <IncidentMapPage />,
     resources: <ResourcesPage />,
     hospitals: <HospitalsPage />,
-    alerts: <AlertsPage />,
+    alerts: <AlertsPage session={session} />,
     'system-flow': <SystemFlowPage />,
   };
 

@@ -6,6 +6,8 @@ import {
   broadcastSteps
 } from '../data/dashboardData';
 import { useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import { api } from '../services/api';
 
 function AlertFeedCard({ item, selected, onSelect }) {
   function handleKeyDown(event) {
@@ -53,13 +55,29 @@ function SpatialMapCard() {
   );
 }
 
-export function AlertsPage() {
+export function AlertsPage({ session }) {
+  const location = useLocation();
+  const routedDraft = location.state?.residentAlertDraft;
   const initialAlertId = alertsFeed.find((item) => item.active)?.id ?? alertsFeed[0]?.id;
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState(alertsPageMeta.tabs[0]);
   const [selectedAlertId, setSelectedAlertId] = useState(initialAlertId);
   const [statusOverrides, setStatusOverrides] = useState({});
   const [actionNotice, setActionNotice] = useState('Alert feed ready for dispatcher review.');
+  const [composerOpen, setComposerOpen] = useState(Boolean(location.state?.openResidentAlertComposer));
+  const [publishState, setPublishState] = useState('idle');
+  const [publishError, setPublishError] = useState('');
+  const [publishedResidentAlert, setPublishedResidentAlert] = useState(null);
+  const [publishForm, setPublishForm] = useState({
+    title: routedDraft?.title ?? 'Flash flood advisory for Orchard Road residents',
+    body: routedDraft?.body ?? 'Avoid basement links and use sheltered routes until the water recedes.',
+    publicAction: routedDraft?.publicAction ?? 'Avoid the affected area and follow route diversions.',
+    locationLabel: routedDraft?.locationLabel ?? 'Orchard Road',
+    severity: routedDraft?.severity ?? 'danger',
+    lat: routedDraft?.lat ?? '1.3048',
+    lng: routedDraft?.lng ?? '103.8318',
+    radiusMeters: routedDraft?.radiusMeters ?? '1200',
+  });
 
   const alertsWithStatus = useMemo(
     () =>
@@ -138,12 +156,186 @@ export function AlertsPage() {
           <button
             type="button"
             className="primary-button"
-            onClick={() => setActionNotice('New advisory draft staged from the selected alert.')}
+            onClick={() => setComposerOpen((current) => !current)}
           >
             {alertsPageMeta.advisoryLabel}
           </button>
         </div>
       </section>
+
+      {composerOpen && (
+        <section className="alerts-composer-panel">
+          <div className="alerts-composer-head">
+            <h2>Publish resident alert</h2>
+            <span>Citizen-safe wording only</span>
+          </div>
+          <div className="alerts-composer-grid">
+            <label>
+              <span>Title</span>
+              <input
+                value={publishForm.title}
+                onChange={(event) => setPublishForm((current) => ({ ...current, title: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Location</span>
+              <input
+                value={publishForm.locationLabel}
+                onChange={(event) =>
+                  setPublishForm((current) => ({ ...current, locationLabel: event.target.value }))
+                }
+              />
+            </label>
+            <label>
+              <span>Public action</span>
+              <input
+                value={publishForm.publicAction}
+                onChange={(event) =>
+                  setPublishForm((current) => ({ ...current, publicAction: event.target.value }))
+                }
+              />
+            </label>
+            <label>
+              <span>Body</span>
+              <textarea
+                rows="3"
+                value={publishForm.body}
+                onChange={(event) => setPublishForm((current) => ({ ...current, body: event.target.value }))}
+              />
+            </label>
+          </div>
+          <div className="alerts-composer-row">
+            <label>
+              <span>Severity</span>
+              <input
+                value={publishForm.severity}
+                onChange={(event) =>
+                  setPublishForm((current) => ({ ...current, severity: event.target.value }))
+                }
+              />
+            </label>
+            <label>
+              <span>Radius</span>
+              <input
+                value={publishForm.radiusMeters}
+                onChange={(event) =>
+                  setPublishForm((current) => ({ ...current, radiusMeters: event.target.value }))
+                }
+              />
+            </label>
+            <label>
+              <span>Latitude</span>
+              <input
+                value={publishForm.lat}
+                onChange={(event) => setPublishForm((current) => ({ ...current, lat: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Longitude</span>
+              <input
+                value={publishForm.lng}
+                onChange={(event) => setPublishForm((current) => ({ ...current, lng: event.target.value }))}
+              />
+            </label>
+          </div>
+          <div className="alerts-composer-actions">
+            <button
+              type="button"
+              className="primary-button"
+              disabled={publishState === 'publishing'}
+              onClick={async () => {
+                setPublishState('publishing');
+                setPublishError('');
+                try {
+                  const published = await api.publishResidentAlert({
+                    title: publishForm.title,
+                    body: publishForm.body,
+                    publicAction: publishForm.publicAction,
+                    locationLabel: publishForm.locationLabel,
+                    severity: publishForm.severity,
+                    lat: Number(publishForm.lat),
+                    lng: Number(publishForm.lng),
+                    radiusMeters: Number(publishForm.radiusMeters),
+                  }, session?.token);
+                  setPublishState('done');
+                  setPublishedResidentAlert(published);
+                  setComposerOpen(false);
+                  setActionNotice(`Resident alert published for ${published.locationLabel}.`);
+                } catch (err) {
+                  setPublishState('error');
+                  setPublishError(err.message);
+                }
+              }}
+            >
+              {publishState === 'publishing' ? 'Publishing' : 'Publish to residents'}
+            </button>
+            <button type="button" className="ghost-button" onClick={() => setComposerOpen(false)}>
+              Cancel
+            </button>
+          </div>
+          {publishError && <p className="alert-action-notice">{publishError}</p>}
+          {publishedResidentAlert && (
+            <div className="alerts-lifecycle-actions">
+              <span>Resident alert: {publishedResidentAlert.status}</span>
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={async () => {
+                  setPublishState('publishing');
+                  setPublishError('');
+                  try {
+                    const updated = await api.updateResidentAlert(
+                      publishedResidentAlert.id,
+                      {
+                        status: 'updated',
+                        body: `${publishForm.body} Updated guidance has been confirmed by command.`,
+                        publicAction: publishForm.publicAction,
+                      },
+                      session?.token
+                    );
+                    setPublishedResidentAlert(updated);
+                    setPublishState('done');
+                    setActionNotice(`Resident alert updated for ${updated.locationLabel}.`);
+                  } catch (err) {
+                    setPublishState('error');
+                    setPublishError(err.message);
+                  }
+                }}
+              >
+                Update guidance
+              </button>
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={async () => {
+                  setPublishState('publishing');
+                  setPublishError('');
+                  try {
+                    const resolved = await api.updateResidentAlert(
+                      publishedResidentAlert.id,
+                      {
+                        status: 'resolved',
+                        body: 'The immediate hazard has cleared. Continue to avoid any closed routes until agencies reopen them.',
+                        publicAction: 'All clear for immediate danger. Follow posted route closures.',
+                        severity: 'info',
+                      },
+                      session?.token
+                    );
+                    setPublishedResidentAlert(resolved);
+                    setPublishState('done');
+                    setActionNotice(`All-clear issued for ${resolved.locationLabel}.`);
+                  } catch (err) {
+                    setPublishState('error');
+                    setPublishError(err.message);
+                  }
+                }}
+              >
+                Issue all-clear
+              </button>
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="alerts-layout">
         <aside className="alerts-feed-panel">

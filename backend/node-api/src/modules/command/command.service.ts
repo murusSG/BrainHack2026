@@ -134,6 +134,18 @@ export async function updateAllocationAgencyStatus(
   return cloneRecommendation(recommendation);
 }
 
+export async function createCommandTimelineEntry(input: {
+  title: string;
+  detail: string;
+  location: string;
+  severity: CommandTimelineEntry["severity"];
+  recommendationId?: string;
+}): Promise<CommandTimelineEntry> {
+  const entry = addTimelineEntry(input);
+  await commandRepo.saveTimelineEntry(entry);
+  return { ...entry };
+}
+
 export function clearCommandStateForTests() {
   allocations.splice(0, allocations.length);
   timeline.splice(0, timeline.length);

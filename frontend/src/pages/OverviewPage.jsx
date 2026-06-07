@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { AgencyFeedPanel } from '../components/AgencyFeedPanel';
 import { AllocationApprovalPanel } from '../components/AllocationApprovalPanel';
@@ -17,7 +17,8 @@ import {
 import { useEvents } from '../hooks/useEvents';
 import { api } from '../services/api';
 
-export function OverviewPage() {
+export function OverviewPage({ session }) {
+  const navigate = useNavigate();
   const { events, status } = useEvents();
   const [foresightRecommendation, setForesightRecommendation] = useState(null);
   const [commandTimeline, setCommandTimeline] = useState([]);
@@ -94,7 +95,27 @@ export function OverviewPage() {
 
   function handleQuickAction(action) {
     setActiveQuickAction(action.label);
-    setQuickActionNotice(`${action.label} staged in the command workspace.`);
+    if (action.label !== 'Broadcast Emergency Alert') {
+      setQuickActionNotice(`${action.label} staged in the command workspace.`);
+      return;
+    }
+
+    setQuickActionNotice('Opening resident alert composer for command review.');
+    navigate('/alerts', {
+      state: {
+        openResidentAlertComposer: true,
+        residentAlertDraft: {
+          title: 'Emergency advisory for Toa Payoh residents',
+          body: 'Localised flood risk is elevated. Avoid low-lying walkways, basement access, and flooded road edges.',
+          publicAction: 'Avoid flood-prone paths and use alternate routes until agencies issue all-clear.',
+          severity: 'danger',
+          locationLabel: 'Toa Payoh',
+          lat: '1.3343',
+          lng: '103.8563',
+          radiusMeters: '1800',
+        },
+      },
+    });
   }
 
   return (

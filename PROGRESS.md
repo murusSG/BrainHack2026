@@ -1,4 +1,58 @@
 ---
+## Session: 2026-06-07
+
+### Built
+- `backend/node-api/src/modules/residentAlerts/residentAlerts.types.ts`
+- `backend/node-api/src/modules/residentAlerts/residentAlerts.service.ts`
+- `backend/node-api/src/modules/residentAlerts/residentAlerts.controller.ts`
+- `backend/node-api/src/modules/residentAlerts/residentAlerts.routes.ts`
+- `backend/node-api/src/repositories/residentAlerts.repo.ts`
+- `backend/node-api/scripts/migrations/004_resident_alerts.sql`
+- `backend/node-api/src/modules/command/command.service.ts`
+- `backend/node-api/src/routes/v1.ts`
+- `backend/node-api/tests/integration/residentAlerts.routes.test.ts`
+- `frontend/src/services/api.js`
+- `frontend/src/pages/ResidentPage.jsx`
+- `frontend/src/pages/AlertsPage.jsx`
+- `frontend/src/styles/globals.css`
+- `frontend/tests/unit/ResidentPage.test.jsx`
+- `PROGRESS.md`
+
+### Current app state
+- Added a first-class resident alert channel at `/api/v1/resident-alerts`.
+- `GET /api/v1/resident-alerts` returns citizen-safe alerts generated from active crisis events, with optional proximity query support.
+- `POST /api/v1/resident-alerts` lets command publish a resident broadcast alert.
+- Command-published resident alerts now persist through Supabase when `004_resident_alerts.sql` has been run, with in-memory fallback when Supabase is unavailable.
+- `004_resident_alerts.sql` has been run in Supabase by Zheng, so deployed/backed Supabase environments can persist command-published resident alerts.
+- Publishing a resident alert now creates a command timeline audit entry.
+- Resident alerts distinguish `incident_activated` alerts from `command_broadcast` alerts.
+- Resident view now fetches the resident alert channel, filters alerts against saved watch points, and shows a compact phone-first alert inbox.
+- Residents can mark alerts as read locally.
+- Resident view falls back to existing event-derived alerts if the resident alert channel is unavailable or empty, preserving demo resilience.
+- Alerts page `New Advisory` now opens a resident-alert composer and can publish to the resident alert endpoint instead of only staging local text.
+- Resident alert publishing is now protected: `POST /api/v1/resident-alerts` requires a valid Supabase bearer token with the `leader` role.
+- Frontend Supabase sessions now retain the access token and pass it when publishing resident alerts from the command Alerts page.
+- Added resident alert lifecycle support: leaders can update guidance or issue an all-clear through `PATCH /api/v1/resident-alerts/:id`.
+- Resident alerts can now be `active`, `updated`, `resolved`, or `expired`; residents see "Active", "Updated", or "All clear" status pills in the resident alert inbox.
+- Alerts page keeps the most recently published resident alert and exposes "Update guidance" plus "Issue all-clear" controls for the demo loop.
+- Overview `Broadcast Emergency Alert` quick action now calls the protected resident-alert publish endpoint instead of only staging local status text.
+- Overview `Broadcast Emergency Alert` now routes to `/alerts` and opens the resident-alert composer with a Toa Payoh draft, so leaders can review/edit before publishing.
+- Both command entry points for resident alerting are now routed: Alerts page composer and Overview-to-Alerts composer handoff.
+- Browser smoke reached the current-main login gate on `http://127.0.0.1:5188`; full protected click-through needs a valid Supabase leader account because publish/update endpoints correctly require leader bearer auth.
+- Verification is green: backend typecheck passes, resident-alert backend route test passes, resident page unit test passes, and frontend production build passes.
+
+### Still to do
+1. Decide whether resident alert acknowledgement should remain local-only or become a per-user persisted read receipt.
+2. Add real push/SMS/email channel integration if the demo needs notifications beyond in-app/web display.
+3. Consider whether responder/dispatcher roles should get a separate advisory-draft permission without direct publish rights.
+4. If Supabase status constraints are added later, ensure they allow `active`, `updated`, `resolved`, and `expired`.
+
+### Notes
+- This implementation is intentionally citizen-safe: resident-facing alerts expose public action guidance, severity, location, and source type, not internal command details.
+- The backend install in the fresh clone had been partially corrupted by an interrupted `npm install`; `backend/node-api/node_modules` was removed and restored with `npm ci` before verification.
+---
+
+---
 ## Session: 2026-06-03
 
 ### Built
