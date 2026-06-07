@@ -1,0 +1,8 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "cd node-api && npm ci && npm run build",
+    "start": "node node-api/dist/index.js"
+  }
+}
