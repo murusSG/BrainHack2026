@@ -5,7 +5,6 @@ import type {
   IncidentClusterResponse,
   PublicIncidentReport,
   ResponderIncidentLog,
-  ResponderLogCategory,
   ResourceAllocationRecommendations,
   ResourceAllocationStatus,
   StoredIncidentCluster,
@@ -186,45 +185,6 @@ export function listResponderIncidents(): IncidentClusterResponse[] {
 export function getIncidentCluster(incidentId: string): IncidentClusterResponse | undefined {
   const cluster = findClusterInternal(incidentId);
   return cluster ? cloneClusterForResponse(cluster) : undefined;
-}
-
-export function listResponderLogs(incidentId: string): ResponderIncidentLog[] {
-  const cluster = requireCluster(incidentId);
-  if (cluster.status !== "dispatched") {
-    throw new ApiError("NOT_FOUND", "Responder incident not found.", 404, {
-      incident_id: incidentId,
-    });
-  }
-  return cluster.responder_logs.map(cloneResponderLog);
-}
-
-export function addResponderLog(input: {
-  incidentId: string;
-  agency: string;
-  author?: string;
-  message: string;
-  category: ResponderLogCategory;
-}): ResponderIncidentLog {
-  const cluster = requireCluster(input.incidentId);
-  if (cluster.status !== "dispatched") {
-    throw new ApiError("NOT_FOUND", "Responder incident not found.", 404, {
-      incident_id: input.incidentId,
-    });
-  }
-
-  const now = new Date().toISOString();
-  const log: ResponderIncidentLog = {
-    id: makeResponderLogId(cluster),
-    incident_id: cluster.incident_id,
-    agency: input.agency,
-    author: input.author,
-    message: input.message,
-    category: input.category,
-    timestamp: now,
-  };
-  cluster.responder_logs.push(log);
-  cluster.updated_at = now;
-  return cloneResponderLog(log);
 }
 
 export function getRecentIncidentClusters(cutoffIso: string): StoredIncidentCluster[] {
