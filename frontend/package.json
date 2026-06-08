@@ -11,6 +11,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@mantine/core": "^7.17.8",
+    "@mantine/hooks": "^7.17.8",
     "@supabase/supabase-js": "^2.107.0",
     "leaflet": "^1.9.4",
     "react": "^18.3.1",
