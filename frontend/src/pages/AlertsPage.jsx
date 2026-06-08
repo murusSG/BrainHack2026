@@ -77,6 +77,9 @@ export function AlertsPage({ session }) {
     lat: routedDraft?.lat ?? '1.3048',
     lng: routedDraft?.lng ?? '103.8318',
     radiusMeters: routedDraft?.radiusMeters ?? '1200',
+    smsEnabled: false,
+    whatsappEnabled: false,
+    telegramEnabled: false,
   });
 
   const alertsWithStatus = useMemo(
@@ -238,6 +241,47 @@ export function AlertsPage({ session }) {
               />
             </label>
           </div>
+          <div className="alerts-channel-toggles" aria-label="External notification channels">
+            <label className="alerts-channel-toggle">
+              <input
+                type="checkbox"
+                checked={publishForm.smsEnabled}
+                onChange={(event) =>
+                  setPublishForm((current) => ({ ...current, smsEnabled: event.target.checked }))
+                }
+              />
+              <span>
+                SMS
+                <small>Uses SMS_DEMO_RECIPIENTS.</small>
+              </span>
+            </label>
+            <label className="alerts-channel-toggle">
+              <input
+                type="checkbox"
+                checked={publishForm.whatsappEnabled}
+                onChange={(event) =>
+                  setPublishForm((current) => ({ ...current, whatsappEnabled: event.target.checked }))
+                }
+              />
+              <span>
+                WhatsApp
+                <small>Uses WHATSAPP_DEMO_RECIPIENTS.</small>
+              </span>
+            </label>
+            <label className="alerts-channel-toggle">
+              <input
+                type="checkbox"
+                checked={publishForm.telegramEnabled}
+                onChange={(event) =>
+                  setPublishForm((current) => ({ ...current, telegramEnabled: event.target.checked }))
+                }
+              />
+              <span>
+                Telegram
+                <small>Uses TELEGRAM_DEMO_CHAT_IDS.</small>
+              </span>
+            </label>
+          </div>
           <div className="alerts-composer-actions">
             <button
               type="button"
@@ -256,6 +300,9 @@ export function AlertsPage({ session }) {
                     lat: Number(publishForm.lat),
                     lng: Number(publishForm.lng),
                     radiusMeters: Number(publishForm.radiusMeters),
+                    smsEnabled: publishForm.smsEnabled,
+                    whatsappEnabled: publishForm.whatsappEnabled,
+                    telegramEnabled: publishForm.telegramEnabled,
                   }, session?.token);
                   setPublishState('done');
                   setPublishedResidentAlert(published);

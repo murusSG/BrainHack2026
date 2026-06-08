@@ -41,5 +41,8 @@ describe('AlertsPage resident alert composer routing', () => {
     expect(screen.getByDisplayValue('Emergency advisory for Toa Payoh residents')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Toa Payoh')).toBeInTheDocument();
     expect(screen.getByDisplayValue('1800')).toBeInTheDocument();
+    expect(screen.getByText('SMS')).toBeInTheDocument();
+    expect(screen.getByText('WhatsApp')).toBeInTheDocument();
+    expect(screen.getByText('Telegram')).toBeInTheDocument();
   });
 });

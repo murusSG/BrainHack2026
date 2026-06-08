@@ -4,6 +4,7 @@ import { residentAlertsRepo } from "../../repositories/residentAlerts.repo";
 import { createCommandTimelineEntry } from "../command/command.service";
 import { haversineDistanceMeters } from "../../utils/geo";
 import { SEVERITY_ORDER, type CrisisEvent, type Severity } from "../../../../shared/types/crisisEvent";
+import { sendResidentAlertSms, sendResidentAlertTelegram, sendResidentAlertWhatsapp } from "./residentAlertSms.service";
 import type {
   CreateResidentAlertInput,
   ResidentAlert,
@@ -80,13 +81,28 @@ export async function createResidentAlert(input: CreateResidentAlertInput): Prom
       ? new Date(Date.now() + input.expiresInMinutes * 60_000).toISOString()
       : undefined,
     status: "active",
-    channels: ["in_app", "web"],
+    channels: [
+      "in_app",
+      "web",
+      ...(input.smsEnabled ? (["sms"] as const) : []),
+      ...(input.whatsappEnabled ? (["whatsapp"] as const) : []),
+      ...(input.telegramEnabled ? (["telegram"] as const) : []),
+    ],
     audience: input.lat != null && input.lng != null ? { type: "nearby", radiusMeters } : { type: "all" },
   };
 
   commandBroadcasts.unshift(alert);
   trimTo(commandBroadcasts, 50);
   await residentAlertsRepo.saveBroadcast(alert);
+  if (input.smsEnabled) {
+    await sendResidentAlertSms(alert);
+  }
+  if (input.whatsappEnabled) {
+    await sendResidentAlertWhatsapp(alert);
+  }
+  if (input.telegramEnabled) {
+    await sendResidentAlertTelegram(alert);
+  }
   await createCommandTimelineEntry({
     title: `Resident alert published - ${alert.title}`,
     detail: `${alert.locationLabel} broadcast issued to ${audienceLabel(alert)}.`,

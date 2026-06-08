@@ -23,7 +23,7 @@ export interface ResidentAlert {
   issuedAt: string;
   expiresAt?: string;
   status: ResidentAlertStatus;
-  channels: Array<"in_app" | "sms" | "web">;
+  channels: Array<"in_app" | "sms" | "web" | "whatsapp" | "telegram">;
   audience: ResidentAlertAudience;
 }
 
@@ -44,6 +44,9 @@ export interface CreateResidentAlertInput {
   radiusMeters?: number;
   relatedEventId?: string;
   expiresInMinutes?: number;
+  smsEnabled?: boolean;
+  whatsappEnabled?: boolean;
+  telegramEnabled?: boolean;
 }
 
 export interface UpdateResidentAlertInput {

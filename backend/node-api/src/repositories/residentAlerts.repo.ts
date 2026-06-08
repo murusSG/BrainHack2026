@@ -1,4 +1,5 @@
 import { supabase } from "../config/supabase";
+import type { ResidentAlertSmsDelivery } from "../modules/residentAlerts/residentAlertSms.service";
 import type { ResidentAlert } from "../modules/residentAlerts/residentAlerts.types";
 
 type ResidentAlertRow = {
@@ -97,6 +98,29 @@ export const residentAlertsRepo = {
 
     return true;
   },
+
+  async saveSmsDeliveries(deliveries: ResidentAlertSmsDelivery[]): Promise<boolean> {
+    if (!supabase || deliveries.length === 0) return false;
+
+    const { error } = await supabase.from("resident_alert_deliveries").insert(
+      deliveries.map((delivery) => ({
+        alert_id: delivery.alertId,
+        channel: delivery.channel,
+        recipient: delivery.recipient,
+        status: delivery.status,
+        provider: delivery.provider,
+        provider_message_id: delivery.providerMessageId ?? null,
+        error_message: delivery.errorMessage ?? null,
+      }))
+    );
+
+    if (error) {
+      console.error("[residentAlertsRepo.saveSmsDeliveries]", error.message);
+      return false;
+    }
+
+    return true;
+  },
 };
 
 function mapResidentAlert(row: ResidentAlertRow): ResidentAlert {
@@ -123,7 +147,7 @@ function mapResidentAlert(row: ResidentAlertRow): ResidentAlert {
 function normaliseChannels(value: unknown): ResidentAlert["channels"] {
   if (!Array.isArray(value)) return ["in_app", "web"];
   return value.filter((channel): channel is ResidentAlert["channels"][number] =>
-    ["in_app", "sms", "web"].includes(String(channel))
+    ["in_app", "sms", "web", "whatsapp", "telegram"].includes(String(channel))
   );
 }
 
