@@ -29,6 +29,44 @@ export async function signIn(email, password) {
   };
 }
 
+export async function signUp(fullName, phone, email, password) {
+  if (!supabase) throw new Error('Authentication is unavailable: Supabase is not configured.');
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { full_name: fullName, phone } },
+  });
+  if (error) throw new Error(error.message);
+  if (!data.session) {
+    throw new Error('Account created. Please confirm your email, then log in.');
+  }
+
+  const token = data.session.access_token;
+  const profile = await api
+    .authedGet('/auth/me', token)
+    .catch((err) => {
+      console.error('[auth] /auth/me failed after signup, defaulting to public role:', err.message);
+      return null;
+    });
+
+  return {
+    identity: data.user.email,
+    role: profile?.role ?? 'public',
+    token,
+  };
+}
+
+export async function signInWithGoogle() {
+  if (!supabase) throw new Error('Authentication is unavailable: Supabase is not configured.');
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin },
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function signOut() {
   if (!supabase) return;
   await supabase.auth.signOut();
