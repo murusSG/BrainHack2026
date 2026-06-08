@@ -25,6 +25,7 @@ export async function signIn(email, password) {
   return {
     identity: data.user.email,
     role: profile?.role ?? 'public',
+    token,
   };
 }
 
@@ -45,6 +46,7 @@ export async function getSession() {
   return {
     identity: data.session.user.email,
     role: profile?.role ?? 'public',
+    token,
   };
 }
 

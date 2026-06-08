@@ -28,8 +28,12 @@ async function get(path) {
   return request(path);
 }
 
-async function post(path, body) {
-  return request(path, { method: 'POST', body });
+async function post(path, body, token) {
+  return request(path, {
+    method: 'POST',
+    body,
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
 }
 
 async function patch(path, body) {
@@ -97,6 +101,12 @@ export const api = {
   // Crisis aggregator
   crisisEvents: (params = {}) => get(withQuery('/crisis/events', params)),
   crisisEvent: (id) => get(`/crisis/events/${encodeURIComponent(id)}`),
+
+  // Resident-facing citizen alert channel
+  residentAlerts: (params = {}) => get(withQuery('/resident-alerts', params)),
+  publishResidentAlert: (payload, token) => post('/resident-alerts', payload, token),
+  updateResidentAlert: (id, payload, token) =>
+    authedPatch(`/resident-alerts/${encodeURIComponent(id)}`, token, payload),
 
   // Deterministic foresight engine with optional LLM narrative layer
   foresightPredictions: (params = {}) => get(withQuery('/foresight/predictions', params)),
