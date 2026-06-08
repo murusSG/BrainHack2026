@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 
 const navItems = [
-  { id: 'overview', label: 'Overview', path: '/', icon: 'overview' },
+  { id: 'overview', label: 'Overview', path: '/overview', icon: 'overview' },
   { id: 'incident-map', label: 'Incident Map', path: '/incident-map', icon: 'map' },
   { id: 'resources', label: 'Resources', path: '/resources', icon: 'resources' },
   { id: 'hospitals', label: 'Hospitals', path: '/hospitals', icon: 'hospitals' },
