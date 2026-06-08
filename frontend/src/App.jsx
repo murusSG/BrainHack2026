@@ -34,7 +34,17 @@ function CommandShell({ page, session, onSignOut }) {
 function ProtectedCommandShell({ page, session, onSignOut, restoring }) {
   const location = useLocation();
 
-  if (restoring) return null;
+  if (restoring) {
+    return (
+      <div className="route-loading-shell">
+        <div className="route-loading-card">
+          <p className="eyebrow">Restoring session</p>
+          <h1>Loading command workspace</h1>
+          <p className="hero-copy">Checking your access and preparing the latest operational view.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!session) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
@@ -67,7 +77,17 @@ function PublicDashboardRoute({ session }) {
 
 function ProtectedDispatcherRoute({ session, restoring }) {
   const location = useLocation();
-  if (restoring) return null;
+  if (restoring) {
+    return (
+      <div className="route-loading-shell">
+        <div className="route-loading-card">
+          <p className="eyebrow">Restoring session</p>
+          <h1>Loading dispatcher workspace</h1>
+          <p className="hero-copy">Checking your access and preparing the review queue.</p>
+        </div>
+      </div>
+    );
+  }
   if (!session) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
@@ -79,11 +99,22 @@ export default function App() {
   const [restoring, setRestoring] = useState(true);
 
   useEffect(() => {
+    const restoreTimeout = window.setTimeout(() => {
+      setRestoring(false);
+    }, 2500);
+
     getSession()
       .then((restored) => {
         if (restored) setSession(restored);
       })
+      .catch((error) => {
+        console.error('[auth] Session restore failed:', error);
+      })
       .finally(() => setRestoring(false));
+
+    return () => {
+      window.clearTimeout(restoreTimeout);
+    };
   }, []);
 
   async function handleSignOut() {

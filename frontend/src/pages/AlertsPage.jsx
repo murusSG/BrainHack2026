@@ -63,7 +63,7 @@ export function AlertsPage({ session }) {
   const [activeTab, setActiveTab] = useState(alertsPageMeta.tabs[0]);
   const [selectedAlertId, setSelectedAlertId] = useState(initialAlertId);
   const [statusOverrides, setStatusOverrides] = useState({});
-  const [actionNotice, setActionNotice] = useState('Alert feed ready for dispatcher review.');
+  const [actionNotice, setActionNotice] = useState('');
   const [composerOpen, setComposerOpen] = useState(Boolean(location.state?.openResidentAlertComposer));
   const [publishState, setPublishState] = useState('idle');
   const [publishError, setPublishError] = useState('');
@@ -372,7 +372,7 @@ export function AlertsPage({ session }) {
 
         <section className="alerts-detail-panel">
           <div className="alerts-detail-head">
-            <div>
+            <div className="alerts-detail-copy">
               <div className="alerts-case-row">
                 <span className={`alert-severity-pill severity-${selectedDetail.severity}`}>
                   {selectedDetail.severity}
@@ -383,8 +383,6 @@ export function AlertsPage({ session }) {
                 </span>
               </div>
               <h2>{selectedDetail.title}</h2>
-              <p className="alerts-summary">{selectedDetail.summary}</p>
-              <p className="alert-action-notice">{actionNotice}</p>
             </div>
 
             <div className="alerts-detail-actions">
@@ -403,6 +401,9 @@ export function AlertsPage({ session }) {
                 Escalate to Command
               </button>
             </div>
+
+            <p className="alerts-summary">{selectedDetail.summary}</p>
+            {actionNotice ? <p className="alert-action-notice">{actionNotice}</p> : null}
           </div>
 
           <div className="alert-facts-grid">

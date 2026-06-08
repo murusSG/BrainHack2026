@@ -112,6 +112,7 @@ export function ResourcesPage() {
       resourceType: requestForm.resourceType,
       quantity,
       priority: requestForm.priority,
+      priorityTone: getPriorityTone(requestForm.priority),
       reason: requestForm.reason.trim() || 'No additional reason supplied.',
     };
     setStagedRequests((current) => [request, ...current].slice(0, 3));
@@ -436,7 +437,9 @@ export function ResourcesPage() {
                         {request.quantity} x {request.resourceType}
                       </p>
                     </div>
-                    <span className="ledger-status status-dispatched">{request.priority}</span>
+                    <span className={`request-priority-pill priority-${request.priorityTone}`}>
+                      {request.priority}
+                    </span>
                   </article>
                 ))}
               </div>
@@ -465,4 +468,11 @@ function resourceEntryMatchesTab(entry, activeTab) {
   }
 
   return !type.includes('shelter');
+}
+
+function getPriorityTone(priority) {
+  const normalized = String(priority ?? '').toLowerCase();
+  if (normalized.includes('critical')) return 'critical';
+  if (normalized.includes('high')) return 'high';
+  return 'medium';
 }

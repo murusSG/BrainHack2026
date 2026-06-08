@@ -53,6 +53,7 @@ export function HospitalsPage() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [selectedFacility, setSelectedFacility] = useState(null);
   const [hospitalNotice, setHospitalNotice] = useState('Hospital desk ready for capacity review.');
+  const filterOptions = ['all', 'critical', 'warning', 'central', 'west', 'north', 'east'];
   const hasLiveData = liveOccupancyCount > 0 || liveReferenceCount > 0;
   const syncLabel =
     status === 'loading'
@@ -83,14 +84,6 @@ export function HospitalsPage() {
 
   const selectedFacilityName = selectedFacility?.name ?? filteredFacilityCards[0]?.name;
 
-  function cycleFilter() {
-    const filters = ['all', 'critical', 'warning', 'west', 'central'];
-    const nextIndex = (filters.indexOf(activeFilter) + 1) % filters.length;
-    const nextFilter = filters[nextIndex];
-    setActiveFilter(nextFilter);
-    setHospitalNotice(`Hospital filter set to ${filterLabel(nextFilter)}.`);
-  }
-
   return (
     <div className="hospitals-page">
       <section className="hero-panel hospital-hero">
@@ -100,9 +93,24 @@ export function HospitalsPage() {
         </div>
         <div className="hero-actions">
           <span className="pill">{syncLabel}</span>
-          <button type="button" className="ghost-button" onClick={cycleFilter}>
-            {hospitalTrackerMeta.filterLabel}
-          </button>
+          <label className="hospital-filter-select">
+            <span className="sr-only">{hospitalTrackerMeta.filterLabel}</span>
+            <select
+              aria-label={hospitalTrackerMeta.filterLabel}
+              value={activeFilter}
+              onChange={(event) => {
+                const nextFilter = event.target.value;
+                setActiveFilter(nextFilter);
+                setHospitalNotice(`Hospital filter set to ${filterLabel(nextFilter)}.`);
+              }}
+            >
+              {filterOptions.map((option) => (
+                <option key={option} value={option}>
+                  {filterLabel(option)}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="button"
             className="primary-button"
