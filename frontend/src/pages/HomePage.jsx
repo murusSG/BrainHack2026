@@ -10,7 +10,7 @@ const FEATURES = [
 export function HomePage() {
   return (
     <Box mih="100vh" bg="linear-gradient(180deg, #fff9f7 0%, #fff1ed 100%)">
-      <Group justify="space-between" px="lg" py="md" style={{ borderBottom: '1px solid rgba(166,17,34,0.12)' }}>
+      <Group component="header" justify="space-between" px="lg" py="md" style={{ borderBottom: '1px solid rgba(166,17,34,0.12)' }}>
         <Group gap="sm">
           <Box
             w={28}
@@ -38,8 +38,8 @@ export function HomePage() {
         </Group>
       </Group>
 
-      <Container size="md" py={56} ta="center">
-        <Badge color="brandRed" variant="light" radius="xl" mb="md">
+      <Container component="main" size="md" py={56} ta="center">
+        <Badge color="brandRed.6" variant="light" radius="xl" mb="md">
           Unified Crisis Management
         </Badge>
         <Title order={1} fz={{ base: 32, sm: 44 }} fw={900} lh={1.1}>
@@ -66,7 +66,7 @@ export function HomePage() {
         </SimpleGrid>
       </Container>
 
-      <Box ta="center" py="md" c="dimmed" fz="xs" style={{ borderTop: '1px solid rgba(166,17,34,0.1)' }}>
+      <Box component="footer" ta="center" py="md" c="dimmed" fz="xs" style={{ borderTop: '1px solid rgba(166,17,34,0.1)' }}>
         A Singapore command network service
       </Box>
     </Box>
