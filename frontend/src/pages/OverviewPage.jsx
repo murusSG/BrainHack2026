@@ -65,6 +65,12 @@ export function OverviewPage() {
   async function handleStageAction(action) {
     const recommendation = buildForesightRecommendation(action);
     setForesightRecommendation(recommendation);
+    requestAnimationFrame(() => {
+      document.getElementById('dispatcher-review-queue')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
     try {
       const saved = await api.createCommandAllocation(recommendation);
       setForesightRecommendation(saved);

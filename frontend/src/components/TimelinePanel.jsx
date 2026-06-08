@@ -4,13 +4,14 @@ export function TimelinePanel({ commandItems = [] }) {
   const items = [...commandItems, ...timelineItems];
 
   return (
-    <section className="panel">
+    <section className="panel timeline-panel">
       <div className="section-heading">
         <h2>Live Event Timeline</h2>
         <span className="pill live-feed-pill">{commandItems.length ? 'Command + live feed' : 'Live feed'}</span>
       </div>
 
-      <div className="timeline-list">
+      <div className="timeline-scroll">
+        <div className="timeline-list">
         {items.map((item) => (
           <article key={item.id ?? `${item.time}-${item.title}`} className="timeline-item">
             <div className={`timeline-dot severity-${item.severity}`} />
@@ -24,6 +25,7 @@ export function TimelinePanel({ commandItems = [] }) {
             </div>
           </article>
         ))}
+        </div>
       </div>
     </section>
   );

@@ -114,7 +114,11 @@ export function AllocationApprovalPanel({
   }
 
   return (
-    <section className="allocation-panel panel" aria-labelledby="allocation-title">
+    <section
+      id="dispatcher-review-queue"
+      className="allocation-panel panel"
+      aria-labelledby="allocation-title"
+    >
       <div className="section-heading allocation-heading">
         <div>
           <p className="eyebrow">AI-assisted allocation</p>
