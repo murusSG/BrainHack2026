@@ -72,14 +72,14 @@ export function SignUpPage({ onAuthenticate }) {
             Sign up to access live advisories, shelters, and report incidents.
           </Text>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             <Stack gap="sm">
               <TextInput label="Full name" value={values.name} onChange={update('name')} disabled={loading} />
               <TextInput label="Email" type="email" value={values.email} onChange={update('email')} disabled={loading} />
               <TextInput label="Phone number" value={values.phone} onChange={update('phone')} placeholder="91234567" disabled={loading} />
-              <PasswordInput label="Password" value={values.password} onChange={update('password')} disabled={loading} />
-              <PasswordInput label="Confirm password" value={values.confirm} onChange={update('confirm')} disabled={loading} />
-              {error ? <Text c="brandRed.6" fz="sm">{error}</Text> : null}
+              <PasswordInput label="Password" value={values.password} onChange={update('password')} autoComplete="new-password" disabled={loading} />
+              <PasswordInput label="Confirm password" value={values.confirm} onChange={update('confirm')} autoComplete="new-password" disabled={loading} />
+              {error ? <Text c="brandRed.6" fz="sm" role="alert">{error}</Text> : null}
               <Button type="submit" loading={loading} fullWidth>
                 Create account
               </Button>
