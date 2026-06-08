@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { api } from '../../src/services/api';
 
 // Fake Supabase client whose methods we assert against.
 const mockAuth = {
@@ -52,6 +53,19 @@ describe('signUp', () => {
     await expect(signUp('A', '91234567', 'a@b.com', 'secret123')).rejects.toThrow(
       'User already registered'
     );
+  });
+
+  it('falls back to the public role when /auth/me fails', async () => {
+    mockAuth.signUp.mockResolvedValue({
+      data: { user: { email: 'a@b.com' }, session: { access_token: 'tok' } },
+      error: null,
+    });
+    api.authedGet.mockRejectedValueOnce(new Error('network down'));
+    const { signUp } = await loadAuth();
+
+    const session = await signUp('Tan Wei Ming', '91234567', 'a@b.com', 'secret123');
+
+    expect(session).toEqual({ identity: 'a@b.com', role: 'public', token: 'tok' });
   });
 });
 
