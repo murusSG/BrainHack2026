@@ -33,6 +33,39 @@ beforeEach(() => {
 });
 
 describe('incident cluster map normalization', () => {
+  it('ignores null canonical coordinates and keeps the valid reporter location', async () => {
+    const api = {
+      oneMapSearch: vi.fn(),
+    };
+
+    const events = await normaliseIncidentClusters(
+      [
+        cluster({
+          reports: [
+            {
+              report_id: 'RPT-001',
+              reporter_location: { lat: 1.3521, lng: 103.8198 },
+            },
+          ],
+          canonical_event: {
+            hazardType: 'FIRE',
+            severity: 'HIGH',
+            vicinityRadiusMeters: 500,
+            location: { latitude: null, longitude: null, addressText: '10 Example Road' },
+          },
+        }),
+      ],
+      api
+    );
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      lat: 1.3521,
+      lng: 103.8198,
+    });
+    expect(api.oneMapSearch).not.toHaveBeenCalled();
+  });
+
   it('retains cached marker coordinates when geocoding later becomes unavailable', async () => {
     const api = {
       oneMapSearch: vi
@@ -98,5 +131,27 @@ describe('incident cluster map normalization', () => {
       incidentStatus: 'dispatched',
     });
     expect(api.oneMapSearch).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips out-of-region coordinates instead of moving the marker off the Singapore map', async () => {
+    const api = {
+      oneMapSearch: vi.fn().mockRejectedValue(new Error('OneMap unavailable')),
+    };
+
+    const events = await normaliseIncidentClusters(
+      [
+        cluster({
+          canonical_event: {
+            hazardType: 'FIRE',
+            severity: 'HIGH',
+            vicinityRadiusMeters: 500,
+            location: { latitude: 0, longitude: 0, addressText: '10 Example Road' },
+          },
+        }),
+      ],
+      api
+    );
+
+    expect(events).toEqual([]);
   });
 });
