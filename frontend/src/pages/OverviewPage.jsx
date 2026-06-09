@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { AgencyFeedPanel } from '../components/AgencyFeedPanel';
 import { AllocationApprovalPanel } from '../components/AllocationApprovalPanel';
@@ -17,14 +17,21 @@ import {
 } from '../data/dashboardData';
 import { useEvents } from '../hooks/useEvents';
 import { api } from '../services/api';
+import {
+  CHECK_IN_OPTIONS,
+  readResidentCheckins,
+  summarizeResidentCheckins,
+} from '../utils/residentCheckins';
 
 export function OverviewPage() {
+  const navigate = useNavigate();
   const { events, status } = useEvents();
   const [foresightRecommendation, setForesightRecommendation] = useState(null);
   const [commandTimeline, setCommandTimeline] = useState([]);
   const [commandStateStatus, setCommandStateStatus] = useState('loading');
   const [activeQuickAction, setActiveQuickAction] = useState(null);
   const [guidelinesVisible, setGuidelinesVisible] = useState(false);
+  const [residentCheckins, setResidentCheckins] = useState(() => readResidentCheckins());
   const demoEventCount = events.filter((event) => event.isDemo).length;
   const liveEventCount = events.length - demoEventCount;
   const activeIncidentDelta =
@@ -61,6 +68,22 @@ export function OverviewPage() {
   useEffect(() => {
     refreshCommandState();
   }, []);
+
+  useEffect(() => {
+    function refreshResidentCheckins() {
+      setResidentCheckins(readResidentCheckins());
+    }
+
+    window.addEventListener('storage', refreshResidentCheckins);
+    window.addEventListener('murusResidentCheckinsUpdated', refreshResidentCheckins);
+
+    return () => {
+      window.removeEventListener('storage', refreshResidentCheckins);
+      window.removeEventListener('murusResidentCheckinsUpdated', refreshResidentCheckins);
+    };
+  }, []);
+
+  const residentCheckinSummary = summarizeResidentCheckins(residentCheckins);
 
   async function handleStageAction(action) {
     const recommendation = buildForesightRecommendation(action);
@@ -101,6 +124,49 @@ export function OverviewPage() {
 
   function handleQuickAction(action) {
     setActiveQuickAction(action.label);
+    if (action.label === 'Create New Incident') {
+      navigate('/dispatcher', {
+        state: {
+          quickActionNotice:
+            'Create new incident selected from Overview. Review the priority queue or capture the incoming responder report.',
+        },
+      });
+      return;
+    }
+
+    if (action.label === 'Broadcast Emergency Alert') {
+      navigate('/alerts', {
+        state: {
+          openResidentAlertComposer: true,
+          residentAlertDraft: {
+            title: 'Emergency advisory for Orchard Road residents',
+            body: 'Flash flooding has been reported near Orchard Road.',
+            publicAction: 'Use Somerset MRT exits and avoid basement links until further notice.',
+            severity: 'danger',
+            locationLabel: 'Orchard Road',
+            lat: '1.3048',
+            lng: '103.8318',
+            radiusMeters: '1200',
+          },
+        },
+      });
+      return;
+    }
+
+    if (action.label === 'Request Resource Transfer') {
+      navigate('/resources', {
+        state: {
+          quickActionNotice:
+            'Resource transfer shortcut selected from Overview. Complete the inter-agency request for dispatcher review.',
+          requestForm: {
+            resourceType: 'Mobile Water Pumps',
+            quantity: '2',
+            priority: 'High',
+            reason: 'Overview quick action: active sector requires additional support.',
+          },
+        },
+      });
+    }
   }
 
   return (
@@ -171,6 +237,41 @@ export function OverviewPage() {
         {overviewStats.map((stat) => (
           <MetricCard key={stat.label} {...stat} />
         ))}
+      </section>
+
+      <section className="resident-response-panel panel" aria-label="Resident response summary">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Resident response loop</p>
+            <h2>Live Citizen Check-Ins</h2>
+          </div>
+          <span className="pill">{residentCheckinSummary.total} responses</span>
+        </div>
+        <div className="resident-response-grid">
+          {CHECK_IN_OPTIONS.map((option) => (
+            <article key={option.id} className={`resident-response-card is-${option.tone}`}>
+              <strong>{residentCheckinSummary.counts[option.id] ?? 0}</strong>
+              <span>{option.label}</span>
+            </article>
+          ))}
+        </div>
+        {residentCheckinSummary.priority.length > 0 ? (
+          <div className="resident-response-priority">
+            <p>Priority assistance</p>
+            {residentCheckinSummary.priority.slice(0, 3).map((checkin) => (
+              <article key={checkin.id}>
+                <strong>{checkin.statusLabel}</strong>
+                <span>
+                  {checkin.pointLabel} near {checkin.alertLocation} / {checkin.residentProfile}
+                </span>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="muted-copy">
+            No residents have requested help yet. Check-ins from the resident alert page will appear here instantly.
+          </p>
+        )}
       </section>
 
       <ForesightEngine onStageAction={handleStageAction} />

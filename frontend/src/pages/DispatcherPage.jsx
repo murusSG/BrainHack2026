@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { CrisisMap } from '../components/CrisisMap';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
@@ -31,6 +31,7 @@ function severityTone(value = '') {
 }
 
 export function DispatcherPage({ session }) {
+  const location = useLocation();
   const [queue, setQueue] = useState([]);
   const [mapEvents, setMapEvents] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -38,7 +39,7 @@ export function DispatcherPage({ session }) {
   const [dispatcherNote, setDispatcherNote] = useState('');
   const [status, setStatus] = useState('loading');
   const [decisionStatus, setDecisionStatus] = useState('idle');
-  const [notice, setNotice] = useState('');
+  const [notice, setNotice] = useState(location.state?.quickActionNotice ?? '');
   const mapEventsRef = useRef([]);
   const refreshPromiseRef = useRef(null);
 
@@ -158,6 +159,8 @@ export function DispatcherPage({ session }) {
           Responder View
         </Link>
       </header>
+
+      {notice && <p className="allocation-command-note">{notice}</p>}
 
       {status === 'error' && (
         <p className="responder-feed-warning">
@@ -314,7 +317,6 @@ export function DispatcherPage({ session }) {
                   Decline / Reject
                 </button>
               </div>
-              {notice && <p className="allocation-command-note">{notice}</p>}
             </>
           )}
         </section>
