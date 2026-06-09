@@ -15,6 +15,13 @@ const ADDRESS_COORDINATES = [
 ];
 
 const coordinateCache = new Map();
+const missingCoordinateWarnings = new Set();
+const SINGAPORE_BOUNDS = {
+  minLat: 1.1,
+  maxLat: 1.5,
+  minLng: 103.5,
+  maxLng: 104.2,
+};
 
 export async function normaliseIncidentClusters(clusters = [], api, previousEvents = []) {
   const operationalClusters = clusters.filter(
@@ -140,17 +147,21 @@ export function incidentTitle(cluster) {
 
 async function coordinatesForCluster(cluster, api, previousEvent) {
   const canonicalLocation = cluster.canonical_event?.location;
-  const canonicalLat = Number(canonicalLocation?.latitude);
-  const canonicalLng = Number(canonicalLocation?.longitude);
-  if (Number.isFinite(canonicalLat) && Number.isFinite(canonicalLng)) {
-    return rememberCoordinates(cluster, { lat: canonicalLat, lng: canonicalLng });
+  const canonicalCoordinates = parseCoordinates(
+    canonicalLocation?.latitude ?? canonicalLocation?.lat ?? canonicalLocation?.LATITUDE,
+    canonicalLocation?.longitude ?? canonicalLocation?.lng ?? canonicalLocation?.LONGITUDE
+  );
+  if (canonicalCoordinates) {
+    return rememberCoordinates(cluster, canonicalCoordinates);
   }
 
   const reportLocation = cluster.reports?.find((report) => report.reporter_location)?.reporter_location;
-  const reportLat = Number(reportLocation?.lat);
-  const reportLng = Number(reportLocation?.lng);
-  if (Number.isFinite(reportLat) && Number.isFinite(reportLng)) {
-    return rememberCoordinates(cluster, { lat: reportLat, lng: reportLng });
+  const reportCoordinates = parseCoordinates(
+    reportLocation?.lat ?? reportLocation?.latitude ?? reportLocation?.LATITUDE,
+    reportLocation?.lng ?? reportLocation?.longitude ?? reportLocation?.LONGITUDE
+  );
+  if (reportCoordinates) {
+    return rememberCoordinates(cluster, reportCoordinates);
   }
 
   const locationText =
@@ -164,10 +175,12 @@ async function coordinatesForCluster(cluster, api, previousEvent) {
       try {
         const results = await api.oneMapSearch(query);
         const first = Array.isArray(results) ? results[0] : results?.results?.[0];
-        const lat = Number(first?.latitude ?? first?.LATITUDE);
-        const lng = Number(first?.longitude ?? first?.LONGITUDE);
-        if (Number.isFinite(lat) && Number.isFinite(lng)) {
-          return rememberCoordinates(cluster, { lat, lng }, locationText);
+        const geocodedCoordinates = parseCoordinates(
+          first?.latitude ?? first?.lat ?? first?.LATITUDE,
+          first?.longitude ?? first?.lng ?? first?.LONGITUDE
+        );
+        if (geocodedCoordinates) {
+          return rememberCoordinates(cluster, geocodedCoordinates, locationText);
         }
       } catch {
         continue;
@@ -184,11 +197,12 @@ async function coordinatesForCluster(cluster, api, previousEvent) {
     }
   }
 
-  const previousLat = Number(previousEvent?.lat);
-  const previousLng = Number(previousEvent?.lng);
-  if (Number.isFinite(previousLat) && Number.isFinite(previousLng)) {
-    return { lat: previousLat, lng: previousLng };
+  const previousCoordinates = parseCoordinates(previousEvent?.lat, previousEvent?.lng);
+  if (previousCoordinates) {
+    return previousCoordinates;
   }
+
+  warnMissingCoordinates(cluster, locationText);
   return null;
 }
 
@@ -212,6 +226,48 @@ function coordinateCacheKey(cluster, locationText) {
 
 export function clearIncidentCoordinateCacheForTests() {
   coordinateCache.clear();
+  missingCoordinateWarnings.clear();
+}
+
+function warnMissingCoordinates(cluster, locationText) {
+  const warningKey = coordinateCacheKey(cluster, locationText);
+  if (missingCoordinateWarnings.has(warningKey)) return;
+  missingCoordinateWarnings.add(warningKey);
+  console.warn('[incidentClusterAdapter] Skipping incident marker with unresolved coordinates.', {
+    incidentId: cluster.incident_id,
+    locationText:
+      locationText ??
+      cluster.extracted_incident?.location_text ??
+      cluster.canonical_event?.location?.addressText ??
+      null,
+  });
+}
+
+function parseCoordinates(latValue, lngValue) {
+  const lat = parseCoordinate(latValue, 'lat');
+  const lng = parseCoordinate(lngValue, 'lng');
+  if (lat === undefined || lng === undefined) return null;
+  if (!isWithinSingapore(lat, lng)) return null;
+  return { lat, lng };
+}
+
+function parseCoordinate(value, axis) {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === 'string' && !value.trim()) return undefined;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  if (axis === 'lat' && (parsed < -90 || parsed > 90)) return undefined;
+  if (axis === 'lng' && (parsed < -180 || parsed > 180)) return undefined;
+  return parsed;
+}
+
+function isWithinSingapore(lat, lng) {
+  return (
+    lat >= SINGAPORE_BOUNDS.minLat &&
+    lat <= SINGAPORE_BOUNDS.maxLat &&
+    lng >= SINGAPORE_BOUNDS.minLng &&
+    lng <= SINGAPORE_BOUNDS.maxLng
+  );
 }
 
 function geocodeQueries(locationText) {
