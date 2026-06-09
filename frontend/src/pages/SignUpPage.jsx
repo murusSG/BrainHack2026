@@ -74,9 +74,9 @@ export function SignUpPage({ onAuthenticate }) {
 
           <form onSubmit={handleSubmit} noValidate>
             <Stack gap="sm">
-              <TextInput label="Full name" value={values.name} onChange={update('name')} disabled={loading} />
-              <TextInput label="Email" type="email" value={values.email} onChange={update('email')} disabled={loading} />
-              <TextInput label="Phone number" value={values.phone} onChange={update('phone')} placeholder="91234567" disabled={loading} />
+              <TextInput label="Full name" value={values.name} onChange={update('name')} autoComplete="name" disabled={loading} />
+              <TextInput label="Email" type="email" value={values.email} onChange={update('email')} autoComplete="email" disabled={loading} />
+              <TextInput label="Phone number" type="tel" value={values.phone} onChange={update('phone')} placeholder="91234567" autoComplete="tel" disabled={loading} />
               <PasswordInput label="Password" value={values.password} onChange={update('password')} autoComplete="new-password" disabled={loading} />
               <PasswordInput label="Confirm password" value={values.confirm} onChange={update('confirm')} autoComplete="new-password" disabled={loading} />
               {error ? <Text c="brandRed.6" fz="sm" role="alert">{error}</Text> : null}

@@ -10,6 +10,8 @@ export interface AuthUser {
   email?: string;
   role: UserRole;
   agency?: string;
+  fullName?: string;
+  phone?: string;
 }
 
 declare global {
@@ -44,6 +46,8 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       email: data.user.email ?? undefined,
       role,
       agency: profile?.agency,
+      fullName: profile?.fullName,
+      phone: profile?.phone,
     };
     next();
   } catch (err) {

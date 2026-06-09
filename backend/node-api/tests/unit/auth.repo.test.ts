@@ -16,7 +16,7 @@ describe("auth.repo", () => {
 
   it("maps a Supabase profile row to an auth profile", async () => {
     const maybeSingle = jest.fn().mockResolvedValue({
-      data: { id: "user-1", role: "responder", agency: "SCDF" },
+      data: { id: "user-1", role: "responder", agency: "SCDF", full_name: "Tan Wei Ming", phone: "91234567" },
       error: null,
     });
     const eq = jest.fn().mockReturnValue({ maybeSingle });
@@ -27,10 +27,12 @@ describe("auth.repo", () => {
       id: "user-1",
       role: "responder",
       agency: "SCDF",
+      fullName: "Tan Wei Ming",
+      phone: "91234567",
     });
 
     expect(fromMock).toHaveBeenCalledWith("profiles");
-    expect(select).toHaveBeenCalledWith("id, role, agency");
+    expect(select).toHaveBeenCalledWith("id, role, agency, full_name, phone");
     expect(eq).toHaveBeenCalledWith("id", "user-1");
   });
 
