@@ -50,7 +50,7 @@ Working now:
 - Supabase-backed incident queue/map/responder persistence when the incident-state migration is applied
 - Supabase-backed command persistence when the command-state migration is applied
 - Supabase-backed responder shared-log persistence when the responder-log migration is applied
-- In-memory fallback when Supabase is not configured
+- In-memory fallback when Supabase is not configured, or when incident-state tables have not been migrated yet
 - Frontend smoke test for Foresight -> Dispatcher -> Timeline
 - Backend unit and integration tests
 
@@ -140,6 +140,7 @@ Run the SQL migrations in Supabase SQL editor:
 
 Without Supabase, command allocations and timeline still work in memory for local demos, but reset when the backend restarts.
 Public incident reports, incident queue/map state, and responder shared logs also fall back to in-memory storage when Supabase is not configured, so apply the new migrations if you need those records to survive backend restarts.
+If Supabase is configured but `public_incident_reports` or `incidents` is missing from the database/schema cache, the backend logs a warning and temporarily falls back to in-memory incident state until `backend/node-api/supabase/migration_incident_state.sql` is applied.
 
 ## Run Locally
 

@@ -55,8 +55,12 @@ type PublicIncidentReportRow = {
   created_at: string;
 };
 
+const INCIDENTS_TABLE = "incidents";
+const PUBLIC_INCIDENT_REPORTS_TABLE = "public_incident_reports";
+
 const memoryIncidents = new Map<string, StoredIncidentSnapshot>();
 const memoryPublicReports = new Map<string, PersistedPublicIncidentReport>();
+const unavailableSupabaseTables = new Set<string>();
 let memoryIncidentSequence = 1;
 let memoryPublicReportSequence = 1;
 
@@ -64,17 +68,54 @@ function requireSupabase() {
   return supabase;
 }
 
+function shouldUseMemoryTable(table: string): boolean {
+  return !supabase || unavailableSupabaseTables.has(table);
+}
+
+function markTableUnavailable(table: string, error: { code?: unknown; message?: unknown } | null | undefined): boolean {
+  const code = String(error?.code ?? "").toUpperCase();
+  const message = String(error?.message ?? "");
+  const normalizedMessage = message.toLowerCase();
+  const qualifiedTableName = `public.${table}`.toLowerCase();
+  const isMissingTableError =
+    code === "PGRST205" ||
+    code === "42P01" ||
+    (normalizedMessage.includes(qualifiedTableName) &&
+      (normalizedMessage.includes("schema cache") ||
+        normalizedMessage.includes("does not exist") ||
+        normalizedMessage.includes("not found")));
+
+  if (!isMissingTableError) {
+    return false;
+  }
+
+  if (!unavailableSupabaseTables.has(table)) {
+    console.warn(
+      `[incidentStateRepo] Supabase table "${table}" is unavailable; falling back to in-memory incident state. Apply backend/node-api/supabase/migration_incident_state.sql to restore durable persistence.`,
+      message
+    );
+  }
+
+  unavailableSupabaseTables.add(table);
+  return true;
+}
+
 export async function nextIncidentId(): Promise<string> {
   const db = requireSupabase();
-  if (!db) {
+  if (!db || shouldUseMemoryTable(INCIDENTS_TABLE)) {
     const incidentId = `INC-${String(memoryIncidentSequence).padStart(3, "0")}`;
     memoryIncidentSequence += 1;
     return incidentId;
   }
 
-  const { data, error } = await db.from("incidents").select("id");
+  const { data, error } = await db.from(INCIDENTS_TABLE).select("id");
   if (error) {
-    throw new ApiError("DB_ERROR", error.message, 500, { table: "incidents" });
+    if (markTableUnavailable(INCIDENTS_TABLE, error)) {
+      const incidentId = `INC-${String(memoryIncidentSequence).padStart(3, "0")}`;
+      memoryIncidentSequence += 1;
+      return incidentId;
+    }
+    throw new ApiError("DB_ERROR", error.message, 500, { table: INCIDENTS_TABLE });
   }
 
   const maxSequence = (data ?? []).reduce((highest, item) => {
@@ -90,7 +131,7 @@ export async function insertPublicIncidentReport(
   report: PublicIncidentReport
 ): Promise<PersistedPublicIncidentReport> {
   const db = requireSupabase();
-  if (!db) {
+  if (!db || shouldUseMemoryTable(PUBLIC_INCIDENT_REPORTS_TABLE)) {
     const id = `public-report-${String(memoryPublicReportSequence).padStart(4, "0")}`;
     memoryPublicReportSequence += 1;
     const created: PersistedPublicIncidentReport = {
@@ -104,7 +145,7 @@ export async function insertPublicIncidentReport(
   }
 
   const { data, error } = await db
-    .from("public_incident_reports")
+    .from(PUBLIC_INCIDENT_REPORTS_TABLE)
     .insert({
       report_id: report.report_id,
       source: report.source,
@@ -120,7 +161,10 @@ export async function insertPublicIncidentReport(
     .single();
 
   if (error) {
-    throw new ApiError("DB_ERROR", error.message, 500, { table: "public_incident_reports" });
+    if (markTableUnavailable(PUBLIC_INCIDENT_REPORTS_TABLE, error)) {
+      return insertPublicIncidentReport(report);
+    }
+    throw new ApiError("DB_ERROR", error.message, 500, { table: PUBLIC_INCIDENT_REPORTS_TABLE });
   }
 
   return mapPublicIncidentReportRow(data as PublicIncidentReportRow);
@@ -138,7 +182,7 @@ export async function updatePublicIncidentReport(
   }
 ): Promise<PersistedPublicIncidentReport> {
   const db = requireSupabase();
-  if (!db) {
+  if (!db || shouldUseMemoryTable(PUBLIC_INCIDENT_REPORTS_TABLE)) {
     const existing = memoryPublicReports.get(reportId);
     if (!existing) {
       throw new ApiError("NOT_FOUND", "Public incident report not found.", 404, {
@@ -159,7 +203,7 @@ export async function updatePublicIncidentReport(
   }
 
   const { data, error } = await db
-    .from("public_incident_reports")
+    .from(PUBLIC_INCIDENT_REPORTS_TABLE)
     .update({
       incident_id: patch.incident_id,
       title: patch.title,
@@ -174,7 +218,10 @@ export async function updatePublicIncidentReport(
     .single();
 
   if (error) {
-    throw new ApiError("DB_ERROR", error.message, 500, { table: "public_incident_reports" });
+    if (markTableUnavailable(PUBLIC_INCIDENT_REPORTS_TABLE, error)) {
+      return updatePublicIncidentReport(reportId, patch);
+    }
+    throw new ApiError("DB_ERROR", error.message, 500, { table: PUBLIC_INCIDENT_REPORTS_TABLE });
   }
 
   return mapPublicIncidentReportRow(data as PublicIncidentReportRow);
@@ -184,7 +231,7 @@ export async function listPublicIncidentReports(
   options: { incidentId?: string } = {}
 ): Promise<PersistedPublicIncidentReport[]> {
   const db = requireSupabase();
-  if (!db) {
+  if (!db || shouldUseMemoryTable(PUBLIC_INCIDENT_REPORTS_TABLE)) {
     const reports = [...memoryPublicReports.values()];
     return reports
       .filter((report) => !options.incidentId || report.incident_id === options.incidentId)
@@ -193,7 +240,7 @@ export async function listPublicIncidentReports(
   }
 
   let query = db
-    .from("public_incident_reports")
+    .from(PUBLIC_INCIDENT_REPORTS_TABLE)
     .select("*")
     .order("created_at", { ascending: true });
   if (options.incidentId) {
@@ -202,7 +249,10 @@ export async function listPublicIncidentReports(
 
   const { data, error } = await query;
   if (error) {
-    throw new ApiError("DB_ERROR", error.message, 500, { table: "public_incident_reports" });
+    if (markTableUnavailable(PUBLIC_INCIDENT_REPORTS_TABLE, error)) {
+      return listPublicIncidentReports(options);
+    }
+    throw new ApiError("DB_ERROR", error.message, 500, { table: PUBLIC_INCIDENT_REPORTS_TABLE });
   }
 
   return ((data ?? []) as PublicIncidentReportRow[]).map(mapPublicIncidentReportRow);
@@ -215,13 +265,13 @@ export async function insertIncidentCluster(
   const db = requireSupabase();
   const snapshot = toSnapshot(cluster);
 
-  if (!db) {
+  if (!db || shouldUseMemoryTable(INCIDENTS_TABLE)) {
     memoryIncidents.set(cluster.incident_id, snapshot);
     return hydrateCluster(snapshot, reportsForIncidentId(cluster.incident_id));
   }
 
   const { data, error } = await db
-    .from("incidents")
+    .from(INCIDENTS_TABLE)
     .insert({
       id: snapshot.incident_id,
       title: titleForCluster(snapshot),
@@ -255,7 +305,10 @@ export async function insertIncidentCluster(
     .single();
 
   if (error) {
-    throw new ApiError("DB_ERROR", error.message, 500, { table: "incidents" });
+    if (markTableUnavailable(INCIDENTS_TABLE, error)) {
+      return insertIncidentCluster(cluster, createdFromReportId);
+    }
+    throw new ApiError("DB_ERROR", error.message, 500, { table: INCIDENTS_TABLE });
   }
 
   const reports = await listPublicIncidentReports({ incidentId: cluster.incident_id });
@@ -266,13 +319,13 @@ export async function updateIncidentCluster(cluster: StoredIncidentCluster): Pro
   const db = requireSupabase();
   const snapshot = toSnapshot(cluster);
 
-  if (!db) {
+  if (!db || shouldUseMemoryTable(INCIDENTS_TABLE)) {
     memoryIncidents.set(cluster.incident_id, snapshot);
     return hydrateCluster(snapshot, reportsForIncidentId(cluster.incident_id));
   }
 
   const { data, error } = await db
-    .from("incidents")
+    .from(INCIDENTS_TABLE)
     .update({
       title: titleForCluster(snapshot),
       category: snapshot.extracted_incident?.incident_type ?? null,
@@ -303,7 +356,10 @@ export async function updateIncidentCluster(cluster: StoredIncidentCluster): Pro
     .single();
 
   if (error) {
-    throw new ApiError("DB_ERROR", error.message, 500, { table: "incidents" });
+    if (markTableUnavailable(INCIDENTS_TABLE, error)) {
+      return updateIncidentCluster(cluster);
+    }
+    throw new ApiError("DB_ERROR", error.message, 500, { table: INCIDENTS_TABLE });
   }
 
   const reports = await listPublicIncidentReports({ incidentId: cluster.incident_id });
@@ -314,14 +370,17 @@ export async function getIncidentClusterById(
   incidentId: string
 ): Promise<StoredIncidentCluster | undefined> {
   const db = requireSupabase();
-  if (!db) {
+  if (!db || shouldUseMemoryTable(INCIDENTS_TABLE)) {
     const snapshot = memoryIncidents.get(incidentId);
     return snapshot ? hydrateCluster(snapshot, reportsForIncidentId(incidentId)) : undefined;
   }
 
-  const { data, error } = await db.from("incidents").select("*").eq("id", incidentId).maybeSingle();
+  const { data, error } = await db.from(INCIDENTS_TABLE).select("*").eq("id", incidentId).maybeSingle();
   if (error) {
-    throw new ApiError("DB_ERROR", error.message, 500, { table: "incidents" });
+    if (markTableUnavailable(INCIDENTS_TABLE, error)) {
+      return getIncidentClusterById(incidentId);
+    }
+    throw new ApiError("DB_ERROR", error.message, 500, { table: INCIDENTS_TABLE });
   }
   if (!data) return undefined;
 
@@ -331,18 +390,21 @@ export async function getIncidentClusterById(
 
 export async function listIncidentClusters(): Promise<StoredIncidentCluster[]> {
   const db = requireSupabase();
-  if (!db) {
+  if (!db || shouldUseMemoryTable(INCIDENTS_TABLE)) {
     return [...memoryIncidents.values()]
       .map((snapshot) => hydrateCluster(snapshot, reportsForIncidentId(snapshot.incident_id)))
       .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at));
   }
 
   const { data, error } = await db
-    .from("incidents")
+    .from(INCIDENTS_TABLE)
     .select("*")
     .order("created_at", { ascending: false });
   if (error) {
-    throw new ApiError("DB_ERROR", error.message, 500, { table: "incidents" });
+    if (markTableUnavailable(INCIDENTS_TABLE, error)) {
+      return listIncidentClusters();
+    }
+    throw new ApiError("DB_ERROR", error.message, 500, { table: INCIDENTS_TABLE });
   }
 
   return hydrateIncidentRows((data ?? []) as IncidentRow[]);
@@ -365,6 +427,7 @@ export async function listRecentIncidentClusters(cutoffIso: string): Promise<Sto
 export function clearIncidentStateForTests() {
   memoryIncidents.clear();
   memoryPublicReports.clear();
+  unavailableSupabaseTables.clear();
   memoryIncidentSequence = 1;
   memoryPublicReportSequence = 1;
 }
@@ -389,7 +452,7 @@ async function listPublicReportsForIncidentIds(
   if (!incidentIds.length) return grouped;
 
   const db = requireSupabase();
-  if (!db) {
+  if (!db || shouldUseMemoryTable(PUBLIC_INCIDENT_REPORTS_TABLE)) {
     for (const report of memoryPublicReports.values()) {
       if (!report.incident_id || !incidentIds.includes(report.incident_id)) continue;
       const current = grouped.get(report.incident_id) ?? [];
@@ -400,12 +463,15 @@ async function listPublicReportsForIncidentIds(
   }
 
   const { data, error } = await db
-    .from("public_incident_reports")
+    .from(PUBLIC_INCIDENT_REPORTS_TABLE)
     .select("*")
     .in("incident_id", incidentIds)
     .order("created_at", { ascending: true });
   if (error) {
-    throw new ApiError("DB_ERROR", error.message, 500, { table: "public_incident_reports" });
+    if (markTableUnavailable(PUBLIC_INCIDENT_REPORTS_TABLE, error)) {
+      return listPublicReportsForIncidentIds(incidentIds);
+    }
+    throw new ApiError("DB_ERROR", error.message, 500, { table: PUBLIC_INCIDENT_REPORTS_TABLE });
   }
 
   for (const row of (data ?? []) as PublicIncidentReportRow[]) {
