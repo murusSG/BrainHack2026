@@ -20,7 +20,7 @@ const createSchema = z.object({
 export async function getResponderIncidentLogs(
   incidentId: string
 ): Promise<ResponderIncidentLog[]> {
-  const cluster = getIncidentCluster(incidentId);
+  const cluster = await getIncidentCluster(incidentId);
   if (cluster && cluster.status !== "dispatched") {
     throw new ApiError(
       "INVALID_INCIDENT_STATUS",
@@ -35,15 +35,14 @@ export async function getResponderIncidentLogs(
     throw new ApiError("NOT_FOUND", "Incident not found.", 404, { incident_id: incidentId });
   }
 
-  const mergedLogs = [...(cluster?.responder_logs ?? []), ...persistedLogs];
-  return dedupeAndSortLogs(mergedLogs);
+  return dedupeAndSortLogs(persistedLogs);
 }
 
 export async function createResponderIncidentLog(
   incidentId: string,
   input: unknown
 ): Promise<ResponderIncidentLog> {
-  const cluster = getIncidentCluster(incidentId);
+  const cluster = await getIncidentCluster(incidentId);
   if (!cluster) {
     throw new ApiError("NOT_FOUND", "Incident not found.", 404, { incident_id: incidentId });
   }

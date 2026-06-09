@@ -138,6 +138,14 @@ export const api = {
 
   // AI-assisted incident grouping and dispatcher approval
   reportIncident: (payload) => post('/incidents/report', payload),
+  publicIncidentReports: async () => {
+    const response = await get('/incidents/public-reports');
+    return response.reports ?? [];
+  },
+  incidents: async (params = {}) => {
+    const response = await get(withQuery('/incidents', params));
+    return response.incidents ?? [];
+  },
   incidentClusters: async () => {
     const response = await get('/incidents/clusters');
     return response.clusters ?? [];
@@ -156,6 +164,14 @@ export const api = {
   },
   createResponderLog: (incidentId, payload) =>
     post(`/incidents/${encodeURIComponent(incidentId)}/logs`, payload),
+  incident: async (incidentId) => {
+    const response = await get(`/incidents/${encodeURIComponent(incidentId)}`);
+    return response.incident ?? response;
+  },
+  updateIncidentStatus: async (incidentId, payload) => {
+    const response = await patch(`/incidents/${encodeURIComponent(incidentId)}/status`, payload);
+    return response.incident ?? response;
+  },
   incidentCluster: (incidentId) => get(`/incidents/clusters/${encodeURIComponent(incidentId)}`),
   approveResourceAllocation: (payload) => post('/resource-allocation/approve', payload),
   decideResourceAllocation: (payload) => post('/resource-allocation/decision', payload),

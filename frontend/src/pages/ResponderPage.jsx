@@ -34,6 +34,8 @@ export function ResponderPage() {
   const [incidentStatus, setIncidentStatus] = useState('loading');
   const [logStatus, setLogStatus] = useState('idle');
   const [saveStatus, setSaveStatus] = useState('idle');
+  const [incidentError, setIncidentError] = useState('');
+  const [logError, setLogError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [form, setForm] = useState({
     agency: '',
@@ -54,8 +56,10 @@ export function ResponderPage() {
         return next?.[0]?.incident_id ?? null;
       });
       setIncidentStatus('done');
-    } catch {
+      setIncidentError('');
+    } catch (error) {
       setIncidentStatus('error');
+      setIncidentError(error instanceof Error ? error.message : 'Responder incident feed unavailable.');
     }
   }, []);
 
@@ -71,8 +75,10 @@ export function ResponderPage() {
       const next = await api.responderLogs(incidentId);
       setLogs(next ?? []);
       setLogStatus('idle');
-    } catch {
+      setLogError('');
+    } catch (error) {
       setLogStatus('error');
+      setLogError(error instanceof Error ? error.message : 'Shared log feed unavailable.');
     }
   }, []);
 
@@ -162,7 +168,7 @@ export function ResponderPage() {
 
       {incidentStatus === 'error' && (
         <p className="responder-feed-warning">
-          Responder incident feed unavailable. Check the Node API connection.
+          Responder incident feed unavailable. {incidentError || 'Check the Node API connection.'}
         </p>
       )}
 
@@ -305,7 +311,7 @@ export function ResponderPage() {
 
             {logStatus === 'error' && (
               <p className="allocation-command-note">
-                Shared logs could not be loaded. Check the Node API connection.
+                Shared logs could not be loaded. {logError || 'Check the Node API connection.'}
               </p>
             )}
           </div>

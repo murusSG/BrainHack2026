@@ -26,6 +26,7 @@ export function IncidentMapPage() {
   const [selected, setSelected] = useState(null);
   const [query, setQuery] = useState('');
   const [hazardFilter, setHazardFilter] = useState('all');
+  const [clusterError, setClusterError] = useState('');
   const clusterEventsRef = useRef([]);
   const clusterRefreshPromiseRef = useRef(null);
   const isLoading = status === 'loading' || clusterStatus === 'loading';
@@ -75,8 +76,10 @@ export function IncidentMapPage() {
         clusterEventsRef.current = nextEvents;
         setClusterEvents(nextEvents);
         setClusterStatus('done');
-      } catch {
+        setClusterError('');
+      } catch (error) {
         setClusterStatus('error');
+        setClusterError(error instanceof Error ? error.message : 'Cluster feed unavailable.');
       } finally {
         clusterRefreshPromiseRef.current = null;
       }
@@ -136,7 +139,8 @@ export function IncidentMapPage() {
 
           {(status === 'error' || clusterStatus === 'error') && (
             <p className="feed-warning">
-              Live feed unavailable{error ? ` (${error})` : ''}. Check the Node API connection.
+              Live feed unavailable
+              {error ? ` (${error})` : clusterError ? ` (${clusterError})` : ''}.
             </p>
           )}
         </div>

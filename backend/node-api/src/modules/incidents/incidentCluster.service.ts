@@ -1,95 +1,109 @@
+import { search as searchOneMap } from "../onemap/onemap.service";
 import { ApiError } from "../../utils/apiError";
+import {
+  clearIncidentStateForTests,
+  getIncidentClusterById,
+  insertIncidentCluster,
+  nextIncidentId,
+  listIncidentClusters as listPersistedIncidentClusters,
+  listRecentIncidentClusters as listPersistedRecentIncidentClusters,
+  updateIncidentCluster,
+} from "../../repositories/incidentState.repo";
+import { insertResponderLog } from "../../repositories/responderLog.repo";
 import type {
   CanonicalResidentEvent,
   ExtractedIncident,
   IncidentClusterResponse,
   PublicIncidentReport,
-  ResponderIncidentLog,
   ResourceAllocationRecommendations,
   ResourceAllocationStatus,
   StoredIncidentCluster,
 } from "./incident.types";
 
-const clusters: StoredIncidentCluster[] = [];
-let incidentSequence = 1;
-
-export function createIncidentCluster(
+export async function createIncidentCluster(
   report: PublicIncidentReport,
   extractedIncident: ExtractedIncident,
   recommendations: ResourceAllocationRecommendations,
-  resourceAllocationStatus: ResourceAllocationStatus
-): StoredIncidentCluster {
+  resourceAllocationStatus: ResourceAllocationStatus,
+  createdFromReportId?: string
+): Promise<StoredIncidentCluster> {
   const now = new Date().toISOString();
-  const incidentId = makeIncidentId();
+  const incidentId = await nextIncidentId();
   const priority = calculatePriority(extractedIncident, 1);
+  const location = await resolveIncidentLocation(report, extractedIncident);
   const cluster: StoredIncidentCluster = {
     incident_id: incidentId,
     status: "pending_approval",
+    marker_status: "pending",
     created_at: now,
     updated_at: now,
     extracted_incident: cloneExtractedIncident(extractedIncident),
     reports: [cloneReport(report)],
     recommendations: cloneRecommendations(recommendations),
     resource_allocation_status: resourceAllocationStatus,
-    canonical_event: buildCanonicalResidentEvent(incidentId, report, extractedIncident, now),
+    canonical_event: buildCanonicalResidentEvent(incidentId, report, extractedIncident, now, location),
     priority_score: priority.score,
     priority_reason: priority.reason,
     approved_agencies: [],
     responder_logs: [],
   };
 
-  // Prototype store only. Replace with PostgreSQL/PostGIS persistence and audit writes.
-  clusters.unshift(cluster);
-  return cloneClusterInternal(cluster);
+  return insertIncidentCluster(cluster, createdFromReportId);
 }
 
-export function attachReportToCluster(
+export async function attachReportToCluster(
   incidentId: string,
   report: PublicIncidentReport
-): StoredIncidentCluster {
-  const cluster = findClusterInternal(incidentId);
-  if (!cluster) {
-    throw new ApiError("NOT_FOUND", "Incident cluster not found.", 404, { incident_id: incidentId });
-  }
+): Promise<StoredIncidentCluster> {
+  const cluster = await requireCluster(incidentId);
 
   cluster.reports.push(cloneReport(report));
   const priority = calculatePriority(cluster.extracted_incident, cluster.reports.length);
   cluster.priority_score = priority.score;
   cluster.priority_reason = priority.reason;
+
+  if (!hasIncidentCoordinates(cluster)) {
+    const location = await resolveIncidentLocation(report, cluster.extracted_incident);
+    if (location.latitude !== undefined && location.longitude !== undefined) {
+      cluster.canonical_event.location = {
+        ...cluster.canonical_event.location,
+        type: "POINT",
+        latitude: location.latitude,
+        longitude: location.longitude,
+        addressText: location.addressText ?? cluster.canonical_event.location.addressText,
+        geocodingConfidence:
+          location.geocodingConfidence ?? cluster.canonical_event.location.geocodingConfidence,
+      };
+    }
+  }
+
   cluster.updated_at = new Date().toISOString();
-  return cloneClusterInternal(cluster);
+  return updateIncidentCluster(cluster);
 }
 
-export function updateClusterResourceAllocation(
+export async function updateClusterResourceAllocation(
   incidentId: string,
   recommendations: ResourceAllocationRecommendations,
   resourceAllocationStatus: ResourceAllocationStatus
-): StoredIncidentCluster {
-  const cluster = findClusterInternal(incidentId);
-  if (!cluster) {
-    throw new ApiError("NOT_FOUND", "Incident cluster not found.", 404, { incident_id: incidentId });
-  }
+): Promise<StoredIncidentCluster> {
+  const cluster = await requireCluster(incidentId);
 
   cluster.recommendations = cloneRecommendations(recommendations);
   cluster.resource_allocation_status = resourceAllocationStatus;
   cluster.status = "pending_approval";
+  cluster.marker_status = "pending";
   cluster.updated_at = new Date().toISOString();
-  return cloneClusterInternal(cluster);
+  return updateIncidentCluster(cluster);
 }
 
-export function decideClusterDispatch(input: {
+export async function decideClusterDispatch(input: {
   incidentId: string;
   dispatcherId: string;
   decision: "approved" | "declined";
   approvedAgencies: string[];
   dispatcherNote?: string;
-}): StoredIncidentCluster {
-  const cluster = findClusterInternal(input.incidentId);
-  if (!cluster) {
-    throw new ApiError("NOT_FOUND", "Incident cluster not found.", 404, {
-      incident_id: input.incidentId,
-    });
-  }
+}): Promise<StoredIncidentCluster> {
+  const cluster = await requireCluster(input.incidentId);
   if (cluster.status !== "pending_approval") {
     throw new ApiError(
       "INVALID_INCIDENT_STATUS",
@@ -103,10 +117,12 @@ export function decideClusterDispatch(input: {
   const approvedAgencies = [
     ...new Set(input.approvedAgencies.map((agency) => agency.trim()).filter(Boolean)),
   ];
+
   cluster.approved_agencies = input.decision === "approved" ? approvedAgencies : [];
   cluster.approved_by = input.decision === "approved" ? input.dispatcherId : undefined;
   cluster.approved_at = input.decision === "approved" ? now : undefined;
   cluster.status = input.decision === "approved" ? "dispatched" : "declined";
+  cluster.marker_status = input.decision === "approved" ? "approved" : "declined";
   cluster.resource_allocation_status = input.decision === "approved" ? "approved" : "declined";
   cluster.dispatch_decision = {
     incident_id: input.incidentId,
@@ -116,6 +132,7 @@ export function decideClusterDispatch(input: {
     dispatcher_id: input.dispatcherId,
     timestamp: now,
   };
+
   if (input.decision === "approved") {
     cluster.canonical_event.status = "ACTIVE";
     cluster.canonical_event.tags = [
@@ -125,43 +142,86 @@ export function decideClusterDispatch(input: {
     cluster.canonical_event.recommendedActions = [
       `Coordinate response with ${approvedAgencies.join(", ")}.`,
     ];
-    cluster.responder_logs.push({
-      id: makeResponderLogId(cluster),
-      incident_id: cluster.incident_id,
-      agency: "MURUS",
-      author: input.dispatcherId,
-      message: `Dispatch approved. Resources assigned: ${approvedAgencies.join(", ")}.${
-        input.dispatcherNote ? ` Note: ${input.dispatcherNote}` : ""
-      }`,
-      category: "resource_update",
-      timestamp: now,
-    });
   } else {
     cluster.canonical_event.tags = [
       ...cluster.canonical_event.tags.filter((tag) => tag !== "pending_dispatcher_approval"),
       "dispatch_declined",
     ];
   }
+
   cluster.updated_at = now;
-  return cloneClusterInternal(cluster);
+  const updated = await updateIncidentCluster(cluster);
+
+  if (input.decision === "approved") {
+    await insertResponderLog(updated.incident_id, {
+      agency: "MURUS",
+      author: input.dispatcherId,
+      category: "resource_update",
+      message: `Dispatch approved. Resources assigned: ${approvedAgencies.join(", ")}.${
+        input.dispatcherNote ? ` Note: ${input.dispatcherNote}` : ""
+      }`,
+    });
+  }
+
+  return updated;
 }
 
-export function approveClusterAgencies(input: {
+export async function approveClusterAgencies(input: {
   incidentId: string;
   dispatcherId: string;
   approvedAgencies: string[];
-}): StoredIncidentCluster {
+}): Promise<StoredIncidentCluster> {
   return decideClusterDispatch({
     ...input,
     decision: "approved",
   });
 }
 
-export function listIncidentClusters(): IncidentClusterResponse[] {
+export async function patchClusterStatus(input: {
+  incidentId: string;
+  status: "dispatched" | "declined" | "closed";
+  dispatcherId?: string;
+  approvedAgencies?: string[];
+  dispatcherNote?: string;
+}): Promise<StoredIncidentCluster> {
+  if (input.status === "dispatched") {
+    return decideClusterDispatch({
+      incidentId: input.incidentId,
+      dispatcherId: input.dispatcherId ?? "DISPATCHER-API",
+      decision: "approved",
+      approvedAgencies: input.approvedAgencies ?? [],
+      dispatcherNote: input.dispatcherNote,
+    });
+  }
+
+  if (input.status === "declined") {
+    return decideClusterDispatch({
+      incidentId: input.incidentId,
+      dispatcherId: input.dispatcherId ?? "DISPATCHER-API",
+      decision: "declined",
+      approvedAgencies: [],
+      dispatcherNote: input.dispatcherNote,
+    });
+  }
+
+  const cluster = await requireCluster(input.incidentId);
+  cluster.status = "closed";
+  cluster.marker_status = "closed";
+  cluster.updated_at = new Date().toISOString();
+  cluster.canonical_event.tags = [
+    ...cluster.canonical_event.tags.filter((tag) => tag !== "pending_dispatcher_approval"),
+    "incident_closed",
+  ];
+  return updateIncidentCluster(cluster);
+}
+
+export async function listIncidentClusters(): Promise<IncidentClusterResponse[]> {
+  const clusters = await listPersistedIncidentClusters();
   return clusters.map(cloneClusterForResponse);
 }
 
-export function listPriorityQueue(): IncidentClusterResponse[] {
+export async function listPriorityQueue(): Promise<IncidentClusterResponse[]> {
+  const clusters = await listPersistedIncidentClusters();
   return clusters
     .filter((cluster) => cluster.status === "pending_approval")
     .sort((left, right) => {
@@ -175,55 +235,104 @@ export function listPriorityQueue(): IncidentClusterResponse[] {
     }));
 }
 
-export function listResponderIncidents(): IncidentClusterResponse[] {
+export async function listResponderIncidents(): Promise<IncidentClusterResponse[]> {
+  const clusters = await listPersistedIncidentClusters();
   return clusters
     .filter((cluster) => cluster.status === "dispatched")
     .sort((left, right) => Date.parse(right.updated_at) - Date.parse(left.updated_at))
     .map(cloneClusterForResponse);
 }
 
-export function getIncidentCluster(incidentId: string): IncidentClusterResponse | undefined {
-  const cluster = findClusterInternal(incidentId);
+export async function getIncidentCluster(
+  incidentId: string
+): Promise<IncidentClusterResponse | undefined> {
+  const cluster = await getIncidentClusterById(incidentId);
   return cluster ? cloneClusterForResponse(cluster) : undefined;
 }
 
-export function getRecentIncidentClusters(cutoffIso: string): StoredIncidentCluster[] {
-  const cutoff = Date.parse(cutoffIso);
-  return clusters
-    .filter((cluster) => latestReportedAtMs(cluster) >= cutoff)
-    .map(cloneClusterInternal);
+export async function getRecentIncidentClusters(cutoffIso: string): Promise<StoredIncidentCluster[]> {
+  return listPersistedRecentIncidentClusters(cutoffIso);
 }
 
 export function clearIncidentClusterStateForTests() {
-  clusters.splice(0, clusters.length);
-  incidentSequence = 1;
+  clearIncidentStateForTests();
 }
 
-function findClusterInternal(incidentId: string): StoredIncidentCluster | undefined {
-  return clusters.find((cluster) => cluster.incident_id === incidentId);
-}
-
-function requireCluster(incidentId: string): StoredIncidentCluster {
-  const cluster = findClusterInternal(incidentId);
+async function requireCluster(incidentId: string): Promise<StoredIncidentCluster> {
+  const cluster = await getIncidentClusterById(incidentId);
   if (!cluster) {
     throw new ApiError("NOT_FOUND", "Incident cluster not found.", 404, {
       incident_id: incidentId,
     });
   }
-  return cluster;
+  return cloneClusterInternal(cluster);
 }
 
-function makeIncidentId(): string {
-  const id = `INC-${String(incidentSequence).padStart(3, "0")}`;
-  incidentSequence += 1;
-  return id;
+async function resolveIncidentLocation(
+  report: PublicIncidentReport,
+  extractedIncident: ExtractedIncident
+): Promise<{
+  latitude?: number;
+  longitude?: number;
+  addressText?: string;
+  geocodingConfidence?: string;
+}> {
+  if (report.reporter_location) {
+    return {
+      latitude: report.reporter_location.lat,
+      longitude: report.reporter_location.lng,
+      addressText: extractedIncident.location_text || undefined,
+      geocodingConfidence: extractedIncident.location_text ? "MEDIUM" : "LOW",
+    };
+  }
+
+  const locationText = extractedIncident.location_text.trim();
+  if (!locationText || process.env.NODE_ENV === "test") {
+    return {
+      addressText: locationText || undefined,
+      geocodingConfidence: locationText ? "LOW" : undefined,
+    };
+  }
+
+  try {
+    const results = await searchOneMap(locationText);
+    const first = results[0];
+    if (!first) {
+      return {
+        addressText: locationText,
+        geocodingConfidence: "LOW",
+      };
+    }
+    return {
+      latitude: first.latitude,
+      longitude: first.longitude,
+      addressText: first.address || first.building || locationText,
+      geocodingConfidence: "MEDIUM",
+    };
+  } catch {
+    return {
+      addressText: locationText,
+      geocodingConfidence: "LOW",
+    };
+  }
+}
+
+function hasIncidentCoordinates(cluster: StoredIncidentCluster): boolean {
+  return Number.isFinite(Number(cluster.canonical_event.location.latitude)) &&
+    Number.isFinite(Number(cluster.canonical_event.location.longitude));
 }
 
 function buildCanonicalResidentEvent(
   incidentId: string,
   report: PublicIncidentReport,
   extractedIncident: ExtractedIncident,
-  now: string
+  now: string,
+  location: {
+    latitude?: number;
+    longitude?: number;
+    addressText?: string;
+    geocodingConfidence?: string;
+  }
 ): CanonicalResidentEvent {
   const source = report.source.toLowerCase() === "responder" ? "RESPONDER_REPORT" : "RESIDENT_REPORT";
   const hazardType = hazardTypeFromIncidentType(extractedIncident.incident_type);
@@ -238,19 +347,20 @@ function buildCanonicalResidentEvent(
     description: extractedIncident.description || report.report_text.slice(0, 280),
     severity: severityFromExtractedIncident(extractedIncident.severity),
     confidence: confidenceFromScore(extractedIncident.confidence),
-    location: report.reporter_location
-      ? {
-          type: "POINT",
-          latitude: report.reporter_location.lat,
-          longitude: report.reporter_location.lng,
-          addressText: extractedIncident.location_text,
-          geocodingConfidence: extractedIncident.location_text ? "MEDIUM" : "LOW",
-        }
-      : {
-          type: "UNKNOWN",
-          addressText: extractedIncident.location_text,
-          geocodingConfidence: extractedIncident.location_text ? "LOW" : "LOW",
-        },
+    location:
+      location.latitude !== undefined && location.longitude !== undefined
+        ? {
+            type: "POINT",
+            latitude: location.latitude,
+            longitude: location.longitude,
+            addressText: location.addressText,
+            geocodingConfidence: location.geocodingConfidence,
+          }
+        : {
+            type: "UNKNOWN",
+            addressText: location.addressText,
+            geocodingConfidence: location.geocodingConfidence ?? "LOW",
+          },
     vicinityRadiusMeters: vicinityRadiusForHazard(hazardType),
     status: "TRIAGING",
     recommendedActions: ["Dispatcher approval required before any agency notification."],
@@ -325,7 +435,7 @@ function cloneClusterInternal(cluster: StoredIncidentCluster): StoredIncidentClu
           approved_resources: [...cluster.dispatch_decision.approved_resources],
         }
       : undefined,
-    responder_logs: cluster.responder_logs.map(cloneResponderLog),
+    responder_logs: [],
   };
 }
 
@@ -377,15 +487,6 @@ function roundCoordinate(value: number): number {
   return Math.round(value * 1000) / 1000;
 }
 
-function latestReportedAtMs(cluster: StoredIncidentCluster): number {
-  const latest = Math.max(
-    ...cluster.reports
-      .map((report) => Date.parse(report.reported_at))
-      .filter((timestamp) => Number.isFinite(timestamp))
-  );
-  return Number.isFinite(latest) ? latest : Date.parse(cluster.updated_at);
-}
-
 function calculatePriority(
   incident: ExtractedIncident,
   reportCount: number
@@ -410,12 +511,4 @@ function calculatePriority(
   if (incident.hazards.length) reasons.push(`${incident.hazards.length} identified hazard(s)`);
   if (reportCount > 1) reasons.push(`${reportCount} grouped reports`);
   return { score, reason: reasons.join("; ") };
-}
-
-function makeResponderLogId(cluster: StoredIncidentCluster): string {
-  return `${cluster.incident_id}-LOG-${String(cluster.responder_logs.length + 1).padStart(3, "0")}`;
-}
-
-function cloneResponderLog(log: ResponderIncidentLog): ResponderIncidentLog {
-  return { ...log };
 }

@@ -12,6 +12,24 @@ export type PublicIncidentReport = {
   media_urls: string[];
 };
 
+export type PublicIncidentReportStatus =
+  | "received"
+  | "pending_approval"
+  | "needs_manual_review"
+  | "grouped_with_existing_incident"
+  | "dispatched"
+  | "declined";
+
+export type PersistedPublicIncidentReport = PublicIncidentReport & {
+  id: string;
+  incident_id?: string;
+  title?: string;
+  category?: string;
+  location_name?: string;
+  status: PublicIncidentReportStatus;
+  created_at: string;
+};
+
 export type ExtractedIncident = {
   incident_type: string;
   location_text: string;
@@ -48,6 +66,8 @@ export type IncidentLifecycleStatus =
   | "dispatched"
   | "declined"
   | "closed";
+
+export type IncidentMarkerStatus = "pending" | "approved" | "declined" | "closed";
 
 export type DispatchDecision = {
   incident_id: string;
@@ -112,6 +132,7 @@ export type CanonicalResidentEvent = {
 export type StoredIncidentCluster = {
   incident_id: string;
   status: IncidentLifecycleStatus;
+  marker_status?: IncidentMarkerStatus;
   created_at: string;
   updated_at: string;
   extracted_incident: ExtractedIncident;

@@ -29,7 +29,7 @@ const decisionSchema = z
     }
   });
 
-export function approveResourceAllocation(input: unknown) {
+export async function approveResourceAllocation(input: unknown) {
   const parsed = approvalSchema.safeParse(input);
   if (!parsed.success) {
     throw new BadRequestError("incident_id, dispatcher_id, and approved_agencies are required.", {
@@ -43,7 +43,7 @@ export function approveResourceAllocation(input: unknown) {
   // TODO: Write dispatcher ID, selected agencies, and before/after state to audit logging.
   // TODO: Replace this prototype approval with a real notification workflow only after RBAC is enforced.
   // TODO: Integrate agency APIs, email queues, or message buses behind approval-only service boundaries.
-  approveClusterAgencies({
+  await approveClusterAgencies({
     incidentId: parsed.data.incident_id,
     dispatcherId: parsed.data.dispatcher_id,
     approvedAgencies,
@@ -65,7 +65,7 @@ export function approveResourceAllocation(input: unknown) {
   };
 }
 
-export function decideResourceAllocation(input: unknown) {
+export async function decideResourceAllocation(input: unknown) {
   const parsed = decisionSchema.safeParse(input);
   if (!parsed.success) {
     throw new BadRequestError(
@@ -77,7 +77,7 @@ export function decideResourceAllocation(input: unknown) {
   const approvedAgencies = [
     ...new Set(parsed.data.approved_agencies.map((agency) => agency.trim()).filter(Boolean)),
   ];
-  const cluster = decideClusterDispatch({
+  const cluster = await decideClusterDispatch({
     incidentId: parsed.data.incident_id,
     dispatcherId: parsed.data.dispatcher_id,
     decision: parsed.data.decision,

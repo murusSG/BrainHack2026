@@ -4,17 +4,25 @@ import {
   decideResourceAllocation,
 } from "./resourceAllocation.service";
 
-export function postResourceAllocationApproval(req: Request, res: Response, next: NextFunction) {
+export async function postResourceAllocationApproval(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
-    res.json(approveResourceAllocation(req.body ?? {}));
+    res.json(await approveResourceAllocation(req.body ?? {}));
   } catch (error) {
     next(error);
   }
 }
 
-export function postResourceAllocationDecision(req: Request, res: Response, next: NextFunction) {
+export async function postResourceAllocationDecision(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
-    res.json(decideResourceAllocation(req.body ?? {}));
+    res.json(await decideResourceAllocation(req.body ?? {}));
   } catch (error) {
     next(error);
   }

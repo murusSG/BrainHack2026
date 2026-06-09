@@ -1,7 +1,7 @@
 -- responder_incident_logs: shared operational timeline entries for dispatched incidents
 create table if not exists responder_incident_logs (
   id          uuid        primary key default gen_random_uuid(),
-  incident_id text        not null,
+  incident_id text        not null references incidents(id) on delete cascade,
   agency      text        not null,
   author      text,
   unit        text,

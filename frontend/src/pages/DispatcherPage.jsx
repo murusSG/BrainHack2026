@@ -40,6 +40,7 @@ export function DispatcherPage({ session }) {
   const [status, setStatus] = useState('loading');
   const [decisionStatus, setDecisionStatus] = useState('idle');
   const [notice, setNotice] = useState(location.state?.quickActionNotice ?? '');
+  const [feedError, setFeedError] = useState('');
   const mapEventsRef = useRef([]);
   const refreshPromiseRef = useRef(null);
 
@@ -84,8 +85,10 @@ export function DispatcherPage({ session }) {
           return nextQueue?.[0]?.incident_id ?? null;
         });
         setStatus('done');
-      } catch {
+        setFeedError('');
+      } catch (error) {
         setStatus('error');
+        setFeedError(error instanceof Error ? error.message : 'Incident feed unavailable.');
       } finally {
         refreshPromiseRef.current = null;
       }
@@ -134,9 +137,13 @@ export function DispatcherPage({ session }) {
       setNotice(result.message);
       await refresh({ afterCurrent: true });
       setDecisionStatus('idle');
-    } catch {
+    } catch (error) {
       setDecisionStatus('error');
-      setNotice('Decision could not be saved. Check the Node API connection and try again.');
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : 'Decision could not be saved. Check the Node API connection and try again.'
+      );
     }
   }
 
@@ -164,7 +171,7 @@ export function DispatcherPage({ session }) {
 
       {status === 'error' && (
         <p className="responder-feed-warning">
-          Dispatcher incident feed unavailable. Check the Node API connection.
+          Dispatcher incident feed unavailable. {feedError || 'Check the Node API connection.'}
         </p>
       )}
 

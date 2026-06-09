@@ -1,5 +1,6 @@
 import { BadRequestError } from "../../utils/apiError";
 import { env } from "../../config/env";
+import { z } from "zod";
 import { extractReport } from "./incidentExtraction.service";
 import {
   attachReportToCluster,
@@ -9,8 +10,14 @@ import {
   listPriorityQueue,
   listResponderIncidents,
   listIncidentClusters,
+  patchClusterStatus,
   updateClusterResourceAllocation,
 } from "./incidentCluster.service";
+import {
+  insertPublicIncidentReport,
+  listPublicIncidentReports,
+  updatePublicIncidentReport,
+} from "../../repositories/incidentState.repo";
 import { findSimilarIncidentCluster } from "./incidentSimilarity.service";
 import {
   manualReviewRecommendations,
@@ -20,13 +27,21 @@ import type {
   ExtractedIncident,
   IncidentClusterResponse,
   IncidentReportResult,
+  PersistedPublicIncidentReport,
   PublicIncidentReport,
 } from "./incident.types";
 
 const EXTRACTION_CONFIDENCE_THRESHOLD = 0.65;
+const incidentStatusPatchSchema = z.object({
+  status: z.enum(["dispatched", "declined", "closed"]),
+  dispatcher_id: z.string().trim().min(1).optional(),
+  approved_agencies: z.array(z.string().trim().min(1)).optional(),
+  dispatcher_note: z.string().trim().max(1000).optional(),
+});
 
 export async function submitIncidentReport(input: unknown): Promise<IncidentReportResult> {
   const report = normaliseReport(input);
+  const persistedReport = await insertPublicIncidentReport(report);
   let extractedIncident: ExtractedIncident;
 
   try {
@@ -44,12 +59,14 @@ export async function submitIncidentReport(input: unknown): Promise<IncidentRepo
       missing_fields: ["incident_type", "location", "severity"],
     };
     const recommendations = manualReviewRecommendations(reason);
-    const cluster = createIncidentCluster(
+    const cluster = await createIncidentCluster(
       report,
       fallbackIncident,
       recommendations,
-      "needs_manual_review"
+      "needs_manual_review",
+      persistedReport.id
     );
+    await syncPublicReportLink(persistedReport, cluster.incident_id, "needs_manual_review", fallbackIncident);
     console.warn("[incident-report] extraction failed; manual review required", {
       reportId: report.report_id,
       incidentId: cluster.incident_id,
@@ -66,11 +83,18 @@ export async function submitIncidentReport(input: unknown): Promise<IncidentRepo
   const manualReviewReason = manualReviewReasonForExtraction(extractedIncident);
   if (manualReviewReason) {
     const recommendations = manualReviewRecommendations(manualReviewReason);
-    const cluster = createIncidentCluster(
+    const cluster = await createIncidentCluster(
       report,
       extractedIncident,
       recommendations,
-      "needs_manual_review"
+      "needs_manual_review",
+      persistedReport.id
+    );
+    await syncPublicReportLink(
+      persistedReport,
+      cluster.incident_id,
+      "needs_manual_review",
+      extractedIncident
     );
     console.info("[incident-report] low-confidence extraction; resource allocation skipped", {
       reportId: report.report_id,
@@ -87,7 +111,7 @@ export async function submitIncidentReport(input: unknown): Promise<IncidentRepo
   const similarity = findSimilarIncidentCluster(
     extractedIncident,
     report,
-    getRecentIncidentClusters(cutoffIso)
+    await getRecentIncidentClusters(cutoffIso)
   );
 
   console.info("[incident-report] similarity evaluated", {
@@ -97,7 +121,13 @@ export async function submitIncidentReport(input: unknown): Promise<IncidentRepo
   });
 
   if (similarity.is_similar && similarity.matched_incident_id) {
-    const cluster = attachReportToCluster(similarity.matched_incident_id, report);
+    const cluster = await attachReportToCluster(similarity.matched_incident_id, report);
+    await syncPublicReportLink(
+      persistedReport,
+      cluster.incident_id,
+      "grouped_with_existing_incident",
+      extractedIncident
+    );
     console.info("[incident-report] grouped with existing incident; allocation skipped", {
       reportId: report.report_id,
       incidentId: cluster.incident_id,
@@ -112,19 +142,26 @@ export async function submitIncidentReport(input: unknown): Promise<IncidentRepo
     };
   }
 
-  const cluster = createIncidentCluster(
+  const cluster = await createIncidentCluster(
     report,
     extractedIncident,
     manualReviewRecommendations("Resource allocation pending."),
-    "pending_dispatcher_approval"
+    "pending_dispatcher_approval",
+    persistedReport.id
   );
 
   try {
     const recommendations = await recommendResourceAllocation(extractedIncident);
-    const updatedCluster = updateClusterResourceAllocation(
+    const updatedCluster = await updateClusterResourceAllocation(
       cluster.incident_id,
       recommendations,
       "pending_dispatcher_approval"
+    );
+    await syncPublicReportLink(
+      persistedReport,
+      updatedCluster.incident_id,
+      "pending_approval",
+      extractedIncident
     );
     console.info("[incident-report] new incident created; allocation recommendation staged", {
       reportId: report.report_id,
@@ -142,7 +179,17 @@ export async function submitIncidentReport(input: unknown): Promise<IncidentRepo
     const fallback = manualReviewRecommendations(
       "AI resource allocation unavailable. Dispatcher review is required before any agency notification."
     );
-    const updatedCluster = updateClusterResourceAllocation(cluster.incident_id, fallback, "needs_manual_review");
+    const updatedCluster = await updateClusterResourceAllocation(
+      cluster.incident_id,
+      fallback,
+      "needs_manual_review"
+    );
+    await syncPublicReportLink(
+      persistedReport,
+      updatedCluster.incident_id,
+      "needs_manual_review",
+      extractedIncident
+    );
     console.warn("[incident-report] allocation failed after cluster creation", {
       reportId: report.report_id,
       incidentId: updatedCluster.incident_id,
@@ -159,20 +206,68 @@ export async function submitIncidentReport(input: unknown): Promise<IncidentRepo
   }
 }
 
-export function getIncidentClusters(): IncidentClusterResponse[] {
-  return listIncidentClusters();
+export async function getIncidentClusters(
+  statuses?: string[]
+): Promise<IncidentClusterResponse[]> {
+  const clusters = await listIncidentClusters();
+  if (!statuses?.length) return clusters;
+  const allowed = new Set(statuses);
+  return clusters.filter((cluster) => allowed.has(cluster.status));
 }
 
-export function getIncidentClusterDetails(incidentId: string): IncidentClusterResponse | undefined {
+export async function getIncidentClusterDetails(
+  incidentId: string
+): Promise<IncidentClusterResponse | undefined> {
   return getIncidentCluster(incidentId);
 }
 
-export function getDispatcherPriorityQueue(): IncidentClusterResponse[] {
+export async function getDispatcherPriorityQueue(): Promise<IncidentClusterResponse[]> {
   return listPriorityQueue();
 }
 
-export function getResponderIncidentList(): IncidentClusterResponse[] {
+export async function getResponderIncidentList(): Promise<IncidentClusterResponse[]> {
   return listResponderIncidents();
+}
+
+export async function getPublicIncidentReportList(): Promise<PersistedPublicIncidentReport[]> {
+  return listPublicIncidentReports();
+}
+
+export async function updateIncidentStatus(
+  incidentId: string,
+  input: unknown
+): Promise<IncidentClusterResponse> {
+  const parsed = incidentStatusPatchSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new BadRequestError("Invalid incident status update.", {
+      issues: parsed.error.flatten().fieldErrors,
+    });
+  }
+
+  const updated = await patchClusterStatus({
+    incidentId,
+    status: parsed.data.status,
+    dispatcherId: parsed.data.dispatcher_id,
+    approvedAgencies: parsed.data.approved_agencies,
+    dispatcherNote: parsed.data.dispatcher_note,
+  });
+  return updated;
+}
+
+async function syncPublicReportLink(
+  persistedReport: PersistedPublicIncidentReport,
+  incidentId: string,
+  status: PersistedPublicIncidentReport["status"],
+  extractedIncident: Partial<ExtractedIncident>
+) {
+  await updatePublicIncidentReport(persistedReport.id, {
+    incident_id: incidentId,
+    status,
+    title: safeText(extractedIncident.incident_type) || undefined,
+    category: safeText(extractedIncident.incident_type) || undefined,
+    location_name: safeText(extractedIncident.location_text) || undefined,
+    reporter_location: persistedReport.reporter_location,
+  });
 }
 
 function normaliseReport(input: unknown): PublicIncidentReport {
