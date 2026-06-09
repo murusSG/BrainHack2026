@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { Fragment, useEffect, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Circle, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -27,6 +27,12 @@ const HAZARD_LABEL = {
 };
 
 const SG_CENTER = [1.3521, 103.8198];
+const SINGAPORE_BOUNDS = {
+  minLat: 1.1,
+  maxLat: 1.5,
+  minLng: 103.5,
+  maxLng: 104.2,
+};
 
 // Auto-fit only when marker geometry changes, not on every polling refresh.
 function FitBounds({ events }) {
@@ -36,12 +42,16 @@ function FitBounds({ events }) {
   const geometry = useMemo(
     () =>
       events
-        .filter((event) => event.lat != null && event.lng != null)
-        .map((event) => ({
-          id: event.id,
-          lat: Number(event.lat),
-          lng: Number(event.lng),
-        }))
+        .map((event) => {
+          const coordinates = coordinatesForEvent(event);
+          if (!coordinates) return null;
+          return {
+            id: event.id,
+            lat: coordinates[0],
+            lng: coordinates[1],
+          };
+        })
+        .filter(Boolean)
         .sort((left, right) => left.id.localeCompare(right.id)),
     [events]
   );
@@ -102,22 +112,23 @@ export function CrisisMap({ events = [], onSelect, selectedId, height = '100%' }
         <FitBounds events={events} />
 
         {events.map((e) => {
-          if (e.lat == null || e.lng == null) return null;
+          const coordinates = coordinatesForEvent(e);
+          if (!coordinates) return null;
           const color = e.markerColor ?? SEVERITY_COLOR[e.severity] ?? '#55a7ff';
           const isSelected = e.id === selectedId;
           const showCircle = isSelected && HYPERLOCAL_HAZARDS.has(e.hazardType);
           return (
-            <div key={e.id}>
+            <Fragment key={e.id}>
               {showCircle && (
                 <Circle
-                  center={[e.lat, e.lng]}
+                  center={coordinates}
                   radius={e.vicinityRadiusMeters ?? 500}
                   pathOptions={{ color, fillColor: color, fillOpacity: 0.12, weight: 1.5 }}
                 />
               )}
               {/* Event marker */}
               <CircleMarker
-                center={[e.lat, e.lng]}
+                center={coordinates}
                 radius={9}
                 pathOptions={{ color, fillColor: color, fillOpacity: 0.9, weight: 2 }}
                 eventHandlers={{ click: () => onSelect?.(e) }}
@@ -134,10 +145,35 @@ export function CrisisMap({ events = [], onSelect, selectedId, height = '100%' }
                   </div>
                 </Popup>
               </CircleMarker>
-            </div>
+            </Fragment>
           );
         })}
       </MapContainer>
     </div>
   );
+}
+
+function coordinatesForEvent(event) {
+  const lat = parseCoordinate(event?.lat, 'lat');
+  const lng = parseCoordinate(event?.lng, 'lng');
+  if (lat === undefined || lng === undefined) return null;
+  if (
+    lat < SINGAPORE_BOUNDS.minLat ||
+    lat > SINGAPORE_BOUNDS.maxLat ||
+    lng < SINGAPORE_BOUNDS.minLng ||
+    lng > SINGAPORE_BOUNDS.maxLng
+  ) {
+    return null;
+  }
+  return [lat, lng];
+}
+
+function parseCoordinate(value, axis) {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === 'string' && !value.trim()) return undefined;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  if (axis === 'lat' && (parsed < -90 || parsed > 90)) return undefined;
+  if (axis === 'lng' && (parsed < -180 || parsed > 180)) return undefined;
+  return parsed;
 }

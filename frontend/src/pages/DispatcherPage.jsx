@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { CrisisMap } from '../components/CrisisMap';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
@@ -31,6 +31,7 @@ function severityTone(value = '') {
 }
 
 export function DispatcherPage({ session }) {
+  const location = useLocation();
   const [queue, setQueue] = useState([]);
   const [mapEvents, setMapEvents] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -38,7 +39,8 @@ export function DispatcherPage({ session }) {
   const [dispatcherNote, setDispatcherNote] = useState('');
   const [status, setStatus] = useState('loading');
   const [decisionStatus, setDecisionStatus] = useState('idle');
-  const [notice, setNotice] = useState('');
+  const [notice, setNotice] = useState(location.state?.quickActionNotice ?? '');
+  const [feedError, setFeedError] = useState('');
   const mapEventsRef = useRef([]);
   const refreshPromiseRef = useRef(null);
 
@@ -83,8 +85,10 @@ export function DispatcherPage({ session }) {
           return nextQueue?.[0]?.incident_id ?? null;
         });
         setStatus('done');
-      } catch {
+        setFeedError('');
+      } catch (error) {
         setStatus('error');
+        setFeedError(error instanceof Error ? error.message : 'Incident feed unavailable.');
       } finally {
         refreshPromiseRef.current = null;
       }
@@ -133,9 +137,13 @@ export function DispatcherPage({ session }) {
       setNotice(result.message);
       await refresh({ afterCurrent: true });
       setDecisionStatus('idle');
-    } catch {
+    } catch (error) {
       setDecisionStatus('error');
-      setNotice('Decision could not be saved. Check the Node API connection and try again.');
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : 'Decision could not be saved. Check the Node API connection and try again.'
+      );
     }
   }
 
@@ -159,9 +167,11 @@ export function DispatcherPage({ session }) {
         </Link>
       </header>
 
+      {notice && <p className="allocation-command-note">{notice}</p>}
+
       {status === 'error' && (
         <p className="responder-feed-warning">
-          Dispatcher incident feed unavailable. Check the Node API connection.
+          Dispatcher incident feed unavailable. {feedError || 'Check the Node API connection.'}
         </p>
       )}
 
@@ -314,7 +324,6 @@ export function DispatcherPage({ session }) {
                   Decline / Reject
                 </button>
               </div>
-              {notice && <p className="allocation-command-note">{notice}</p>}
             </>
           )}
         </section>

@@ -36,7 +36,7 @@ function AlertFeedCard({ item, selected, onSelect }) {
       </p>
       <div className="alert-feed-bottom">
         <p>Source: {item.source}</p>
-        <span className="alert-status-pill">{item.status}</span>
+        <span className={`alert-status-pill ${alertStatusTone(item.status)}`}>{item.status}</span>
       </div>
     </article>
   );
@@ -63,7 +63,7 @@ export function AlertsPage({ session }) {
   const [activeTab, setActiveTab] = useState(alertsPageMeta.tabs[0]);
   const [selectedAlertId, setSelectedAlertId] = useState(initialAlertId);
   const [statusOverrides, setStatusOverrides] = useState({});
-  const [actionNotice, setActionNotice] = useState('Alert feed ready for dispatcher review.');
+  const [actionNotice, setActionNotice] = useState('');
   const [composerOpen, setComposerOpen] = useState(Boolean(location.state?.openResidentAlertComposer));
   const [publishState, setPublishState] = useState('idle');
   const [publishError, setPublishError] = useState('');
@@ -419,17 +419,17 @@ export function AlertsPage({ session }) {
 
         <section className="alerts-detail-panel">
           <div className="alerts-detail-head">
-            <div>
+            <div className="alerts-detail-copy">
               <div className="alerts-case-row">
                 <span className={`alert-severity-pill severity-${selectedDetail.severity}`}>
                   {selectedDetail.severity}
                 </span>
                 <span className="alerts-case-id">CASE ID: {selectedDetail.caseId}</span>
-                <span className="alert-status-pill">{selectedAlert.status}</span>
+                <span className={`alert-status-pill ${alertStatusTone(selectedAlert.status)}`}>
+                  {selectedAlert.status}
+                </span>
               </div>
               <h2>{selectedDetail.title}</h2>
-              <p className="alerts-summary">{selectedDetail.summary}</p>
-              <p className="alert-action-notice">{actionNotice}</p>
             </div>
 
             <div className="alerts-detail-actions">
@@ -448,6 +448,9 @@ export function AlertsPage({ session }) {
                 Escalate to Command
               </button>
             </div>
+
+            <p className="alerts-summary">{selectedDetail.summary}</p>
+            {actionNotice ? <p className="alert-action-notice">{actionNotice}</p> : null}
           </div>
 
           <div className="alert-facts-grid">
@@ -513,6 +516,28 @@ export function AlertsPage({ session }) {
       </section>
     </div>
   );
+}
+
+function alertStatusTone(status) {
+  const normalized = String(status ?? '').toLowerCase();
+  if (
+    normalized.includes('unacknowledged') ||
+    normalized.includes('unbroadcasted') ||
+    normalized.includes('escalated') ||
+    normalized.includes('critical')
+  ) {
+    return 'status-urgent';
+  }
+
+  if (
+    normalized.includes('acknowledged') ||
+    normalized.includes('broadcasted') ||
+    normalized.includes('resolved')
+  ) {
+    return 'status-stable';
+  }
+
+  return 'status-neutral';
 }
 
 function buildAlertDetail(item) {

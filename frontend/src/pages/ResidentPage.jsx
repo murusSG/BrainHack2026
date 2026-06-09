@@ -5,6 +5,7 @@ import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkelet
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
 import { useEvents } from '../hooks/useEvents';
 import { api } from '../services/api';
+import { CHECK_IN_OPTIONS, saveResidentCheckin } from '../utils/residentCheckins';
 
 function distanceMeters(a, b) {
   const R = 6371000;
@@ -21,6 +22,69 @@ const WATCH_POINTS = [
   { id: 'home', label: 'Home', sublabel: 'Tampines St 21', lat: 1.3536, lng: 103.9450 },
   { id: 'parents', label: "Mum's place", sublabel: 'Woodlands', lat: 1.4382, lng: 103.7890 },
   { id: 'work', label: 'Work', sublabel: 'Orchard Road', lat: 1.3048, lng: 103.8318 },
+];
+
+const IMPACT_POINTS = [
+  { id: 'current', label: 'Current area', sublabel: 'Orchard Gateway', lat: 1.3008, lng: 103.8391 },
+  ...WATCH_POINTS,
+  { id: 'school', label: 'School', sublabel: 'River Valley', lat: 1.2950, lng: 103.8260 },
+];
+
+const RESIDENT_PROFILES = [
+  {
+    id: 'general',
+    label: 'General',
+    note: 'Fast public guidance',
+  },
+  {
+    id: 'elderly',
+    label: 'Elderly',
+    note: 'Avoid stairs and crowded routes',
+  },
+  {
+    id: 'parent',
+    label: 'Parent',
+    note: 'School and child pickup safety',
+  },
+  {
+    id: 'driver',
+    label: 'Driver',
+    note: 'Road diversions and vehicle safety',
+  },
+  {
+    id: 'tourist',
+    label: 'Tourist',
+    note: 'Simple local directions',
+  },
+  {
+    id: 'mobility',
+    label: 'Mobility support',
+    note: 'Lift-accessible and assisted movement',
+  },
+];
+
+const QUICK_QUESTIONS = [
+  'Am I affected?',
+  'What should I do now?',
+  'Should I check family?',
+  'Can I still take the MRT?',
+  'Is it safe to go home?',
+  'What if I am with an elderly person?',
+  'Where should I avoid?',
+];
+
+const TRANSPORT_MODES = [
+  { id: 'walking', label: 'Walking' },
+  { id: 'mrt', label: 'MRT / bus' },
+  { id: 'driving', label: 'Driving' },
+  { id: 'caregiver', label: 'With dependants' },
+];
+
+const MOBILITY_NEEDS = [
+  { id: 'none', label: 'No special needs' },
+  { id: 'elderly', label: 'Elderly / slower walking' },
+  { id: 'mobility', label: 'Wheelchair / mobility aid' },
+  { id: 'child', label: 'With young child' },
 ];
 
 const SEVERITY_RANK = {
@@ -42,12 +106,25 @@ function statusTone(severity) {
 export function ResidentPage() {
   const { events, status, error } = useEvents();
   const [activePoint, setActivePoint] = useState(WATCH_POINTS[0].id);
+  const [activeProfile, setActiveProfile] = useState(RESIDENT_PROFILES[0].id);
   const [shelterNote, setShelterNote] = useState(null);
   const [shelterLoading, setShelterLoading] = useState(false);
   const [residentAlerts, setResidentAlerts] = useState([]);
   const [residentAlertStatus, setResidentAlertStatus] = useState('loading');
   const [residentAlertError, setResidentAlertError] = useState(null);
   const [acknowledgedAlertIds, setAcknowledgedAlertIds] = useState(() => new Set());
+  const [copilotAnswers, setCopilotAnswers] = useState({});
+  const [copilotDrafts, setCopilotDrafts] = useState({});
+  const [checkInStatuses, setCheckInStatuses] = useState({});
+  const [rumorText, setRumorText] = useState('');
+  const [rumorCheck, setRumorCheck] = useState(null);
+  const [impactPointId, setImpactPointId] = useState('current');
+  const [impactTransport, setImpactTransport] = useState('walking');
+  const [impactMobility, setImpactMobility] = useState('none');
+  const [impactResult, setImpactResult] = useState(null);
+  const [simpleMode, setSimpleMode] = useState(false);
+  const [preparedItemIds, setPreparedItemIds] = useState(() => new Set());
+  const [statusMessageCopied, setStatusMessageCopied] = useState(false);
   const isLoading = status === 'loading';
   const demoEventCount = events.filter((event) => event.isDemo).length;
   const liveEventCount = events.length - demoEventCount;
@@ -99,23 +176,57 @@ export function ResidentPage() {
   }, [events]);
 
   const active = statusByPoint.find((statusItem) => statusItem.point.id === activePoint);
-  const alertsByPoint = useMemo(() => {
-    const sourceAlerts =
-      residentAlerts.length > 0 ? residentAlerts : events.map(eventToFallbackResidentAlert);
+  const officialAlerts = useMemo(
+    () => (residentAlerts.length > 0 ? residentAlerts : events.map(eventToFallbackResidentAlert)),
+    [events, residentAlerts]
+  );
 
+  const alertsByPoint = useMemo(() => {
     return WATCH_POINTS.map((point) => {
-      const affecting = sourceAlerts.filter((alert) => alertAffectsPoint(alert, point));
+      const affecting = officialAlerts.filter((alert) => alertAffectsPoint(alert, point));
       affecting.sort(
         (a, b) => (SEVERITY_RANK[b.severity] ?? 0) - (SEVERITY_RANK[a.severity] ?? 0)
       );
       return { point, affecting };
     });
-  }, [events, residentAlerts]);
+  }, [officialAlerts]);
 
   const activeAlerts = alertsByPoint.find((statusItem) => statusItem.point.id === activePoint);
   const activeSeverity = activeAlerts?.affecting[0]?.severity ?? active?.affecting[0]?.severity;
   const activeTone = isLoading || residentAlertStatus === 'loading' ? 'loading' : statusTone(activeSeverity);
   const alertFeedSource = residentAlerts.length > 0 ? 'Resident alert channel' : 'Event-derived fallback';
+  const activeProfileMeta =
+    RESIDENT_PROFILES.find((profile) => profile.id === activeProfile) ?? RESIDENT_PROFILES[0];
+  const affectedWatchPoints = alertsByPoint.filter((item) => item.affecting.length > 0);
+  const savedPlacesImpact = useMemo(
+    () => buildSavedPlacesImpact(IMPACT_POINTS, officialAlerts),
+    [officialAlerts]
+  );
+  const emergencyPack = useMemo(
+    () =>
+      buildPreparednessChecklist({
+        profile: activeProfile,
+        point: activeAlerts?.point ?? active?.point ?? WATCH_POINTS[0],
+        alert: activeAlerts?.affecting[0],
+        transportMode: impactTransport,
+        mobilityNeed: impactMobility,
+      }),
+    [active?.point, activeAlerts?.affecting, activeAlerts?.point, activeProfile, impactMobility, impactTransport]
+  );
+  const preparedCount = emergencyPack.items.filter((item) => preparedItemIds.has(item.id)).length;
+  const shareStatusMessage = buildResidentStatusMessage({
+    point: activeAlerts?.point ?? active?.point ?? WATCH_POINTS[0],
+    alert: activeAlerts?.affecting[0],
+    transportMode: impactTransport,
+    mobilityNeed: impactMobility,
+    profile: activeProfile,
+    preparedCount,
+    totalCount: emergencyPack.items.length,
+  });
+
+  useEffect(() => {
+    setStatusMessageCopied(false);
+  }, [shareStatusMessage]);
 
   async function handleNearestShelter(point) {
     setShelterLoading(true);
@@ -141,6 +252,46 @@ export function ResidentPage() {
     }
   }
 
+  function handleAskCopilot(alert, point, question) {
+    const trimmedQuestion = question.trim();
+    if (!trimmedQuestion) return;
+
+    setCopilotAnswers((current) => ({
+      ...current,
+      [alert.id]: {
+        question: trimmedQuestion,
+        answer: answerResidentQuestion(trimmedQuestion, alert, point, activeProfile),
+      },
+    }));
+    setCopilotDrafts((current) => ({
+      ...current,
+      [alert.id]: '',
+    }));
+  }
+
+  function handleResidentCheckIn(alert, point, option) {
+    saveResidentCheckin({
+      alertId: alert.id,
+      alertTitle: alert.title,
+      alertLocation: alert.locationLabel,
+      pointId: point.id,
+      pointLabel: point.label,
+      pointSublabel: point.sublabel,
+      status: option.id,
+      statusLabel: option.label,
+      statusTone: option.tone,
+      residentProfile: activeProfile,
+      mobilityNeed: impactMobility,
+      transportMode: impactTransport,
+      severity: alert.severity,
+      priority: option.id === 'need_help' || option.id === 'accessible' ? 'high' : 'normal',
+    });
+    setCheckInStatuses((current) => ({
+      ...current,
+      [alert.id]: option.id,
+    }));
+  }
+
   return (
     <div className="resident-page">
       <header className="resident-header">
@@ -150,6 +301,14 @@ export function ResidentPage() {
         </div>
         <div className="resident-header-actions">
           <span className="resident-feed-pill">{feedLabel}</span>
+          <button
+            type="button"
+            className={`resident-simple-toggle ${simpleMode ? 'is-active' : ''}`}
+            aria-pressed={simpleMode}
+            onClick={() => setSimpleMode((current) => !current)}
+          >
+            {simpleMode ? 'Simple mode on' : 'Simplify alert'}
+          </button>
           <Link to="/" className="resident-command-link">
             Command view
           </Link>
@@ -180,6 +339,236 @@ export function ResidentPage() {
         })}
       </div>
 
+      <section className="resident-persona-panel" aria-label="Personalized guidance profile">
+        <div>
+          <p className="resident-persona-title">Personalize this alert</p>
+          <p className="resident-persona-copy">
+            MURUS turns the same official alert into safer next steps for your situation.
+          </p>
+        </div>
+        <div className="resident-persona-list">
+          {RESIDENT_PROFILES.map((profile) => (
+            <button
+              key={profile.id}
+              type="button"
+              className={`resident-persona-chip ${activeProfile === profile.id ? 'is-active' : ''}`}
+              aria-pressed={activeProfile === profile.id}
+              onClick={() => setActiveProfile(profile.id)}
+            >
+              <span>{profile.label}</span>
+              <small>{profile.note}</small>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="resident-impact-panel" aria-label="Does this affect me check">
+        <div>
+          <p className="resident-persona-title">Does this affect me?</p>
+          <p className="resident-persona-copy">
+            Check your current area, home, work, school, transport mode, and mobility needs against official alerts.
+          </p>
+        </div>
+        <div className="resident-impact-grid">
+          <label>
+            <span>Area to check</span>
+            <select value={impactPointId} onChange={(event) => setImpactPointId(event.target.value)}>
+              {IMPACT_POINTS.map((point) => (
+                <option key={point.id} value={point.id}>
+                  {point.label} - {point.sublabel}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Transport mode</span>
+            <select value={impactTransport} onChange={(event) => setImpactTransport(event.target.value)}>
+              {TRANSPORT_MODES.map((mode) => (
+                <option key={mode.id} value={mode.id}>
+                  {mode.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Mobility needs</span>
+            <select value={impactMobility} onChange={(event) => setImpactMobility(event.target.value)}>
+              {MOBILITY_NEEDS.map((need) => (
+                <option key={need.id} value={need.id}>
+                  {need.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <button
+          type="button"
+          className="resident-rumor-button"
+          onClick={() =>
+            setImpactResult(
+              buildImpactResult({
+                point: IMPACT_POINTS.find((point) => point.id === impactPointId) ?? IMPACT_POINTS[0],
+                transportMode: impactTransport,
+                mobilityNeed: impactMobility,
+                alerts: officialAlerts,
+              })
+            )
+          }
+        >
+          Check my impact
+        </button>
+        {impactResult && (
+          <div className={`resident-impact-result is-${impactResult.tone}`}>
+            <strong>{impactResult.label}</strong>
+            <p>{impactResult.message}</p>
+            <ol>
+              {impactResult.steps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+          </div>
+        )}
+      </section>
+
+      <section className="resident-family-panel" aria-label="Family and saved places impact summary">
+        <div className="resident-family-head">
+          <div>
+            <p className="resident-persona-title">Family and saved places</p>
+            <p className="resident-persona-copy">
+              One scan for your current area, home, work, school, and family locations.
+            </p>
+          </div>
+          <span className={savedPlacesImpact.affectedCount > 0 ? 'is-affected' : 'is-clear'}>
+            {savedPlacesImpact.affectedCount} affected
+          </span>
+        </div>
+        <div className="resident-family-list">
+          {savedPlacesImpact.items.map((item) => (
+            <article key={item.point.id} className={`resident-family-item is-${item.tone}`}>
+              <div>
+                <strong>{item.point.label}</strong>
+                <span>{item.point.sublabel}</span>
+              </div>
+              <p>{item.summary}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setImpactPointId(item.point.id);
+                  setImpactResult(
+                    buildImpactResult({
+                      point: item.point,
+                      transportMode: impactTransport,
+                      mobilityNeed: impactMobility,
+                      alerts: officialAlerts,
+                    })
+                  );
+                }}
+              >
+                {item.affected ? 'Review steps' : 'Check anyway'}
+              </button>
+            </article>
+          ))}
+        </div>
+        <p className="resident-family-message">{savedPlacesImpact.familyMessage}</p>
+      </section>
+
+      <section className="resident-preparedness-panel" aria-label="Emergency pack readiness">
+        <div className="resident-preparedness-head">
+          <div>
+            <p className="resident-persona-title">Emergency pack mode</p>
+            <p className="resident-persona-copy">
+              A fast, profile-aware checklist for what to prepare before moving or sheltering.
+            </p>
+          </div>
+          <span>{preparedCount} / {emergencyPack.items.length} ready</span>
+        </div>
+        <div className="resident-preparedness-list">
+          {emergencyPack.items.map((item) => {
+            const checked = preparedItemIds.has(item.id);
+            return (
+              <label key={item.id} className={`resident-preparedness-item ${checked ? 'is-ready' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => {
+                    setPreparedItemIds((current) => {
+                      const next = new Set(current);
+                      if (next.has(item.id)) {
+                        next.delete(item.id);
+                      } else {
+                        next.add(item.id);
+                      }
+                      return next;
+                    });
+                    setStatusMessageCopied(false);
+                  }}
+                />
+                <span>
+                  <strong>{item.label}</strong>
+                  <small>{item.detail}</small>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+        <div className="resident-share-card">
+          <div>
+            <p className="resident-guidance-label">Share my status</p>
+            <p>{shareStatusMessage}</p>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                if (navigator.clipboard?.writeText) {
+                  await navigator.clipboard.writeText(shareStatusMessage);
+                }
+              } finally {
+                setStatusMessageCopied(true);
+              }
+            }}
+          >
+            {statusMessageCopied ? 'Copied' : 'Copy status'}
+          </button>
+        </div>
+      </section>
+
+      <section className="resident-rumor-panel" aria-label="Rumor check">
+        <div>
+          <p className="resident-persona-title">Rumor check</p>
+          <p className="resident-persona-copy">
+            Heard something from a group chat? Check whether it matches official MURUS alerts.
+          </p>
+        </div>
+        <label className="resident-rumor-field">
+          <span>What did you hear?</span>
+          <textarea
+            rows="3"
+            value={rumorText}
+            onChange={(event) => setRumorText(event.target.value)}
+            placeholder="Example: I heard Orchard MRT is closed"
+          />
+        </label>
+        <button
+          type="button"
+          className="resident-rumor-button"
+          onClick={() => setRumorCheck(checkResidentRumor(rumorText, officialAlerts))}
+        >
+          Check against official alerts
+        </button>
+        {rumorCheck && (
+          <div className={`resident-rumor-result is-${rumorCheck.status}`}>
+            <strong>{rumorCheck.label}</strong>
+            <p>{rumorCheck.message}</p>
+            {rumorCheck.matchedAlert && (
+              <span>
+                Matched official alert: {rumorCheck.matchedAlert.title} / {rumorCheck.matchedAlert.locationLabel}
+              </span>
+            )}
+          </div>
+        )}
+      </section>
+
       <section className={`resident-crisis-card is-${activeTone}`}>
         {isLoading || residentAlertStatus === 'loading' ? (
           <>
@@ -198,9 +587,26 @@ export function ResidentPage() {
               {activeAlerts.affecting.length} alert{activeAlerts.affecting.length > 1 ? 's' : ''} near{' '}
               {activeAlerts.point.label}
             </p>
+            <div className="resident-affects-card">
+              <strong>Does this affect me?</strong>
+              <span>
+                Yes. {activeAlerts.point.label} is inside the active advisory radius.
+                {affectedWatchPoints.length > 1
+                  ? ` Also check ${affectedWatchPoints
+                      .filter((item) => item.point.id !== activePoint)
+                      .map((item) => item.point.label)
+                      .join(', ')}.`
+                  : ' Your other saved places are not currently flagged by this alert.'}
+              </span>
+            </div>
             <div className="resident-alert-list">
               {activeAlerts.affecting.map((alert) => {
                 const acknowledged = acknowledgedAlertIds.has(alert.id);
+                const guidance = buildPersonalGuidance(alert, activeAlerts.point, activeProfile);
+                const copilotAnswer = copilotAnswers[alert.id];
+                const copilotDraft = copilotDrafts[alert.id] ?? '';
+                const selectedCheckIn = checkInStatuses[alert.id];
+                const simpleAlert = buildSimpleAlert(alert, activeAlerts.point, activeProfile);
                 return (
                 <article key={alert.id} className={`resident-alert-card ${acknowledged ? 'is-read' : ''}`}>
                   <div className="resident-alert-meta">
@@ -215,6 +621,105 @@ export function ResidentPage() {
                   <h2>{alert.title}</h2>
                   <p>{alert.body}</p>
                   <p className="resident-action-copy">Action: {alert.publicAction}</p>
+                  {simpleMode && (
+                    <section className="resident-simple-card" aria-label={`Simple alert for ${alert.title}`}>
+                      <p className="resident-guidance-label">Plain language</p>
+                      <h3>{simpleAlert.headline}</h3>
+                      <ul>
+                        {simpleAlert.points.map((point) => (
+                          <li key={point}>{point}</li>
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+                  <section className="resident-guidance-card" aria-label={`Personalized guidance for ${alert.title}`}>
+                    <div className="resident-guidance-head">
+                      <div>
+                        <p className="resident-guidance-label">Next safe action</p>
+                        <h3>{activeProfileMeta.label} at {activeAlerts.point.label}</h3>
+                      </div>
+                      <span>{guidance.tone}</span>
+                    </div>
+                    <ol>
+                      {guidance.steps.map((step) => (
+                        <li key={step}>{step}</li>
+                      ))}
+                    </ol>
+                    <p>{guidance.reassurance}</p>
+                  </section>
+                  <section className="resident-copilot-card" aria-label={`Ask MURUS about ${alert.title}`}>
+                    <div>
+                      <p className="resident-guidance-label">Ask MURUS</p>
+                      <h3>Citizen-safe answers from this alert</h3>
+                    </div>
+                    <div className="resident-question-list">
+                      {QUICK_QUESTIONS.map((question) => (
+                        <button
+                          key={question}
+                          type="button"
+                          onClick={() => handleAskCopilot(alert, activeAlerts.point, question)}
+                        >
+                          {question}
+                        </button>
+                      ))}
+                    </div>
+                    <form
+                      className="resident-copilot-form"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        handleAskCopilot(alert, activeAlerts.point, copilotDraft);
+                      }}
+                    >
+                      <label htmlFor={`resident-copilot-${alert.id}`}>Ask your own question</label>
+                      <div>
+                        <input
+                          id={`resident-copilot-${alert.id}`}
+                          value={copilotDraft}
+                          onChange={(event) =>
+                            setCopilotDrafts((current) => ({
+                              ...current,
+                              [alert.id]: event.target.value,
+                            }))
+                          }
+                          placeholder="Example: Can I go to Orchard now?"
+                        />
+                        <button type="submit">Ask</button>
+                      </div>
+                    </form>
+                    {copilotAnswer && (
+                      <div className="resident-copilot-answer" role="status">
+                        <span>You asked: {copilotAnswer.question}</span>
+                        <p>{copilotAnswer.answer}</p>
+                      </div>
+                    )}
+                  </section>
+                  <section className="resident-checkin-card" aria-label={`Resident check-in for ${alert.title}`}>
+                    <div>
+                      <p className="resident-guidance-label">Check in with command</p>
+                      <h3>Send your current status</h3>
+                    </div>
+                    <div className="resident-checkin-grid">
+                      {CHECK_IN_OPTIONS.map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          className={`resident-checkin-button is-${option.tone} ${
+                            selectedCheckIn === option.id ? 'is-active' : ''
+                          }`}
+                          aria-pressed={selectedCheckIn === option.id}
+                          onClick={() => handleResidentCheckIn(alert, activeAlerts.point, option)}
+                        >
+                          <strong>{option.label}</strong>
+                          <span>{option.detail}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {selectedCheckIn && (
+                      <p className="resident-checkin-confirmation" role="status">
+                        Status sent to command: {CHECK_IN_OPTIONS.find((option) => option.id === selectedCheckIn)?.label}
+                      </p>
+                    )}
+                  </section>
                   <div className="resident-card-actions">
                     <Link to="/incident-map" className="resident-primary-button resident-button-link">
                       View on map
@@ -304,4 +809,482 @@ function eventToFallbackResidentAlert(event) {
     lng: event.lng,
     radiusMeters: event.vicinityRadiusMeters ?? 500,
   };
+}
+
+function buildPersonalGuidance(alert, point, profile) {
+  const baseAction = stripTrailingPunctuation(alert.publicAction);
+  const location = alert.locationLabel || point.sublabel;
+  const common = [
+    `${baseAction}.`,
+    `Stay away from ${location} underpasses, basement links, and blocked routes until the alert changes.`,
+  ];
+
+  const profileStep = {
+    elderly: 'Use lifts or sheltered street-level paths, and ask nearby staff or family for help before moving.',
+    parent: 'If collecting children nearby, confirm pickup arrangements and avoid bringing them through crowded detours.',
+    driver: 'Do not drive through flood water; park outside the affected area and follow traffic diversions.',
+    tourist: 'Remain inside a staffed mall or station concourse if unsure, and follow official staff directions.',
+    mobility: 'Choose lift-accessible street-level exits and request assistance before entering crowded walkways.',
+    general: 'Move calmly to street level or a staffed indoor area if you are already nearby.',
+  }[profile] ?? 'Move calmly to street level or a staffed indoor area if you are already nearby.';
+
+  return {
+    tone: (SEVERITY_RANK[alert.severity] ?? 0) >= 3 ? 'High priority' : 'Advisory',
+    steps: [
+      common[0],
+      profileStep,
+      `Check ${point.label} again before travelling; MURUS will update this card when command changes the alert.`,
+    ],
+    reassurance:
+      alert.status === 'resolved'
+        ? 'This alert is marked all-clear, but keep following posted closures until they are removed.'
+        : 'This guidance is generated from the official alert and your selected resident profile.',
+  };
+}
+
+function buildSimpleAlert(alert, point, profile) {
+  const location = alert.locationLabel || point.sublabel;
+  const action = stripTrailingPunctuation(alert.publicAction);
+  const supportPoint = {
+    elderly: 'Move slowly. Ask someone nearby to help you.',
+    parent: 'Keep children close. Do not use crowded shortcuts.',
+    driver: 'Do not drive through water or blocked roads.',
+    tourist: 'Stay inside a staffed building if you are unsure.',
+    mobility: 'Use lift-accessible street-level exits. Ask for assistance.',
+    general: 'Stay calm and move away from the affected area.',
+  }[profile] ?? 'Stay calm and move away from the affected area.';
+
+  return {
+    headline: alert.status === 'resolved' ? `All clear near ${location}` : `Avoid ${location}`,
+    points: [
+      action,
+      supportPoint,
+      `Check ${point.label} again before you travel.`,
+    ],
+  };
+}
+
+function answerResidentQuestion(question, alert, point, profile) {
+  const profileLabel =
+    RESIDENT_PROFILES.find((residentProfile) => residentProfile.id === profile)?.label ?? 'General';
+  const action = stripTrailingPunctuation(alert.publicAction);
+  const location = alert.locationLabel ?? point.sublabel;
+  const intent = detectResidentQuestionIntent(question);
+
+  if (intent === 'affected') {
+    return `Yes. ${point.label} is within the advisory area for ${location}. Follow the ${profileLabel.toLowerCase()} guidance above until the alert is updated.`;
+  }
+  if (intent === 'family') {
+    return `Check saved places first. If family members are near ${location}, send them the action: ${action}.`;
+  }
+  if (intent === 'mrt') {
+    return `Use the MRT only if MURUS and station staff say the route is clear. Avoid basement links and sheltered walkways near ${location} until the alert changes.`;
+  }
+  if (intent === 'home') {
+    return `Only go home if your route avoids ${location} and you are not heading into the affected radius. If unsure, stay put in a staffed safe place and wait for the next official update.`;
+  }
+  if (intent === 'elderly') {
+    return `Move slowly, use lifts or sheltered street-level paths, and keep the elderly person away from crowded shortcuts near ${location}. If needed, ask staff or family for help before moving.`;
+  }
+  if (intent === 'avoid') {
+    return `Avoid ${location}, nearby basement links, underpasses, blocked roads, and any route that repeats the official action: ${action}.`;
+  }
+  return `Do this now: ${action}. Avoid rushing, stay on safer routes, and wait for the next MURUS update.`;
+}
+
+function detectResidentQuestionIntent(question) {
+  const normalized = question.toLowerCase();
+  if (normalized.includes('affect') || normalized.includes('affected')) return 'affected';
+  if (normalized.includes('family') || normalized.includes('parent') || normalized.includes('child')) {
+    return 'family';
+  }
+  if (normalized.includes('mrt') || normalized.includes('train') || normalized.includes('bus')) return 'mrt';
+  if (normalized.includes('home') || normalized.includes('house')) return 'home';
+  if (normalized.includes('elderly') || normalized.includes('senior') || normalized.includes('old')) {
+    return 'elderly';
+  }
+  if (normalized.includes('avoid') || normalized.includes('where') || normalized.includes('unsafe')) {
+    return 'avoid';
+  }
+  return 'general';
+}
+
+function buildSavedPlacesImpact(points, alerts) {
+  const items = points.map((point) => {
+    const matchingAlerts = alerts
+      .filter((alert) => alertAffectsPoint(alert, point))
+      .sort((left, right) => (SEVERITY_RANK[right.severity] ?? 0) - (SEVERITY_RANK[left.severity] ?? 0));
+    const primaryAlert = matchingAlerts[0];
+    const affected = Boolean(primaryAlert);
+    return {
+      point,
+      affected,
+      tone: affected ? statusTone(primaryAlert.severity) : 'clear',
+      summary: affected
+        ? `${primaryAlert.title} applies near ${primaryAlert.locationLabel}.`
+        : 'No active resident alert radius covers this place.',
+    };
+  });
+  const affectedItems = items.filter((item) => item.affected);
+
+  return {
+    items,
+    affectedCount: affectedItems.length,
+    familyMessage:
+      affectedItems.length > 0
+        ? `Check ${affectedItems.map((item) => item.point.label).join(', ')} first and share the official action with anyone nearby.`
+        : 'Your saved places are not currently flagged. Keep monitoring MURUS before travelling.',
+  };
+}
+
+function buildImpactResult({ point, transportMode, mobilityNeed, alerts }) {
+  const matches = alerts
+    .map((alert) => ({
+      alert,
+      distance: alert.lat != null && alert.lng != null
+        ? distanceMeters(point, { lat: alert.lat, lng: alert.lng })
+        : Number.POSITIVE_INFINITY,
+    }))
+    .filter(({ alert, distance }) => alert.audience?.type === 'all' || distance <= (alert.radiusMeters ?? 500))
+    .sort((left, right) => (SEVERITY_RANK[right.alert.severity] ?? 0) - (SEVERITY_RANK[left.alert.severity] ?? 0));
+
+  if (matches.length === 0) {
+    return {
+      tone: 'clear',
+      label: `${point.label} is not currently flagged`,
+      message:
+        'No active resident alert radius covers this area right now. Keep monitoring official updates before travelling.',
+      steps: [
+        `Check ${point.label} again if your route changes.`,
+        'Avoid relying on forwarded messages unless MURUS or an agency confirms them.',
+        'Keep your saved places updated so future alerts can be checked faster.',
+      ],
+    };
+  }
+
+  const primaryAlert = matches[0].alert;
+  const distanceLabel = Number.isFinite(matches[0].distance)
+    ? `${Math.round(matches[0].distance)}m from the alert point`
+    : 'inside a broad public advisory';
+  const baseAction = stripTrailingPunctuation(primaryAlert.publicAction);
+
+  return {
+    tone: (SEVERITY_RANK[primaryAlert.severity] ?? 0) >= 3 ? 'critical' : 'warning',
+    label: `${point.label} is affected`,
+    message: `${point.sublabel} is ${distanceLabel} for ${primaryAlert.locationLabel}.`,
+    steps: [
+      `${baseAction}.`,
+      transportStep(transportMode, primaryAlert),
+      mobilityStep(mobilityNeed, point),
+    ],
+  };
+}
+
+function transportStep(mode, alert) {
+  const location = alert.locationLabel;
+  if (mode === 'driving') {
+    return `Do not drive through flood water or blocked lanes near ${location}; use diversions before entering the affected area.`;
+  }
+  if (mode === 'mrt') {
+    return `Use street-level MRT or bus exits where possible, and avoid basement links near ${location}.`;
+  }
+  if (mode === 'caregiver') {
+    return `Move dependants before conditions worsen; keep children or elderly family on sheltered street-level routes.`;
+  }
+  return `Walk on street-level sheltered routes and avoid underpasses or basement corridors near ${location}.`;
+}
+
+function mobilityStep(need, point) {
+  if (need === 'mobility') {
+    return `For ${point.label}, choose lift-accessible exits and ask staff or family for help before moving through crowds.`;
+  }
+  if (need === 'elderly') {
+    return `For ${point.label}, move slowly, avoid stairs, and ask someone nearby to accompany you if possible.`;
+  }
+  if (need === 'child') {
+    return `For ${point.label}, keep children close and confirm pickup plans before entering the affected area.`;
+  }
+  return `Before travelling to ${point.label}, re-check this alert for updates from command.`;
+}
+
+function buildPreparednessChecklist({ profile, point, alert, transportMode, mobilityNeed }) {
+  const location = alert?.locationLabel ?? point.sublabel;
+  const action = alert?.publicAction
+    ? stripTrailingPunctuation(alert.publicAction)
+    : 'Keep monitoring MURUS before travelling';
+  const items = [
+    {
+      id: 'phone',
+      label: 'Phone charged',
+      detail: 'Keep battery above 50% so MURUS, family, and emergency services can reach you.',
+    },
+    {
+      id: 'water',
+      label: 'Water bottle ready',
+      detail: `Carry water before moving away from ${location}.`,
+    },
+    {
+      id: 'id',
+      label: 'ID and essentials',
+      detail: 'Bring NRIC, access cards, keys, and any cashless payment card you may need.',
+    },
+    {
+      id: 'power-bank',
+      label: 'Power bank packed',
+      detail: 'A charged backup keeps location sharing and emergency calls available longer.',
+    },
+    {
+      id: 'family',
+      label: 'Tell family your status',
+      detail: `Share where you are and the official action: ${action}.`,
+    },
+  ];
+
+  const profileItems = {
+    elderly: [
+      {
+        id: 'medication',
+        label: 'Medication packed',
+        detail: 'Carry daily medication, inhalers, glasses, and a small note of medical conditions.',
+      },
+      {
+        id: 'walking-aid',
+        label: 'Walking aid ready',
+        detail: 'Use lifts or sheltered paths and avoid stairs unless assisted.',
+      },
+      {
+        id: 'caregiver-contact',
+        label: 'Caregiver contact saved',
+        detail: 'Call or message a caregiver before changing route.',
+      },
+    ],
+    parent: [
+      {
+        id: 'school-contact',
+        label: 'School contact checked',
+        detail: 'Confirm whether school pickup, dismissal, or gate access has changed.',
+      },
+      {
+        id: 'child-pickup',
+        label: 'Child pickup plan',
+        detail: 'Tell children where to wait and avoid bringing them through crowded detours.',
+      },
+      {
+        id: 'child-snacks',
+        label: 'Child essentials',
+        detail: 'Pack snacks, water, medication, and a small comfort item if travel is delayed.',
+      },
+    ],
+    driver: [
+      {
+        id: 'fuel',
+        label: 'Fuel and route checked',
+        detail: 'Confirm you have enough fuel or charge before taking a diversion.',
+      },
+      {
+        id: 'avoid-flood-roads',
+        label: 'Avoid flood roads',
+        detail: `Do not enter blocked lanes or flood water near ${location}.`,
+      },
+    ],
+    tourist: [
+      {
+        id: 'passport-copy',
+        label: 'Passport copy ready',
+        detail: 'Keep a photo or copy of your passport and travel documents accessible.',
+      },
+      {
+        id: 'hotel-contact',
+        label: 'Hotel contact saved',
+        detail: 'Message your hotel or host if your route or arrival time changes.',
+      },
+    ],
+    mobility: [
+      {
+        id: 'accessible-route',
+        label: 'Lift-accessible route',
+        detail: 'Choose street-level exits, lifts, ramps, and staffed areas before moving.',
+      },
+      {
+        id: 'helper-contact',
+        label: 'Helper contact ready',
+        detail: 'Ask a helper, staff member, or family contact to accompany you if crowds build up.',
+      },
+    ],
+    general: [],
+  }[profile] ?? [];
+
+  const transportItems = {
+    mrt: [
+      {
+        id: 'transit-exits',
+        label: 'Transit exits checked',
+        detail: 'Use street-level MRT or bus exits and avoid basement links unless officials say they are clear.',
+      },
+    ],
+    driving: [
+      {
+        id: 'driver-detour',
+        label: 'Driving detour saved',
+        detail: 'Save a dry, official diversion before approaching the affected area.',
+      },
+    ],
+    caregiver: [
+      {
+        id: 'dependants-ready',
+        label: 'Dependants ready',
+        detail: 'Keep children or elderly family together before moving through queues or detours.',
+      },
+    ],
+    walking: [],
+  }[transportMode] ?? [];
+
+  const mobilityItems = mobilityNeed === 'mobility'
+    ? [
+        {
+          id: 'mobility-aid',
+          label: 'Mobility aid ready',
+          detail: 'Check wheelchair, cane, or walking frame before taking a longer route.',
+        },
+      ]
+    : mobilityNeed === 'child'
+      ? [
+          {
+            id: 'child-handhold',
+            label: 'Child handhold plan',
+            detail: 'Keep young children beside you and away from crowded shortcuts.',
+          },
+        ]
+      : [];
+
+  const uniqueItems = [...items, ...profileItems, ...transportItems, ...mobilityItems].filter(
+    (item, index, allItems) => allItems.findIndex((candidate) => candidate.id === item.id) === index
+  );
+
+  return { items: uniqueItems };
+}
+
+function buildResidentStatusMessage({
+  point,
+  alert,
+  transportMode,
+  mobilityNeed,
+  profile,
+  preparedCount,
+  totalCount,
+}) {
+  const place = `${point.label} near ${point.sublabel}`;
+  const alertLabel = alert?.locationLabel ?? point.sublabel;
+  const route = {
+    walking: 'street-level sheltered routes',
+    mrt: 'street-level MRT or bus exits',
+    driving: 'official road diversions',
+    caregiver: 'a slower route with dependants kept together',
+  }[transportMode] ?? 'safer official routes';
+  const support = {
+    elderly: 'moving slowly and avoiding stairs',
+    parent: 'checking child pickup arrangements',
+    driver: 'avoiding flood water and blocked lanes',
+    tourist: 'staying near staffed areas if unsure',
+    mobility: 'choosing lift-accessible paths',
+    general: 'following official instructions',
+  }[profile] ?? 'following official instructions';
+  const mobilityNote = mobilityNeed !== 'none'
+    ? ` I also need ${MOBILITY_NEEDS.find((need) => need.id === mobilityNeed)?.label.toLowerCase()} support.`
+    : '';
+
+  if (!alert) {
+    return `I am at ${place}. There is no active MURUS alert for this saved place right now. I am ${support} and my emergency pack is ${preparedCount}/${totalCount} ready.${mobilityNote}`;
+  }
+
+  return `I am at ${place}. I have seen the MURUS alert for ${alertLabel} and am preparing to move via ${route}. My emergency pack is ${preparedCount}/${totalCount} ready, and I am ${support}.${mobilityNote}`;
+}
+
+function stripTrailingPunctuation(value = '') {
+  return value.trim().replace(/[.!?]+$/, '');
+}
+
+function checkResidentRumor(value, alerts) {
+  const claim = value.trim();
+  if (!claim) {
+    return {
+      status: 'empty',
+      label: 'Add a claim to check',
+      message: 'Type what you heard, then MURUS will compare it with current official alerts.',
+    };
+  }
+
+  const claimTokens = meaningfulTokens(claim);
+  const scoredAlerts = alerts
+    .map((alert) => {
+      const officialText = [
+        alert.title,
+        alert.body,
+        alert.publicAction,
+        alert.locationLabel,
+        alert.severity,
+        alert.status,
+      ].join(' ');
+      const officialTokens = meaningfulTokens(officialText);
+      const overlap = claimTokens.filter((token) => officialTokens.includes(token));
+      return { alert, score: overlap.length, overlap };
+    })
+    .sort((left, right) => right.score - left.score);
+
+  const best = scoredAlerts[0];
+  if (!best || best.score === 0) {
+    return {
+      status: 'unverified',
+      label: 'Not verified by MURUS',
+      message:
+        'No current official alert matches this claim. Treat it as unverified and rely on MURUS or agency updates.',
+    };
+  }
+
+  const hasLocationMatch = best.overlap.some((token) =>
+    meaningfulTokens(best.alert.locationLabel ?? '').includes(token)
+  );
+  const hasActionMatch = best.overlap.some((token) =>
+    meaningfulTokens(`${best.alert.title} ${best.alert.publicAction}`).includes(token)
+  );
+
+  if (best.score >= 3 && hasLocationMatch && hasActionMatch) {
+    return {
+      status: 'verified',
+      label: 'Matches an official alert',
+      message: `This sounds consistent with MURUS guidance: ${stripTrailingPunctuation(best.alert.publicAction)}.`,
+      matchedAlert: best.alert,
+    };
+  }
+
+  return {
+    status: 'partial',
+    label: 'Partly related, not fully confirmed',
+    message:
+      'This mentions a similar area or hazard, but the exact claim is not confirmed in the current official alert. Follow only the official action shown below.',
+    matchedAlert: best.alert,
+  };
+}
+
+function meaningfulTokens(value = '') {
+  const stopWords = new Set([
+    'the',
+    'and',
+    'for',
+    'from',
+    'heard',
+    'that',
+    'near',
+    'with',
+    'this',
+    'alert',
+    'official',
+    'murus',
+    'avoid',
+  ]);
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((token) => token.length >= 3 && !stopWords.has(token));
 }

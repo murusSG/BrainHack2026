@@ -84,4 +84,12 @@ describe('CrisisMap auto fitting', () => {
     expect(leaflet.fitBounds).toHaveBeenCalledTimes(1);
     expect(leaflet.setView).not.toHaveBeenCalled();
   });
+
+  it('ignores invalid out-of-region coordinates when fitting the viewport', () => {
+    render(<CrisisMap events={[event('INC-001', 0, 0), event('INC-002', 1.36, 103.86)]} />);
+
+    expect(leaflet.setView).toHaveBeenCalledTimes(1);
+    expect(leaflet.setView).toHaveBeenCalledWith([1.36, 103.86], 13, { animate: false });
+    expect(leaflet.fitBounds).not.toHaveBeenCalled();
+  });
 });

@@ -4,6 +4,7 @@ import { clearIncidentClusterStateForTests } from "../../src/modules/incidents/i
 import { extractReport } from "../../src/modules/incidents/incidentExtraction.service";
 import { recommendResourceAllocation } from "../../src/modules/incidents/resourceAllocation.service";
 import type { ExtractedIncident } from "../../src/modules/incidents/incident.types";
+import { clearResponderLogStateForTests } from "../../src/repositories/responderLog.repo";
 
 jest.mock("../../src/modules/incidents/incidentExtraction.service", () => ({
   extractReport: jest.fn(),
@@ -51,6 +52,7 @@ describe("incident grouping routes", () => {
 
   beforeEach(() => {
     clearIncidentClusterStateForTests();
+    clearResponderLogStateForTests();
     mockedExtractReport.mockReset();
     mockedRecommendResourceAllocation.mockReset();
   });
@@ -102,6 +104,24 @@ describe("incident grouping routes", () => {
       expect.arrayContaining([expect.objectContaining({ agency: "SCDF" })])
     );
     expect(mockedRecommendResourceAllocation).toHaveBeenCalledTimes(1);
+
+    const publicReports = await request(app).get("/api/v1/incidents/public-reports").expect(200);
+    expect(publicReports.body.reports).toHaveLength(1);
+    expect(publicReports.body.reports[0]).toMatchObject({
+      report_id: "RPT-001",
+      incident_id: "INC-001",
+      status: "pending_approval",
+    });
+
+    const incidents = await request(app)
+      .get("/api/v1/incidents?status=pending_approval")
+      .expect(200);
+    expect(incidents.body.incidents).toHaveLength(1);
+    expect(incidents.body.incidents[0]).toMatchObject({
+      incident_id: "INC-001",
+      status: "pending_approval",
+      marker_status: "pending",
+    });
   });
 
   it("groups a similar second report and does not create duplicate allocation", async () => {
@@ -379,6 +399,32 @@ describe("incident grouping routes", () => {
     const responder = await request(app).get("/api/v1/incidents/responder").expect(200);
     expect(queue.body.items).toEqual([]);
     expect(responder.body.incidents).toEqual([]);
+  });
+
+  it("supports the generic incident status patch route", async () => {
+    mockedExtractReport.mockResolvedValue(fireExtraction);
+    mockedRecommendResourceAllocation.mockResolvedValue({
+      mandatory_agencies: [{ agency: "SCDF", reason: "Primary fire and rescue response." }],
+      suggested_agencies: [],
+      risk_notes: [],
+      dispatcher_approval_required: true,
+    });
+
+    await request(app)
+      .post("/api/v1/incidents/report")
+      .send({ report_text: "Black smoke from Block 123 Tampines Street 11." })
+      .expect(201);
+
+    const patched = await request(app)
+      .patch("/api/v1/incidents/INC-001/status")
+      .send({ status: "closed" })
+      .expect(200);
+
+    expect(patched.body.incident).toMatchObject({
+      incident_id: "INC-001",
+      status: "closed",
+      marker_status: "closed",
+    });
   });
 
   it("rejects missing approval fields", async () => {

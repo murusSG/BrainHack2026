@@ -110,8 +110,13 @@ export async function sendResidentAlertTelegram(alert: ResidentAlert): Promise<R
 
 export function formatResidentAlertSms(alert: ResidentAlert): string {
   const statusPrefix =
-    alert.status === "resolved" ? "ALL CLEAR" : alert.status === "updated" ? "UPDATED ALERT" : "MURUS SG ALERT";
-  const raw = `${statusPrefix}: ${alert.title}. ${alert.publicAction} Location: ${alert.locationLabel}.`;
+    alert.status === "resolved"
+      ? "MURUS SG All Clear"
+      : alert.status === "updated"
+        ? "MURUS SG Alert Update"
+        : "MURUS SG Public Alert";
+  const guidancePrefix = alert.status === "updated" ? "Updated action" : "Action";
+  const raw = `${statusPrefix}: ${alert.title}. ${guidancePrefix}: ${alert.publicAction} Area: ${alert.locationLabel}.`;
   return raw.length <= MAX_SMS_LENGTH ? raw : `${raw.slice(0, MAX_SMS_LENGTH - 3).trimEnd()}...`;
 }
 

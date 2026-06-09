@@ -1,9 +1,17 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { api } from '../services/api';
-import { getAccessToken } from '../services/auth';
 import { incidentTitle } from '../services/incidentClusterAdapter';
+
+const LOG_CATEGORY_OPTIONS = [
+  { value: 'general', label: 'General' },
+  { value: 'hazard', label: 'Hazard' },
+  { value: 'medical', label: 'Medical' },
+  { value: 'evacuation', label: 'Evacuation' },
+  { value: 'security', label: 'Security' },
+  { value: 'resource_update', label: 'Resource update' },
+];
 
 function formatTimestamp(value) {
   const timestamp = Date.parse(value);
@@ -15,278 +23,83 @@ function formatTimestamp(value) {
   }).format(timestamp);
 }
 
-const STATUS_BADGE = {
-  draft: { label: 'Draft', cls: 'status-draft' },
-  submitted: { label: 'Submitted', cls: 'status-submitted' },
-  acknowledged: { label: 'Acknowledged', cls: 'status-acknowledged' },
-};
-
-function CasualtyDisplay({ casualties }) {
-  if (!casualties) return null;
-  const { injured, deceased, missing } = casualties;
-  return <span>{injured} injured · {deceased} deceased · {missing} missing</span>;
-}
-
-function ReportDetail({ report, currentUserId, onAcknowledge, onEdit }) {
-  const isAuthor = report.author_id === currentUserId;
-  const badge = STATUS_BADGE[report.status] ?? { label: report.status, cls: '' };
-
-  return (
-    <div className="report-detail">
-      <div className="report-detail-header">
-        <div>
-          <span className="agency-token">{report.agency}</span>
-          <strong className="report-author">{report.author_name || 'Agency unit'}</strong>
-        </div>
-        <div className="report-detail-meta">
-          <span className={`report-status-badge ${badge.cls}`}>{badge.label}</span>
-          <time>{formatTimestamp(report.created_at)}</time>
-        </div>
-      </div>
-
-      <dl className="report-fields">
-        <dt>Situation</dt>
-        <dd>{report.situation_summary}</dd>
-
-        {report.location && (<><dt>Location</dt><dd>{report.location}</dd></>)}
-
-        {report.casualties && (
-          <><dt>Casualties</dt><dd><CasualtyDisplay casualties={report.casualties} /></dd></>
-        )}
-
-        {report.resources_deployed && (
-          <><dt>Resources deployed</dt><dd>{report.resources_deployed}</dd></>
-        )}
-
-        {report.actions_taken && (
-          <><dt>Actions taken</dt><dd>{report.actions_taken}</dd></>
-        )}
-
-        {report.hazards?.length > 0 && (
-          <><dt>Hazards</dt><dd>{report.hazards.join(', ')}</dd></>
-        )}
-
-        {report.next_steps && (
-          <><dt>Next steps</dt><dd>{report.next_steps}</dd></>
-        )}
-      </dl>
-
-      <div className="report-detail-actions">
-        {isAuthor && report.status === 'draft' && (
-          <button type="button" className="secondary-button compact-button" onClick={onEdit}>
-            Edit draft
-          </button>
-        )}
-        {!isAuthor && report.status === 'submitted' && (
-          <button type="button" className="primary-button compact-button" onClick={onAcknowledge}>
-            Acknowledge
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ReportForm({ incidentId, token, existing, onSaved, onCancel }) {
-  const [fields, setFields] = useState({
-    author_name: existing?.author_name ?? '',
-    situation_summary: existing?.situation_summary ?? '',
-    location: existing?.location ?? '',
-    injured: existing?.casualties?.injured ?? 0,
-    deceased: existing?.casualties?.deceased ?? 0,
-    missing: existing?.casualties?.missing ?? 0,
-    resources_deployed: existing?.resources_deployed ?? '',
-    actions_taken: existing?.actions_taken ?? '',
-    hazards: existing?.hazards?.join(', ') ?? '',
-    next_steps: existing?.next_steps ?? '',
-  });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
-
-  function set(key) {
-    return (e) => setFields((f) => ({ ...f, [key]: e.target.value }));
-  }
-
-  function buildPayload(status) {
-    return {
-      author_name: fields.author_name.trim() || undefined,
-      situation_summary: fields.situation_summary.trim(),
-      location: fields.location.trim() || undefined,
-      casualties: {
-        injured: Number(fields.injured) || 0,
-        deceased: Number(fields.deceased) || 0,
-        missing: Number(fields.missing) || 0,
-      },
-      resources_deployed: fields.resources_deployed.trim() || undefined,
-      actions_taken: fields.actions_taken.trim() || undefined,
-      hazards: fields.hazards.split(',').map((h) => h.trim()).filter(Boolean),
-      next_steps: fields.next_steps.trim() || undefined,
-      status,
-    };
-  }
-
-  async function save(status) {
-    if (!fields.situation_summary.trim()) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const freshToken = await getAccessToken();
-      let saved;
-      if (existing) {
-        saved = await api.updateIncidentReport(incidentId, existing.id, freshToken, buildPayload(status));
-      } else {
-        saved = await api.createIncidentReport(incidentId, freshToken, buildPayload(status));
-      }
-      onSaved(saved?.data ?? saved);
-    } catch {
-      setError('Could not save report. Check the Node API connection.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <form className="report-form" onSubmit={(e) => e.preventDefault()}>
-      <label>
-        <span>Author / unit</span>
-        <input value={fields.author_name} onChange={set('author_name')} placeholder="e.g. Alpha 21" />
-      </label>
-
-      <label>
-        <span>Situation summary <span aria-hidden="true">*</span></span>
-        <textarea
-          rows={3}
-          required
-          value={fields.situation_summary}
-          onChange={set('situation_summary')}
-          placeholder="Current status and what happened"
-        />
-      </label>
-
-      <label>
-        <span>On-ground location</span>
-        <input value={fields.location} onChange={set('location')} placeholder="e.g. Block 93, Toa Payoh Central" />
-      </label>
-
-      <fieldset className="report-casualties">
-        <legend>Casualties</legend>
-        <label><span>Injured</span><input type="number" min={0} value={fields.injured} onChange={set('injured')} /></label>
-        <label><span>Deceased</span><input type="number" min={0} value={fields.deceased} onChange={set('deceased')} /></label>
-        <label><span>Missing</span><input type="number" min={0} value={fields.missing} onChange={set('missing')} /></label>
-      </fieldset>
-
-      <label>
-        <span>Resources deployed</span>
-        <textarea rows={2} value={fields.resources_deployed} onChange={set('resources_deployed')} placeholder="Personnel, vehicles, equipment" />
-      </label>
-
-      <label>
-        <span>Actions taken</span>
-        <textarea rows={2} value={fields.actions_taken} onChange={set('actions_taken')} placeholder="What your agency has done so far" />
-      </label>
-
-      <label>
-        <span>Hazards (comma-separated)</span>
-        <input value={fields.hazards} onChange={set('hazards')} placeholder="e.g. smoke inhalation, structural risk" />
-      </label>
-
-      <label>
-        <span>Next steps</span>
-        <textarea rows={2} value={fields.next_steps} onChange={set('next_steps')} placeholder="Intended action plan" />
-      </label>
-
-      {error && <p className="allocation-command-note">{error}</p>}
-
-      <div className="report-form-actions">
-        {onCancel && (
-          <button type="button" className="secondary-button compact-button" onClick={onCancel}>
-            Cancel
-          </button>
-        )}
-        <button
-          type="button"
-          className="secondary-button compact-button"
-          disabled={!fields.situation_summary.trim() || saving}
-          onClick={() => save('draft')}
-        >
-          Save draft
-        </button>
-        <button
-          type="button"
-          className="primary-button compact-button"
-          disabled={!fields.situation_summary.trim() || saving}
-          onClick={() => save('submitted')}
-        >
-          Submit
-        </button>
-      </div>
-    </form>
-  );
+function categoryLabel(value) {
+  return LOG_CATEGORY_OPTIONS.find((option) => option.value === value)?.label ?? 'General';
 }
 
 export function ResponderPage() {
-  const [token, setToken] = useState(null);
-  const [currentUserId, setCurrentUserId] = useState(null);
   const [incidents, setIncidents] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
-  const [reports, setReports] = useState([]);
-  const [selectedAgency, setSelectedAgency] = useState(null);
-  const [editing, setEditing] = useState(false);
+  const [logs, setLogs] = useState([]);
   const [incidentStatus, setIncidentStatus] = useState('loading');
-  const [reportStatus, setReportStatus] = useState('idle');
+  const [logStatus, setLogStatus] = useState('idle');
+  const [saveStatus, setSaveStatus] = useState('idle');
+  const [incidentError, setIncidentError] = useState('');
+  const [logError, setLogError] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const [form, setForm] = useState({
+    agency: '',
+    author: '',
+    category: 'general',
+    message: '',
+  });
+  const incidentRequestIdRef = useRef(0);
+  const logRequestIdRef = useRef(0);
+  const logsRef = useRef([]);
 
   const selectedIncident =
-    incidents.find((i) => i.incident_id === selectedId) ?? incidents[0];
-
-  // De-duplicate: one entry per agency (latest report wins)
-  const agencyMap = new Map(reports.map((r) => [r.agency, r]));
-  const agencyList = [...agencyMap.values()];
-
-  const myReport = reports.find((r) => r.author_id === currentUserId) ?? null;
-  const selectedReport = selectedAgency ? (agencyMap.get(selectedAgency) ?? null) : null;
-
-  // Load Supabase session once on mount
-  useEffect(() => {
-    getAccessToken().then((t) => {
-      setToken(t);
-      if (t) {
-        // Decode sub (user id) from JWT payload without a library
-        try {
-          const payload = JSON.parse(atob(t.split('.')[1]));
-          setCurrentUserId(payload.sub ?? null);
-        } catch {
-          setCurrentUserId(null);
-        }
-      }
-    });
-  }, []);
+    incidents.find((incident) => incident.incident_id === selectedId) ?? incidents[0] ?? null;
 
   const refreshIncidents = useCallback(async () => {
+    const requestId = incidentRequestIdRef.current + 1;
+    incidentRequestIdRef.current = requestId;
+
     try {
       const next = await api.responderIncidents();
+      if (incidentRequestIdRef.current !== requestId) return;
       setIncidents(next ?? []);
-      setSelectedId((cur) => {
-        if ((next ?? []).some((i) => i.incident_id === cur)) return cur;
+      setSelectedId((current) => {
+        if ((next ?? []).some((incident) => incident.incident_id === current)) return current;
         return next?.[0]?.incident_id ?? null;
       });
       setIncidentStatus('done');
-    } catch {
+      setIncidentError('');
+    } catch (error) {
       setIncidentStatus('error');
+      setIncidentError(error instanceof Error ? error.message : 'Responder incident feed unavailable.');
     }
   }, []);
 
-  const refreshReports = useCallback(async (incidentId) => {
-    if (!incidentId) { setReports([]); return; }
+  const refreshLogs = useCallback(async (incidentId) => {
+    if (!incidentId) {
+      logRequestIdRef.current += 1;
+      setLogs([]);
+      logsRef.current = [];
+      setLogStatus('idle');
+      return;
+    }
+
+    const requestId = logRequestIdRef.current + 1;
+    logRequestIdRef.current = requestId;
+    setLogStatus(logsRef.current.length === 0 ? 'loading' : 'refreshing');
+
     try {
-      const freshToken = await getAccessToken();
-      if (!freshToken) { setReports([]); return; }
-      const next = await api.incidentReports(incidentId, freshToken);
-      setReports(next ?? []);
-      setReportStatus('idle');
-    } catch {
-      setReportStatus('error');
+      const next = await api.responderLogs(incidentId);
+      if (logRequestIdRef.current !== requestId) return;
+      setLogs(next ?? []);
+      logsRef.current = next ?? [];
+      setLogStatus('idle');
+      setLogError('');
+    } catch (error) {
+      if (logRequestIdRef.current !== requestId) return;
+      setLogStatus('error');
+      setLogError(error instanceof Error ? error.message : 'Shared log feed unavailable.');
     }
   }, []);
+
+  useEffect(() => {
+    logsRef.current = logs;
+  }, [logs]);
 
   useEffect(() => {
     refreshIncidents();
@@ -296,39 +109,65 @@ export function ResponderPage() {
 
   useEffect(() => {
     const incidentId = selectedIncident?.incident_id;
-    refreshReports(incidentId);
+    refreshLogs(incidentId);
     if (!incidentId) return undefined;
-    const id = window.setInterval(() => refreshReports(incidentId), 5000);
+    const id = window.setInterval(() => refreshLogs(incidentId), 5000);
     return () => window.clearInterval(id);
-  }, [selectedIncident?.incident_id, refreshReports]);
+  }, [selectedIncident?.incident_id, refreshLogs]);
 
-  async function acknowledge(report) {
-    if (!selectedIncident) return;
-    try {
-      const freshToken = await getAccessToken();
-      if (!freshToken) return;
-      await api.updateIncidentReport(
-        selectedIncident.incident_id,
-        report.id,
-        freshToken,
-        { status: 'acknowledged' }
-      );
-      await refreshReports(selectedIncident.incident_id);
-    } catch {
-      setReportStatus('error');
-    }
+  useEffect(() => {
+    const nextAgency = selectedIncident?.approved_agencies?.includes(form.agency)
+      ? form.agency
+      : (selectedIncident?.approved_agencies?.[0] ?? '');
+    setForm((current) => ({
+      ...current,
+      agency: nextAgency,
+      message: '',
+    }));
+    setSaveError('');
+    setSaveStatus('idle');
+  }, [selectedIncident?.incident_id]);
+
+  function updateForm(key) {
+    return (event) => {
+      const value = event.target.value;
+      setForm((current) => ({ ...current, [key]: value }));
+    };
   }
 
-  function handleReportSaved(saved) {
-    setEditing(false);
-    setSelectedAgency(saved.agency);
-    if (selectedIncident) refreshReports(selectedIncident.incident_id);
+  async function submitLog(event) {
+    event.preventDefault();
+    if (!selectedIncident || !form.agency.trim() || !form.message.trim()) return;
+
+    setSaveStatus('saving');
+    setSaveError('');
+
+    try {
+      await api.createResponderLog(selectedIncident.incident_id, {
+        agency: form.agency.trim(),
+        author: form.author.trim() || undefined,
+        category: form.category,
+        message: form.message.trim(),
+      });
+      setForm((current) => ({
+        ...current,
+        author: '',
+        message: '',
+      }));
+      await refreshLogs(selectedIncident.incident_id);
+      setSaveStatus('idle');
+    } catch (error) {
+      setSaveStatus('error');
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : 'Could not save shared update. Check the Node API connection.'
+      );
+    }
   }
 
   function selectIncident(incidentId) {
     setSelectedId(incidentId);
-    setSelectedAgency(null);
-    setEditing(false);
   }
 
   return (
@@ -338,7 +177,7 @@ export function ResponderPage() {
           <p className="eyebrow">Shared inter-agency operations</p>
           <h1>Responder View</h1>
           <p className="responder-header-copy">
-            Dispatched incidents and structured reports from all assigned agencies.
+            Dispatched incidents and one shared operational timeline for every assigned agency.
           </p>
         </div>
         <Link to="/dispatcher" className="responder-command-link">
@@ -348,7 +187,7 @@ export function ResponderPage() {
 
       {incidentStatus === 'error' && (
         <p className="responder-feed-warning">
-          Responder incident feed unavailable. Check the Node API connection.
+          Responder incident feed unavailable. {incidentError || 'Check the Node API connection.'}
         </p>
       )}
 
@@ -376,7 +215,7 @@ export function ResponderPage() {
                 }`}
                 onClick={() => selectIncident(incident.incident_id)}
               >
-                <span className="agency-token">{incident.incident_id}</span>
+                <span className="responder-incident-code">{incident.incident_id}</span>
                 <span className="responder-incident-copy">
                   <span className="responder-incident-title">{incidentTitle(incident)}</span>
                   <span className="responder-incident-meta">
@@ -393,7 +232,7 @@ export function ResponderPage() {
       <section className="panel responder-shared-log">
         <div className="responder-section-heading">
           <div>
-            <p className="eyebrow">Shared incident reports</p>
+            <p className="eyebrow">Shared incident log</p>
             <h2>{selectedIncident ? incidentTitle(selectedIncident) : 'No incident selected'}</h2>
           </div>
           {selectedIncident && (
@@ -403,67 +242,97 @@ export function ResponderPage() {
 
         {!selectedIncident ? (
           <div className="responder-empty-state"><p>No approved incidents assigned yet.</p></div>
-        ) : !token ? (
-          <div className="responder-empty-state">
-            <p>Sign in to view and file incident reports.</p>
-          </div>
         ) : (
-          <div className="report-layout">
-            <nav className="report-sidebar">
-              {agencyList.map((r) => {
-                const badge = STATUS_BADGE[r.status] ?? { label: r.status, cls: '' };
-                return (
-                  <button
-                    type="button"
-                    key={r.agency}
-                    className={`report-sidebar-item${selectedAgency === r.agency ? ' is-active' : ''}`}
-                    onClick={() => { setSelectedAgency(r.agency); setEditing(false); }}
-                  >
-                    <span className="agency-token">{r.agency}</span>
-                    <span className={`report-status-dot ${badge.cls}`} title={badge.label} />
-                  </button>
-                );
-              })}
+          <div className="report-pane">
+            <form className="report-form" onSubmit={submitLog}>
+              <div className="report-form-grid">
+                <label className="report-field">
+                  <span>Agency</span>
+                  <select value={form.agency} onChange={updateForm('agency')} required>
+                    <option value="" disabled>Select an agency</option>
+                    {(selectedIncident.approved_agencies ?? []).map((agency) => (
+                      <option key={agency} value={agency}>
+                        {agency}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-              {!myReport && (
+                <label className="report-field">
+                  <span>Author / unit</span>
+                  <input
+                    value={form.author}
+                    onChange={updateForm('author')}
+                    placeholder="e.g. Alpha 21"
+                  />
+                </label>
+
+                <label className="report-field">
+                  <span>Category</span>
+                  <select value={form.category} onChange={updateForm('category')}>
+                    {LOG_CATEGORY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="report-field report-field-full">
+                  <span>Operational update</span>
+                  <textarea
+                    rows={4}
+                    required
+                    value={form.message}
+                    onChange={updateForm('message')}
+                    placeholder="What changed on the ground?"
+                  />
+                </label>
+              </div>
+
+              {saveError && <p className="allocation-command-note">{saveError}</p>}
+
+              <div className="report-form-actions">
                 <button
-                  type="button"
-                  className="report-sidebar-item report-sidebar-add"
-                  onClick={() => { setSelectedAgency(null); setEditing(true); }}
+                  type="submit"
+                  className="primary-button compact-button"
+                  disabled={saveStatus === 'saving' || !form.agency.trim() || !form.message.trim()}
                 >
-                  <span>+ File your report</span>
+                  Add shared update
                 </button>
-              )}
-            </nav>
+              </div>
+            </form>
 
-            <div className="report-pane">
-              {editing ? (
-                <ReportForm
-                  incidentId={selectedIncident.incident_id}
-                  token={token}
-                  existing={myReport}
-                  onSaved={handleReportSaved}
-                  onCancel={() => setEditing(false)}
-                />
-              ) : selectedReport ? (
-                <ReportDetail
-                  report={selectedReport}
-                  currentUserId={currentUserId}
-                  onAcknowledge={() => acknowledge(selectedReport)}
-                  onEdit={() => setEditing(true)}
-                />
-              ) : (
-                <div className="responder-empty-state">
-                  <p>Select an agency from the sidebar, or file your report.</p>
-                </div>
-              )}
+            {logStatus === 'loading' ? (
+              <LoadingSkeleton rows={3} compact />
+            ) : logs.length === 0 ? (
+              <div className="responder-empty-state">
+                <p>No shared updates recorded yet for this incident.</p>
+              </div>
+            ) : (
+              <div className="quick-log-list">
+                {logs.map((log) => (
+                  <article key={log.id} className="quick-log-entry">
+                    <span className="quick-log-dot" aria-hidden="true" />
+                    <div>
+                      <p>{log.message}</p>
+                      <p className="incident-meta-inline">
+                        {log.agency}
+                        {log.author ? ` | ${log.author}` : ''}
+                        {` | ${categoryLabel(log.category)} | `}
+                        {formatTimestamp(log.timestamp)}
+                      </p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
 
-              {reportStatus === 'error' && (
-                <p className="allocation-command-note">
-                  Reports could not be loaded. Check the Node API connection.
-                </p>
-              )}
-            </div>
+            {logStatus === 'error' && (
+              <p className="allocation-command-note">
+                Shared logs could not be loaded. {logError || 'Check the Node API connection.'}
+              </p>
+            )}
           </div>
         )}
       </section>

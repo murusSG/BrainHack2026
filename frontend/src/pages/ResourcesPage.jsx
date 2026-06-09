@@ -6,6 +6,7 @@ import {
 } from '../data/dashboardData';
 import { useScdfResources } from '../hooks/useScdfResources';
 import { useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
 function resourceSymbol(icon) {
   if (icon === 'fleet') {
@@ -49,16 +50,20 @@ function buildTrendArea(values, max, height) {
 }
 
 export function ResourcesPage() {
+  const location = useLocation();
+  const routedRequestForm = location.state?.requestForm;
   const { status, error, summaryCards, ledgerEntries, ledgerMeta } = useScdfResources();
   const [ledgerQuery, setLedgerQuery] = useState('');
   const [activeLedgerTab, setActiveLedgerTab] = useState(resourceLedgerTabs[0].id);
-  const [resourceNotice, setResourceNotice] = useState('Resource desk ready for allocation review.');
+  const [resourceNotice, setResourceNotice] = useState(
+    location.state?.quickActionNotice ?? 'Resource desk ready for allocation review.'
+  );
   const [shortageStatus, setShortageStatus] = useState('recommended');
   const [requestForm, setRequestForm] = useState({
-    resourceType: interAgencyRequestForm.resourceTypes[0],
-    quantity: '0',
-    priority: interAgencyRequestForm.priorities[0],
-    reason: '',
+    resourceType: routedRequestForm?.resourceType ?? interAgencyRequestForm.resourceTypes[0],
+    quantity: routedRequestForm?.quantity ?? '0',
+    priority: routedRequestForm?.priority ?? interAgencyRequestForm.priorities[0],
+    reason: routedRequestForm?.reason ?? '',
   });
   const [stagedRequests, setStagedRequests] = useState([]);
   const chartHeight = 100;
@@ -112,6 +117,7 @@ export function ResourcesPage() {
       resourceType: requestForm.resourceType,
       quantity,
       priority: requestForm.priority,
+      priorityTone: getPriorityTone(requestForm.priority),
       reason: requestForm.reason.trim() || 'No additional reason supplied.',
     };
     setStagedRequests((current) => [request, ...current].slice(0, 3));
@@ -369,6 +375,7 @@ export function ResourcesPage() {
                 <p>{interAgencyRequestForm.subtitle}</p>
               </div>
             </div>
+            <p className="allocation-command-note">{resourceNotice}</p>
 
             <form onSubmit={handleSubmitRequest}>
               <div className="resource-form-grid">
@@ -436,7 +443,9 @@ export function ResourcesPage() {
                         {request.quantity} x {request.resourceType}
                       </p>
                     </div>
-                    <span className="ledger-status status-dispatched">{request.priority}</span>
+                    <span className={`request-priority-pill priority-${request.priorityTone}`}>
+                      {request.priority}
+                    </span>
                   </article>
                 ))}
               </div>
@@ -465,4 +474,11 @@ function resourceEntryMatchesTab(entry, activeTab) {
   }
 
   return !type.includes('shelter');
+}
+
+function getPriorityTone(priority) {
+  const normalized = String(priority ?? '').toLowerCase();
+  if (normalized.includes('critical')) return 'critical';
+  if (normalized.includes('high')) return 'high';
+  return 'medium';
 }

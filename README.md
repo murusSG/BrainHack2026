@@ -24,10 +24,10 @@ New AI-assisted incident grouping path:
 1. Public user submits a natural-language incident report from the public dashboard.
 2. React calls only the Node API: `POST /api/v1/incidents/report`.
 3. Node calls Flask internally at `/agent/extract-report`.
-4. Node compares the extracted incident against recent in-memory incident clusters.
+4. Node saves the raw public report, compares the extracted incident against recent persisted incident clusters, and links duplicate reports back to the same operational incident.
 5. Similar reports are grouped with the existing cluster and do not trigger duplicate allocation.
-6. New clusters call Flask `/agent/resource-allocation`.
-7. The Responder View shows the AI-assisted recommendation queue and approves selected agencies with `POST /api/v1/resource-allocation/approve`.
+6. New clusters call Flask `/agent/resource-allocation`, then persist the incident, queue state, and map marker data in Supabase when configured.
+7. The Responder View shows approved incidents from the same persisted incident store and saves shared log updates through the Node API.
 8. No real agency notification is sent in this implementation.
 
 ## What Is Real vs Simulated
@@ -39,12 +39,18 @@ Working now:
 - Command allocation state: `/api/v1/command/allocations`
 - Command timeline: `/api/v1/command/timeline`
 - Public report ingestion and grouping: `/api/v1/incidents/report`
+- Public report inspection: `/api/v1/incidents/public-reports`
 - Incident clusters: `/api/v1/incidents/clusters`
+- Persistent incident listing/status routes: `/api/v1/incidents`, `/api/v1/incidents/:incidentId`, `/api/v1/incidents/:incidentId/status`
+- Shared responder logs: `GET/POST /api/v1/incidents/:incidentId/logs`
 - Dispatcher approval for AI recommendations: `/api/v1/resource-allocation/approve`
 - Optional LLM leader brief layer
 - Flask AI extraction/allocation with OpenAI/OpenRouter support and deterministic local fallbacks
+- Supabase-backed public incident report persistence when the incident-state migration is applied
+- Supabase-backed incident queue/map/responder persistence when the incident-state migration is applied
 - Supabase-backed command persistence when the command-state migration is applied
-- In-memory fallback when Supabase is not configured
+- Supabase-backed responder shared-log persistence when the responder-log migration is applied
+- In-memory fallback when Supabase is not configured, or when incident-state tables have not been migrated yet
 - Frontend smoke test for Foresight -> Dispatcher -> Timeline
 - Backend unit and integration tests
 
@@ -129,8 +135,12 @@ Run the SQL migrations in Supabase SQL editor:
 
 1. `backend/node-api/scripts/migrations/001_create_tables.sql`
 2. `backend/node-api/scripts/migrations/002_command_state.sql`
+3. `backend/node-api/supabase/migration_incident_state.sql`
+4. `backend/node-api/supabase/migration_responder_incident_logs.sql`
 
 Without Supabase, command allocations and timeline still work in memory for local demos, but reset when the backend restarts.
+Public incident reports, incident queue/map state, and responder shared logs also fall back to in-memory storage when Supabase is not configured, so apply the new migrations if you need those records to survive backend restarts.
+If Supabase is configured but `public_incident_reports` or `incidents` is missing from the database/schema cache, the backend logs a warning and temporarily falls back to in-memory incident state until `backend/node-api/supabase/migration_incident_state.sql` is applied.
 
 ## Run Locally
 
@@ -185,6 +195,7 @@ $report = @{
 
 Invoke-RestMethod "http://localhost:3000/api/v1/incidents/report" -Method Post -ContentType "application/json" -Body $report
 Invoke-RestMethod "http://localhost:3000/api/v1/incidents/clusters"
+Invoke-RestMethod "http://localhost:3000/api/v1/incidents/public-reports"
 
 $approval = @{
   incident_id = "INC-001"
@@ -193,6 +204,7 @@ $approval = @{
 } | ConvertTo-Json
 
 Invoke-RestMethod "http://localhost:3000/api/v1/resource-allocation/approve" -Method Post -ContentType "application/json" -Body $approval
+Invoke-RestMethod "http://localhost:3000/api/v1/incidents/INC-001/logs"
 ```
 
 ## Tests

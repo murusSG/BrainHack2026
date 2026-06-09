@@ -116,9 +116,11 @@ Approved: responder incident + shared agency log
 Declined: removed from operational queues
 ```
 
-The Node prototype currently stores report clusters, decisions, and responder logs in memory. The
-API boundary is structured for replacement with PostgreSQL/PostGIS persistence and immutable audit
-events without changing the role-specific frontend workflow.
+The Node prototype now persists raw public incident reports, operational incident clusters, and
+shared responder logs in Supabase when the incident-state and responder-log migrations are applied.
+The API boundary remains structured for fuller PostgreSQL/PostGIS persistence and immutable audit
+events without changing the role-specific frontend workflow, and still falls back to in-memory
+state when Supabase is not configured.
 
 ### 6. Realtime Event Bus
 
