@@ -83,6 +83,28 @@ function SignUpRoute({ onAuthenticate }) {
   );
 }
 
+// Landing route for OAuth (e.g. Google) redirects. supabase-js parses the token
+// from the URL hash and App's getSession() restores the session; once that
+// finishes we route by role, exactly like the manual login/signup flows.
+function AuthCallbackRoute({ session, restoring }) {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (restoring) return;
+    navigate(session ? resolvePostLoginPath(session.role) : '/login', { replace: true });
+  }, [session, restoring, navigate]);
+
+  return (
+    <div className="route-loading-shell">
+      <div className="route-loading-card">
+        <p className="eyebrow">Signing you in</p>
+        <h1>Completing sign-in</h1>
+        <p className="hero-copy">Verifying your account and preparing your dashboard.</p>
+      </div>
+    </div>
+  );
+}
+
 function ProtectedPublicDashboard({ session, restoring }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -118,6 +140,7 @@ export function AppRoutes({ session, restoring, onAuthenticate, onSignOut }) {
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginRoute onAuthenticate={onAuthenticate} />} />
       <Route path="/signup" element={<SignUpRoute onAuthenticate={onAuthenticate} />} />
+      <Route path="/auth/callback" element={<AuthCallbackRoute session={session} restoring={restoring} />} />
       <Route path="/public-dashboard" element={<ProtectedPublicDashboard session={session} restoring={restoring} />} />
       <Route path="/resident" element={<ResidentPage />} />
       <Route path="/responder" element={<ResponderPage />} />
