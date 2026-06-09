@@ -68,6 +68,16 @@ function cluster({
   };
 }
 
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 afterEach(() => {
   vi.clearAllMocks();
 });
@@ -178,5 +188,56 @@ describe('dispatcher and responder incident flow', () => {
       message: 'Crowd cordon established.',
     });
     expect(await screen.findByText('Crowd cordon established.')).toBeInTheDocument();
+  });
+
+  it('keeps the latest shared logs visible when an older empty refresh resolves late', async () => {
+    const dispatched = cluster({
+      id: 'INC-004',
+      severity: 'high',
+      score: 81,
+      location: 'Jurong East Station',
+      status: 'dispatched',
+      agencies: ['SPF', 'SCDF'],
+    });
+    const firstRefresh = deferred();
+
+    api.responderIncidents.mockResolvedValue([dispatched]);
+    api.responderLogs
+      .mockReturnValueOnce(firstRefresh.promise)
+      .mockResolvedValueOnce([
+        {
+          id: 'INC-004-LOG-002',
+          agency: 'SPF',
+          author: 'alpha',
+          category: 'medical',
+          timestamp: '2026-06-09T14:09:00.000Z',
+          message: '23 injured, all in stable condition.',
+        },
+      ]);
+    api.createResponderLog.mockResolvedValue({});
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ResponderPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(/Jurong East Station/)).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText('Agency'), 'SPF');
+    await user.type(screen.getByLabelText('Author / unit'), 'alpha');
+    await user.selectOptions(screen.getByLabelText('Category'), 'medical');
+    await user.type(screen.getByLabelText('Operational update'), '23 injured, all in stable condition.');
+    await user.click(screen.getByRole('button', { name: 'Add shared update' }));
+
+    expect(await screen.findByText('23 injured, all in stable condition.')).toBeInTheDocument();
+
+    firstRefresh.resolve([]);
+
+    await waitFor(() => {
+      expect(screen.getByText('23 injured, all in stable condition.')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('No shared updates recorded yet for this incident.')).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { api } from '../services/api';
@@ -43,13 +43,20 @@ export function ResponderPage() {
     category: 'general',
     message: '',
   });
+  const incidentRequestIdRef = useRef(0);
+  const logRequestIdRef = useRef(0);
+  const logsRef = useRef([]);
 
   const selectedIncident =
     incidents.find((incident) => incident.incident_id === selectedId) ?? incidents[0] ?? null;
 
   const refreshIncidents = useCallback(async () => {
+    const requestId = incidentRequestIdRef.current + 1;
+    incidentRequestIdRef.current = requestId;
+
     try {
       const next = await api.responderIncidents();
+      if (incidentRequestIdRef.current !== requestId) return;
       setIncidents(next ?? []);
       setSelectedId((current) => {
         if ((next ?? []).some((incident) => incident.incident_id === current)) return current;
@@ -65,22 +72,34 @@ export function ResponderPage() {
 
   const refreshLogs = useCallback(async (incidentId) => {
     if (!incidentId) {
+      logRequestIdRef.current += 1;
       setLogs([]);
+      logsRef.current = [];
       setLogStatus('idle');
       return;
     }
 
-    setLogStatus((current) => (current === 'idle' ? 'loading' : current));
+    const requestId = logRequestIdRef.current + 1;
+    logRequestIdRef.current = requestId;
+    setLogStatus(logsRef.current.length === 0 ? 'loading' : 'refreshing');
+
     try {
       const next = await api.responderLogs(incidentId);
+      if (logRequestIdRef.current !== requestId) return;
       setLogs(next ?? []);
+      logsRef.current = next ?? [];
       setLogStatus('idle');
       setLogError('');
     } catch (error) {
+      if (logRequestIdRef.current !== requestId) return;
       setLogStatus('error');
       setLogError(error instanceof Error ? error.message : 'Shared log feed unavailable.');
     }
   }, []);
+
+  useEffect(() => {
+    logsRef.current = logs;
+  }, [logs]);
 
   useEffect(() => {
     refreshIncidents();
