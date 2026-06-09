@@ -5,12 +5,16 @@ export interface AuthProfile {
   id: string;
   role: UserRole;
   agency?: string;
+  fullName?: string;
+  phone?: string;
 }
 
 type ProfileRow = {
   id: string;
   role: string | null;
   agency: string | null;
+  full_name: string | null;
+  phone: string | null;
 };
 
 const validRoles: UserRole[] = ["public", "responder", "leader"];
@@ -21,7 +25,7 @@ export const authRepo = {
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, role, agency")
+      .select("id, role, agency, full_name, phone")
       .eq("id", userId)
       .maybeSingle();
 
@@ -42,5 +46,7 @@ function mapProfile(row: ProfileRow): AuthProfile {
     id: row.id,
     role,
     agency: row.agency ?? undefined,
+    fullName: row.full_name ?? undefined,
+    phone: row.phone ?? undefined,
   };
 }

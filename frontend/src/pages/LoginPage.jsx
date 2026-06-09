@@ -1,24 +1,26 @@
 import { useState } from 'react';
-import { signIn } from '../services/auth';
+import { Link } from 'react-router-dom';
+import {
+  Anchor, Box, Button, Card, Container, Divider, Group, PasswordInput, Stack, Text, TextInput, Title,
+} from '@mantine/core';
+import { signIn, signInWithGoogle } from '../services/auth';
 
-export function LoginPage({ onAuthenticate, onOpenPublicDashboard }) {
-  const [loginId, setLoginId] = useState('');
+export function LoginPage({ onAuthenticate }) {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
-
-    if (!loginId.trim() || !password.trim()) {
-      setError('Please enter your login ID and password.');
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter your email and password.');
       return;
     }
-
     setError('');
     setLoading(true);
     try {
-      const session = await signIn(loginId.trim(), password.trim());
+      const session = await signIn(email.trim(), password.trim());
       onAuthenticate?.(session);
     } catch (err) {
       setError(err.message);
@@ -27,97 +29,69 @@ export function LoginPage({ onAuthenticate, onOpenPublicDashboard }) {
     }
   }
 
+  async function handleGoogle() {
+    setError('');
+    try {
+      await signInWithGoogle();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
-    <div className="login-shell">
-      <div className="login-backdrop-grid" aria-hidden="true" />
+    <Box mih="100vh" bg="linear-gradient(180deg, #fff9f7 0%, #fff1ed 100%)">
+      <Container size={460} py={56}>
+        <Card withBorder radius="md" padding="xl" bg="rgba(255,255,255,0.94)">
+          <Text c="brandRed.6" fz="xs" fw={700} tt="uppercase" lts="0.12em">
+            System Authentication
+          </Text>
+          <Title order={2} fw={900} mt={4}>
+            Log in to continue
+          </Title>
+          <Text c="dimmed" fz="sm" mt={4} mb="lg">
+            For commanders, responders, hospitals and registered residents.
+          </Text>
 
-      <main className="login-panel-wrap">
-        <section className="login-hero">
-          <div className="login-brand-row">
-            <div className="login-brand-mark">M</div>
-            <div>
-              <p className="login-brand-name">MURUS SG</p>
-              <p className="login-brand-subtitle">Integrated Emergency Command</p>
-            </div>
-          </div>
-
-          <p className="login-kicker">
-            Unified crisis awareness for commanders, responders, hospitals, and residents.
-          </p>
-          <div className="login-access-split">
-            <div className="login-access-card">
-              <span className="login-access-tag">Operations Access</span>
-              <p>Secured command workspace for foresight, allocations, hospital pressure, and agency review.</p>
-            </div>
-            <div className="login-access-card">
-              <span className="login-access-tag public">Public Access</span>
-              <p>Public-safe advisories, shelters, support resources, and trusted local instructions.</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="login-card">
-          <div className="login-card-head">
-            <div>
-              <p className="login-card-eyebrow">System Authentication</p>
-              <h1 className="login-card-title">Login to continue</h1>
-            </div>
-            <p className="login-card-copy">
-              Authenticated via Supabase. Role is assigned per your operator profile.
-            </p>
-          </div>
-
-          <form className="login-form" onSubmit={handleSubmit}>
-            <div className="login-form-grid">
-              <label className="login-field">
-                <span className="login-label">Email</span>
-                <div className="login-input-shell">
-                  <span className="login-input-icon" aria-hidden="true">ID</span>
-                  <input
-                    type="email"
-                    value={loginId}
-                    onChange={(event) => setLoginId(event.target.value)}
-                    placeholder="leader.ops@murus.sg"
-                    autoComplete="username"
-                    disabled={loading}
-                  />
-                </div>
-              </label>
-
-              <label className="login-field">
-                <span className="login-label">Password</span>
-                <div className="login-input-shell">
-                  <span className="login-input-icon" aria-hidden="true">*</span>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Enter password"
-                    autoComplete="current-password"
-                    disabled={loading}
-                  />
-                </div>
-              </label>
-            </div>
-
-            {error ? <p className="login-error">{error}</p> : null}
-
-            <div className="login-actions">
-              <button type="submit" className="login-submit-button" disabled={loading}>
-                {loading ? 'Signing in…' : 'Login'}
-              </button>
-              <button
-                type="button"
-                className="login-public-button"
-                onClick={() => onOpenPublicDashboard?.()}
+          <form onSubmit={handleSubmit} noValidate>
+            <Stack gap="sm">
+              <TextInput
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="leader.ops@murus.sg"
+                autoComplete="username"
                 disabled={loading}
-              >
-                Open Public Dashboard
-              </button>
-            </div>
+              />
+              <PasswordInput
+                label="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                disabled={loading}
+              />
+              {error ? <Text c="brandRed.6" fz="sm" role="alert">{error}</Text> : null}
+              <Button type="submit" loading={loading} fullWidth>
+                Log in
+              </Button>
+            </Stack>
           </form>
-        </section>
-      </main>
-    </div>
+
+          <Divider label="or" labelPosition="center" my="md" />
+          <Button variant="default" fullWidth onClick={handleGoogle} disabled={loading}>
+            Continue with Google
+          </Button>
+
+          <Group justify="center" mt="md">
+            <Text fz="sm" c="dimmed">
+              New here?{' '}
+              <Anchor component={Link} to="/signup" c="brandRed.6" fw={700}>
+                Create an account
+              </Anchor>
+            </Text>
+          </Group>
+        </Card>
+      </Container>
+    </Box>
   );
 }
