@@ -34,9 +34,17 @@ function makeCluster(overrides = {}) {
 }
 
 describe("getResponderIncidentLogs", () => {
-  it("merges the initial dispatch log with persisted shared logs", async () => {
-    mockGetIncidentCluster.mockReturnValue(makeCluster() as never);
+  it("returns persisted shared logs for a dispatched incident", async () => {
+    mockGetIncidentCluster.mockResolvedValue(makeCluster() as never);
     mockRepo.listResponderLogs.mockResolvedValue([
+      {
+        id: "db-log-0",
+        incident_id: "INC-001",
+        agency: "MURUS",
+        category: "resource_update",
+        message: "Dispatch approved.",
+        timestamp: "2026-06-09T10:00:00.000Z",
+      },
       {
         id: "db-log-1",
         incident_id: "INC-001",
@@ -56,7 +64,7 @@ describe("getResponderIncidentLogs", () => {
   });
 
   it("returns 404 when the incident does not exist anywhere", async () => {
-    mockGetIncidentCluster.mockReturnValue(undefined);
+    mockGetIncidentCluster.mockResolvedValue(undefined);
     mockRepo.listResponderLogs.mockResolvedValue([]);
 
     await expect(getResponderIncidentLogs("INC-404")).rejects.toMatchObject({ statusCode: 404 });
@@ -65,7 +73,7 @@ describe("getResponderIncidentLogs", () => {
 
 describe("createResponderIncidentLog", () => {
   it("persists a valid shared log entry", async () => {
-    mockGetIncidentCluster.mockReturnValue(makeCluster() as never);
+    mockGetIncidentCluster.mockResolvedValue(makeCluster() as never);
     mockRepo.insertResponderLog.mockResolvedValue({
       id: "db-log-2",
       incident_id: "INC-001",
@@ -95,7 +103,7 @@ describe("createResponderIncidentLog", () => {
   });
 
   it("rejects log creation for incidents that are not dispatched", async () => {
-    mockGetIncidentCluster.mockReturnValue(makeCluster({ status: "pending_approval" }) as never);
+    mockGetIncidentCluster.mockResolvedValue(makeCluster({ status: "pending_approval" }) as never);
 
     await expect(
       createResponderIncidentLog("INC-001", {
@@ -106,7 +114,7 @@ describe("createResponderIncidentLog", () => {
   });
 
   it("rejects blank log messages", async () => {
-    mockGetIncidentCluster.mockReturnValue(makeCluster() as never);
+    mockGetIncidentCluster.mockResolvedValue(makeCluster() as never);
 
     await expect(
       createResponderIncidentLog("INC-001", {
