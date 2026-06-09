@@ -71,9 +71,18 @@ export type ResponderIncidentLog = {
   incident_id: string;
   agency: string;
   author?: string;
+  unit?: string;
   message: string;
   category: ResponderLogCategory;
   timestamp: string;
+};
+
+export type CreateResponderIncidentLogInput = {
+  agency?: string;
+  author?: string;
+  unit?: string;
+  message: string;
+  category?: ResponderLogCategory;
 };
 
 export type CanonicalResidentEvent = {

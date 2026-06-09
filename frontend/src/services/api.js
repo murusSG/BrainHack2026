@@ -2,22 +2,40 @@
 // Bridge between the React frontend and the Node API backend.
 // Every backend endpoint wraps its payload as { data, source, fetchedAt }.
 
-const configuredApiBase = (import.meta.env.VITE_API_BASE || 'http://localhost:3000').replace(
-  /\/+$/,
-  ''
-);
+const runtimeOrigin = typeof window !== 'undefined' ? window.location.origin : undefined;
+const configuredApiBase = (
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_BASE ||
+  runtimeOrigin ||
+  'http://localhost:3000'
+).replace(/\/+$/, '');
 const API_BASE = configuredApiBase.endsWith('/api/v1')
   ? configuredApiBase
   : `${configuredApiBase}/api/v1`;
 
 async function request(path, { unwrap = true, method = 'GET', body, headers: extraHeaders } = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...extraHeaders },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...extraHeaders },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Network request failed.';
+    console.error('[api] request failed before response', { apiBase: API_BASE, path, method, message });
+    throw new Error(`Could not reach the Node API at ${API_BASE}. ${message}`);
+  }
+
   if (!res.ok) {
-    throw new Error(`API ${path} failed: ${res.status} ${res.statusText}`);
+    let errorMessage = `API ${path} failed: ${res.status} ${res.statusText}`;
+    try {
+      const failure = await res.json();
+      errorMessage = failure?.error?.message || failure?.message || errorMessage;
+    } catch {
+      // Ignore non-JSON error bodies and keep the fallback message.
+    }
+    throw new Error(errorMessage);
   }
   const json = await res.json();
   // Unwrap the { data, source, fetchedAt } envelope; return the inner data.
@@ -132,6 +150,12 @@ export const api = {
     const response = await get('/incidents/responder');
     return response.incidents ?? [];
   },
+  responderLogs: async (incidentId) => {
+    const response = await get(`/incidents/${encodeURIComponent(incidentId)}/logs`);
+    return response.logs ?? [];
+  },
+  createResponderLog: (incidentId, payload) =>
+    post(`/incidents/${encodeURIComponent(incidentId)}/logs`, payload),
   incidentCluster: (incidentId) => get(`/incidents/clusters/${encodeURIComponent(incidentId)}`),
   approveResourceAllocation: (payload) => post('/resource-allocation/approve', payload),
   decideResourceAllocation: (payload) => post('/resource-allocation/decision', payload),

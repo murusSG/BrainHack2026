@@ -12,6 +12,10 @@ import {
   createIncidentReport,
   updateIncidentReport,
 } from "./incidentReport.service";
+import {
+  createResponderIncidentLog,
+  getResponderIncidentLogs,
+} from "./responderLog.service";
 
 export async function postIncidentReport(req: Request, res: Response, next: NextFunction) {
   try {
@@ -56,6 +60,26 @@ export function getPriorityQueue(_req: Request, res: Response, next: NextFunctio
 export function getResponderIncidents(_req: Request, res: Response, next: NextFunction) {
   try {
     res.json({ incidents: getResponderIncidentList() });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getLogs(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { incidentId } = req.params;
+    const logs = await getResponderIncidentLogs(String(incidentId));
+    res.json({ logs });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function postLog(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { incidentId } = req.params;
+    const log = await createResponderIncidentLog(String(incidentId), req.body ?? {});
+    res.status(201).json(log);
   } catch (error) {
     next(error);
   }

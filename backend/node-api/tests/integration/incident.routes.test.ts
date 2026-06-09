@@ -4,6 +4,7 @@ import { clearIncidentClusterStateForTests } from "../../src/modules/incidents/i
 import { extractReport } from "../../src/modules/incidents/incidentExtraction.service";
 import { recommendResourceAllocation } from "../../src/modules/incidents/resourceAllocation.service";
 import type { ExtractedIncident } from "../../src/modules/incidents/incident.types";
+import { clearResponderLogStateForTests } from "../../src/repositories/responderLog.repo";
 
 jest.mock("../../src/modules/incidents/incidentExtraction.service", () => ({
   extractReport: jest.fn(),
@@ -51,6 +52,7 @@ describe("incident grouping routes", () => {
 
   beforeEach(() => {
     clearIncidentClusterStateForTests();
+    clearResponderLogStateForTests();
     mockedExtractReport.mockReset();
     mockedRecommendResourceAllocation.mockReset();
   });

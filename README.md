@@ -40,10 +40,12 @@ Working now:
 - Command timeline: `/api/v1/command/timeline`
 - Public report ingestion and grouping: `/api/v1/incidents/report`
 - Incident clusters: `/api/v1/incidents/clusters`
+- Shared responder logs: `GET/POST /api/v1/incidents/:incidentId/logs`
 - Dispatcher approval for AI recommendations: `/api/v1/resource-allocation/approve`
 - Optional LLM leader brief layer
 - Flask AI extraction/allocation with OpenAI/OpenRouter support and deterministic local fallbacks
 - Supabase-backed command persistence when the command-state migration is applied
+- Supabase-backed responder shared-log persistence when the responder-log migration is applied
 - In-memory fallback when Supabase is not configured
 - Frontend smoke test for Foresight -> Dispatcher -> Timeline
 - Backend unit and integration tests
@@ -129,8 +131,10 @@ Run the SQL migrations in Supabase SQL editor:
 
 1. `backend/node-api/scripts/migrations/001_create_tables.sql`
 2. `backend/node-api/scripts/migrations/002_command_state.sql`
+3. `backend/node-api/supabase/migration_responder_incident_logs.sql`
 
 Without Supabase, command allocations and timeline still work in memory for local demos, but reset when the backend restarts.
+Responder shared logs also fall back to in-memory storage when Supabase is not configured, so apply the migration if you need log history to survive backend restarts.
 
 ## Run Locally
 
