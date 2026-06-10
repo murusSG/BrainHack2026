@@ -8,12 +8,11 @@ export function DashboardLayout({ children, session, onSignOut }) {
       <div className="main-shell">
         <Topbar session={session} onSignOut={onSignOut} />
         <main className="main-content">{children}</main>
-        <footer className="command-footer">
-          <span>2024 MURUS SG COMMAND</span>
-          <span>Agency transparency: 99.9%</span>
-          <span>Secure protocol: v4.2.1-prod</span>
-          <span className="footer-live">API: latency 14ms</span>
-          <span className="footer-live">Database: primary</span>
+        <footer className="command-footer" aria-label="Command workspace status">
+          <span>MURUS SG Command Network</span>
+          <span>Canonical event model</span>
+          <span>Human approval required</span>
+          <span className="footer-live">Live feeds monitored</span>
         </footer>
       </div>
     </div>

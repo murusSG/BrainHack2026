@@ -17,11 +17,12 @@ export function SidebarNav() {
       <div className="brand-block">
         <div className="brand-mark">M</div>
         <div>
-          <p className="brand-name">MURUS</p>
-          <p className="brand-name accent">SG</p>
+          <p className="brand-name">MURUS SG</p>
+          <p className="brand-subtitle">Crisis command network</p>
         </div>
       </div>
 
+      <p className="nav-section-label">Operations</p>
       <nav className="nav-list" aria-label="Primary">
         {navItems.map((item) => {
           const isActive =
@@ -40,6 +41,7 @@ export function SidebarNav() {
       </nav>
 
       <div className="persona-jump-list">
+        <p className="nav-section-label">Persona views</p>
         <Link to="/dispatcher" className="nav-item persona-jump">
           <span className="nav-icon nav-icon-responder" aria-hidden="true" />
           <span>Dispatcher View</span>
@@ -56,6 +58,13 @@ export function SidebarNav() {
           <span className="nav-icon nav-icon-resident" aria-hidden="true" />
           <span>Public Dashboard</span>
         </Link>
+        <div className="sidebar-status-card">
+          <span className="live-dot" />
+          <div>
+            <strong>Command services online</strong>
+            <small>Realtime feeds and approvals active</small>
+          </div>
+        </div>
       </div>
     </aside>
   );

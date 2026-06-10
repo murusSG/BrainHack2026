@@ -1,7 +1,7 @@
 import { createTheme } from '@mantine/core';
 
-// Singapore-red brand scale (light → dark). Index 6 is the primary shade,
-// matching the existing #ef3344 / #c5162b accent used across the public pages.
+// Singapore red remains the emergency accent. Operational command surfaces use
+// teal for routine actions so urgent states keep their visual weight.
 const brandRed = [
   '#ffe9ec',
   '#ffccd2',
@@ -15,11 +15,32 @@ const brandRed = [
   '#5e0411',
 ];
 
+const commandTeal = [
+  '#e7f7f4',
+  '#d3eee9',
+  '#a8ddd5',
+  '#79c9bf',
+  '#4fb4a8',
+  '#2b988f',
+  '#0c6b67',
+  '#075855',
+  '#064744',
+  '#043532',
+];
+
 export const theme = createTheme({
-  fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
-  primaryColor: 'brandRed',
+  fontFamily: '"Segoe UI Variable", "Aptos", Inter, ui-sans-serif, system-ui, sans-serif',
+  primaryColor: 'commandTeal',
   primaryShade: 6,
-  colors: { brandRed },
+  colors: { brandRed, commandTeal },
   defaultRadius: 'md',
-  headings: { fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', fontWeight: '800' },
+  headings: {
+    fontFamily: '"Segoe UI Variable Display", "Aptos Display", Inter, ui-sans-serif, sans-serif',
+    fontWeight: '750',
+  },
+  shadows: {
+    xs: '0 2px 8px rgba(16, 44, 48, 0.06)',
+    sm: '0 10px 28px rgba(16, 44, 48, 0.09)',
+    md: '0 18px 44px rgba(16, 44, 48, 0.12)',
+  },
 });

@@ -5,6 +5,7 @@ import '@mantine/core/styles.css';
 import App from './App';
 import { theme } from './theme';
 import './styles/globals.css';
+import './styles/operations.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

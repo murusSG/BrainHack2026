@@ -1,6 +1,7 @@
 import { useDeferredValue, useMemo, useRef, useState } from 'react';
 import { CrisisMap } from '../components/CrisisMap';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
+import { MapLegend } from '../components/MapLegend';
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
 import { useEvents } from '../hooks/useEvents';
 import { usePageAwarePolling } from '../hooks/usePageAwarePolling';
@@ -101,6 +102,11 @@ export function IncidentMapPage() {
         <div className="incident-map-main">
           <section className="panel map-panel">
             <div className="incident-map-shell">
+              <div className="map-context-card">
+                <p className="eyebrow">Unified geospatial view</p>
+                <strong>Singapore incident picture</strong>
+                <span>{feedLabel} / {activeHazardCount} active hazard types</span>
+              </div>
               <div className="map-floating-toolbar">
                 <label className="map-toolbar-search">
                   <span className="searchbar-icon" aria-hidden="true">+</span>
@@ -121,6 +127,9 @@ export function IncidentMapPage() {
                     ? `${activeHazardCount} hazard filters`
                     : HAZARD_LABEL[hazardFilter] ?? hazardFilter}
                 </button>
+              </div>
+              <div className="map-legend-float">
+                <MapLegend compact />
               </div>
               {isLoading ? (
                 <MapLoadingSkeleton />
@@ -150,6 +159,26 @@ export function IncidentMapPage() {
               <span className="pill">{feedLabel}</span>
             </div>
 
+            {selected ? (
+              <article className="selected-incident-summary" aria-live="polite">
+                <div>
+                  <span>{selected.source}</span>
+                  <span className={`severity-chip chip-${severityTone(selected.severity)}`}>
+                    {selected.severity}
+                  </span>
+                </div>
+                <strong>{selected.title}</strong>
+                <p>{selected.location}</p>
+                <small>
+                  {selected.publicAction || 'Review the incident record for operational guidance.'}
+                </small>
+              </article>
+            ) : (
+              <p className="incident-selection-hint">
+                Select an incident to inspect its operational context.
+              </p>
+            )}
+
             {isLoading ? (
               <LoadingSkeleton rows={5} compact />
             ) : filteredEvents.length === 0 ? (
@@ -159,19 +188,11 @@ export function IncidentMapPage() {
             ) : (
               <div className="incident-list">
                 {filteredEvents.map((incident) => (
-                  <article
+                  <button
+                    type="button"
                     key={incident.id}
                     className={`incident-list-card${selected?.id === incident.id ? ' incident-list-card--active' : ''}`}
                     onClick={() => setSelected(incident)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        setSelected(incident);
-                      }
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    style={{ cursor: 'pointer' }}
                   >
                     <div className="incident-list-top">
                       <p className="incident-code">{incident.source}</p>
@@ -189,7 +210,7 @@ export function IncidentMapPage() {
                         : ''}
                       {incident.dispatchLog ? ` | ${incident.dispatchLog}` : ''}
                     </p>
-                  </article>
+                  </button>
                 ))}
               </div>
             )}

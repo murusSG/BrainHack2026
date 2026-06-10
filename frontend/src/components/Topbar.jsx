@@ -16,9 +16,7 @@ export function Topbar({ session, onSignOut }) {
   return (
     <header className="topbar">
       <form className="searchbar" onSubmit={handleSubmit}>
-        <span className="searchbar-icon" aria-hidden="true">
-          /
-        </span>
+        <span className="searchbar-icon" aria-hidden="true" />
         <input
           type="text"
           placeholder="Search incidents, resources, hospitals, or advisories..."
@@ -26,6 +24,7 @@ export function Topbar({ session, onSignOut }) {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
+        <kbd>Enter</kbd>
       </form>
 
       <div className="topbar-actions">
@@ -39,7 +38,7 @@ export function Topbar({ session, onSignOut }) {
           aria-label="Notifications"
           onClick={() => setTopbarNotice('3 command notifications queued')}
         >
-          !
+          <span className="notification-glyph" aria-hidden="true" />
         </button>
         <button
           type="button"

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CrisisMap } from '../components/CrisisMap';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
+import { MapLegend } from '../components/MapLegend';
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
 import { usePageAwarePolling } from '../hooks/usePageAwarePolling';
 import { api } from '../services/api';
@@ -169,6 +170,31 @@ export function DispatcherPage({ session }) {
           Responder View
         </Link>
       </header>
+
+      <section className="dispatcher-summary-strip" aria-label="Dispatcher operational summary">
+        <article>
+          <span>Queue</span>
+          <strong>{status === 'loading' ? '--' : queue.length}</strong>
+          <small>Awaiting review</small>
+        </article>
+        <article>
+          <span>Selected priority</span>
+          <strong>
+            {selectedIncident ? `${selectedIncident.priority_score}/100` : '--'}
+          </strong>
+          <small>Priority score</small>
+        </article>
+        <article>
+          <span>Feed status</span>
+          <strong>{status === 'error' ? 'Degraded' : status === 'loading' ? 'Syncing' : 'Live'}</strong>
+          <small>5 second refresh</small>
+        </article>
+        <article>
+          <span>Authority</span>
+          <strong>Human</strong>
+          <small>Approval required</small>
+        </article>
+      </section>
 
       {notice && <p className="allocation-command-note">{notice}</p>}
 
@@ -340,6 +366,14 @@ export function DispatcherPage({ session }) {
           </div>
           <span className="pill">{mapEvents.length} operational incidents</span>
         </div>
+        <MapLegend
+          compact
+          items={[
+            { label: 'Pending approval', tone: 'critical' },
+            { label: 'Dispatched', tone: 'support' },
+            { label: 'Selected vicinity', tone: 'radius' },
+          ]}
+        />
         <div className="responder-map-shell">
           {status === 'loading' ? (
             <MapLoadingSkeleton />

@@ -184,12 +184,17 @@ export function OverviewPage() {
     <div className="overview-page">
       <section className="hero-panel">
         <div>
-          <p className="eyebrow">One Single Source of Truth</p>
+          <p className="eyebrow">National crisis picture</p>
           <h1>Emergency Overview</h1>
           <p className="hero-copy">
             A command surface for one crisis picture: predict what escalates, allocate resources
             early, and keep responders and residents aligned from the same verified feed.
           </p>
+          <div className="hero-signal-row" aria-label="Operational principles">
+            <span><strong>01</strong> Verify signals</span>
+            <span><strong>02</strong> Coordinate agencies</span>
+            <span><strong>03</strong> Inform residents</span>
+          </div>
         </div>
         <div className="hero-actions">
           <a href="#foresight-engine" className="primary-button hero-action-link">
