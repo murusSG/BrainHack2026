@@ -69,12 +69,21 @@ const schema = z.object({
   TELEGRAM_BOT_TOKEN: optionalString,
   ENABLE_MOCK_SCDF_INCIDENTS: envBoolean(false),
   ENABLE_MOCK_DORSCON: envBoolean(true),
-  SCDF_FIRE_STATIONS_RESOURCE_ID: optionalString,
+  SCDF_FIRE_STATIONS_RESOURCE_ID: z
+    .string()
+    .min(1)
+    .default("d_5d3d2c4f3556edb5d8c995f42e603b24"),
   SCDF_FIRE_STATIONS_FETCH_MODE: fetchMode("download"),
-  SCDF_SHELTERS_RESOURCE_ID: optionalString,
-  SCDF_SHELTERS_FETCH_MODE: fetchMode("datastore"),
-  SCDF_AEDS_RESOURCE_ID: optionalString,
-  SCDF_AEDS_FETCH_MODE: fetchMode("datastore"),
+  SCDF_SHELTERS_RESOURCE_ID: z
+    .string()
+    .min(1)
+    .default("d_291795a678b8cf82f108780a6235ce18"),
+  SCDF_SHELTERS_FETCH_MODE: fetchMode("download"),
+  SCDF_AEDS_RESOURCE_ID: z
+    .string()
+    .min(1)
+    .default("d_e8934d28896a1eceecfe86f42dd3c077"),
+  SCDF_AEDS_FETCH_MODE: fetchMode("download"),
   MOH_INFECTIOUS_DISEASES_RESOURCE_ID: optionalString,
   MOH_INFECTIOUS_DISEASES_FETCH_MODE: fetchMode("datastore"),
   MOH_COVID_WEEKLY_RESOURCE_ID: optionalString,

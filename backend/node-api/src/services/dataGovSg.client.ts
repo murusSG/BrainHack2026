@@ -1,4 +1,5 @@
 import axios from "axios";
+import * as XLSX from "xlsx";
 import { env } from "../config/env";
 import { UpstreamApiError } from "../utils/apiError";
 
@@ -165,6 +166,10 @@ export async function fetchDatasetRecords(
 }
 
 export function recordsFromDownloadedDataset(dataset: unknown): Record<string, unknown>[] {
+  if (typeof dataset === "string") {
+    return recordsFromCsv(dataset);
+  }
+
   if (Array.isArray(dataset)) {
     return dataset.filter(isRecord);
   }
@@ -191,6 +196,17 @@ export function recordsFromDownloadedDataset(dataset: unknown): Record<string, u
 
   throw new UpstreamApiError("Downloaded data.gov.sg dataset format is not supported.", {
     provider: "data.gov.sg",
+  });
+}
+
+function recordsFromCsv(value: string): Record<string, unknown>[] {
+  const workbook = XLSX.read(value, { type: "string" });
+  const firstSheetName = workbook.SheetNames[0];
+  if (!firstSheetName) return [];
+  const sheet = workbook.Sheets[firstSheetName];
+  return XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+    defval: "",
+    raw: false,
   });
 }
 

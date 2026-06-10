@@ -34,8 +34,22 @@ export async function getResources(resourceType?: ScdfResourceType): Promise<Res
   for (const type of types) {
     const resourceId = resourceIdFor(type);
     if (!resourceId) throw new UpstreamApiError("SCDF dataset id is not configured.", { resourceType: type });
-    const rawRecords = await fetchDatasetRecords(resourceId, fetchModeFor(type));
-    records.push(...rawRecords.map((record) => normaliseScdfRecord(record, type)));
+    try {
+      const rawRecords = await fetchDatasetRecords(resourceId, fetchModeFor(type));
+      records.push(...rawRecords.map((record) => normaliseScdfRecord(record, type)));
+    } catch (err) {
+      if (resourceType) throw err;
+      console.warn(
+        `[scdf.getResources] ${type} dataset unavailable; continuing with partial resources.`,
+        err instanceof Error ? err.message : String(err)
+      );
+    }
+  }
+
+  if (records.length === 0) {
+    throw new UpstreamApiError("SCDF public resources are temporarily unavailable.", {
+      resourceType: resourceType ?? "all",
+    });
   }
 
   return cache.set(cacheKey, records);
@@ -70,14 +84,30 @@ function fetchModeFor(resourceType: ScdfResourceType): DataGovFetchMode {
 
 function normaliseScdfRecord(record: Record<string, unknown>, resourceType: ScdfResourceType): ResourceLocation {
   const rawId = firstPresent(record, ["_id", "id", "serial_no", "name", "NAME"]);
-  const name = String(firstPresent(record, ["name", "NAME", "description", "DESCRIPTION"]) ?? `SCDF ${resourceType}`);
+  const name = String(
+    firstPresent(record, [
+      "name",
+      "NAME",
+      "Building_Name",
+      "building_name",
+      "description",
+      "DESCRIPTION",
+    ]) ?? `SCDF ${resourceType}`
+  );
   const capacity = toNumber(firstPresent(record, ["capacity", "CAPACITY"]));
   return {
     id: `scdf-${resourceType.toLowerCase()}-${slug(String(rawId ?? name))}`,
     source: "SCDF",
     resource_type: resourceType,
     name,
-    address: asString(firstPresent(record, ["address", "ADDRESS", "location", "LOCATION"])),
+    address: asString(firstPresent(record, [
+      "address",
+      "ADDRESS",
+      "Location_Description",
+      "location_description",
+      "location",
+      "LOCATION",
+    ])),
     latitude: toNumber(firstPresent(record, ["latitude", "LATITUDE", "lat", "Y_ADDR", "y"])),
     longitude: toNumber(firstPresent(record, ["longitude", "LONGITUDE", "lng", "lon", "X_ADDR", "x"])),
     operating_hours: asString(firstPresent(record, ["operating_hours", "OPERATING_HOURS"])),
