@@ -213,7 +213,7 @@ export function AppRoutes({ session, restoring, onAuthenticate, onSignOut }) {
           path="/resident"
           element={
             <StandalonePage page="resident">
-              <ResidentPage />
+              <ResidentPage session={session} />
             </StandalonePage>
           }
         />
@@ -248,6 +248,7 @@ export default function App() {
     const sessionRoutes = [
       '/auth/callback',
       '/public-dashboard',
+      '/resident',
       '/dispatcher',
       '/overview',
       '/incident-map',

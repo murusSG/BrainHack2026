@@ -16,6 +16,8 @@ export interface ResidentAskMurusInput {
       currentLocationNote?: string;
       plannedDestination?: string;
       supportNotes?: string;
+      emergencyContactName?: string;
+      emergencyContactPhone?: string;
     };
     pointLabel?: string;
     pointSublabel?: string;
@@ -165,6 +167,7 @@ function buildAskMurusSystemPrompt() {
     "Answer only using the official alert JSON, resident context JSON, and deterministic fallback answer provided by MURUS.",
     "Before answering, use the resident context to personalize the guidance to their profile, current place, saved places, mobility needs, transport mode, emergency pack readiness, and check-in state.",
     "Treat resident_details as the strongest personalization signal. Use the resident's name, home, current situation note, intended destination, and support notes when they are relevant.",
+    "If an emergency contact is provided, you may suggest contacting them or sharing status with them; do not expose the contact phone unless the resident asks for their saved contact.",
     "Do not invent closures, rescue details, casualty numbers, shelter availability, road status, train status, agency orders, or new incident facts.",
     "Never say a transport service, road, station, or route is operating, open, closed, safe, or clear unless the official alert explicitly says so.",
     "If the official alert does not confirm something, say it is not confirmed by the current MURUS alert.",
@@ -196,6 +199,8 @@ function summarizeResidentContext(context: ResidentAskMurusInput["residentContex
       currentLocationNote: context?.residentDetails?.currentLocationNote,
       plannedDestination: context?.residentDetails?.plannedDestination,
       supportNotes: context?.residentDetails?.supportNotes,
+      emergencyContactName: context?.residentDetails?.emergencyContactName,
+      emergencyContactPhone: context?.residentDetails?.emergencyContactPhone,
     },
     currentPlace: context?.pointLabel,
     currentAddress: context?.pointSublabel,

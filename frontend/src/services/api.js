@@ -148,10 +148,12 @@ export const api = {
 
   // Resident-facing citizen alert channel
   residentAlerts: (params = {}) => get(withQuery('/resident-alerts', params)),
-  askMurus: (payload) => post('/resident-alerts/ask-murus', payload),
+  askMurus: (payload, token) => post('/resident-alerts/ask-murus', payload, token),
   publishResidentAlert: (payload, token) => post('/resident-alerts', payload, token),
   updateResidentAlert: (id, payload, token) =>
     authedPatch(`/resident-alerts/${encodeURIComponent(id)}`, token, payload),
+  residentProfile: (token) => authedGet('/residents/me', token),
+  updateResidentProfile: (payload, token) => authedPatch('/residents/me', token, payload),
 
   // Deterministic foresight engine with optional LLM narrative layer
   foresightPredictions: (params = {}) => get(withQuery('/foresight/predictions', params)),

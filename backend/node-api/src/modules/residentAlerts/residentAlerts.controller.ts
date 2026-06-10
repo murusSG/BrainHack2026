@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { BadRequestError } from "../../utils/apiError";
+import { getResidentProfile } from "../residents/residents.service";
 import { answerAskMurus } from "./residentAskMurus.service";
 import { createResidentAlert, listResidentAlerts, updateResidentAlert } from "./residentAlerts.service";
 import type { ResidentAlertFilter } from "./residentAlerts.types";
@@ -45,7 +46,7 @@ export async function patchResidentAlert(req: Request, res: Response, next: Next
 
 export async function postAskMurus(req: Request, res: Response, next: NextFunction) {
   try {
-    const data = await answerAskMurus(req.body ?? {});
+    const data = await answerAskMurus(await buildAskMurusInput(req));
     res.json({
       data,
       source: "Ask MURUS resident copilot",
@@ -54,6 +55,46 @@ export async function postAskMurus(req: Request, res: Response, next: NextFuncti
   } catch (err) {
     next(err);
   }
+}
+
+async function buildAskMurusInput(req: Request) {
+  const input = { ...(req.body ?? {}) };
+  if (!req.user) return input;
+
+  const profile = await getResidentProfile(req.user);
+  const profileContext = {
+    residentDetails: {
+      displayName: profile.displayName,
+      homeAddress: profile.homeAddress,
+      supportNotes: profile.supportNotes,
+      emergencyContactName: profile.emergencyContactName,
+      emergencyContactPhone: profile.emergencyContactPhone,
+    },
+    transportMode: profile.preferredTransport,
+    mobilityNeed: profile.mobilityNeed,
+    savedPlaces: profile.savedPlaces.map((place) => ({
+      id: place.id,
+      label: place.label,
+      address: place.address,
+      isAffected: false,
+      affectedBy: null,
+      affectedLocation: null,
+    })),
+  };
+  const clientContext = input.residentContext ?? {};
+
+  return {
+    ...input,
+    residentContext: {
+      ...profileContext,
+      ...clientContext,
+      residentDetails: {
+        ...profileContext.residentDetails,
+        ...(clientContext.residentDetails ?? {}),
+      },
+      savedPlaces: clientContext.savedPlaces ?? profileContext.savedPlaces,
+    },
+  };
 }
 
 function parseFilter(req: Request): ResidentAlertFilter {

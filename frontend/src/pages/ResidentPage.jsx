@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { CrisisMap } from '../components/CrisisMap';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
+import { ResidentAlertVisualGuide } from '../components/ResidentAlertVisualGuide';
 import { useEvents } from '../hooks/useEvents';
 import { api } from '../services/api';
 import { CHECK_IN_OPTIONS, saveResidentCheckin } from '../utils/residentCheckins';
@@ -18,15 +19,15 @@ function distanceMeters(a, b) {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
-const WATCH_POINTS = [
+const DEFAULT_SAVED_PLACES = [
   { id: 'home', label: 'Home', sublabel: 'Tampines St 21', lat: 1.3536, lng: 103.9450 },
   { id: 'parents', label: "Mum's place", sublabel: 'Woodlands', lat: 1.4382, lng: 103.7890 },
   { id: 'work', label: 'Work', sublabel: 'Orchard Road', lat: 1.3048, lng: 103.8318 },
 ];
 
-const IMPACT_POINTS = [
+const DEFAULT_IMPACT_POINTS = [
   { id: 'current', label: 'Current area', sublabel: 'Orchard Gateway', lat: 1.3008, lng: 103.8391 },
-  ...WATCH_POINTS,
+  ...DEFAULT_SAVED_PLACES,
   { id: 'school', label: 'School', sublabel: 'River Valley', lat: 1.2950, lng: 103.8260 },
 ];
 
@@ -96,6 +97,11 @@ const DEFAULT_RESIDENT_DETAILS = {
   supportNotes: 'Prefers sheltered routes and avoids crowded basement links',
 };
 
+const DEFAULT_EMERGENCY_CONTACT = {
+  name: '',
+  phone: '',
+};
+
 const SEVERITY_RANK = {
   info: 0,
   low: 1,
@@ -123,9 +129,120 @@ function formatGpsPoint(lat, lng, accuracyMeters) {
   return `GPS ${lat.toFixed(5)}, ${lng.toFixed(5)}${accuracy}`;
 }
 
-export function ResidentPage() {
+function mergeImpactPoints(savedPlaces) {
+  const merged = [...DEFAULT_IMPACT_POINTS];
+  savedPlaces.forEach((place) => {
+    const index = merged.findIndex((point) => point.id === place.id);
+    if (index >= 0) merged[index] = place;
+    else merged.push(place);
+  });
+  return merged;
+}
+
+function applyResidentProfile(profile, setters) {
+  const savedPlaces = Array.isArray(profile?.savedPlaces)
+    ? profile.savedPlaces.map(savedPlaceToPoint).filter(Boolean)
+    : [];
+  const homePlace = savedPlaces.find((place) => place.id === 'home');
+
+  setters.setResidentDetails((current) => ({
+    ...current,
+    displayName: profile?.displayName || current.displayName,
+    homeAddress: profile?.homeAddress || homePlace?.sublabel || current.homeAddress,
+    plannedDestination:
+      profile?.homeAddress || homePlace?.sublabel
+        ? `Home at ${profile?.homeAddress || homePlace?.sublabel}`
+        : current.plannedDestination,
+    supportNotes: profile?.supportNotes || current.supportNotes,
+  }));
+  setters.setEmergencyContact({
+    name: profile?.emergencyContactName || '',
+    phone: profile?.emergencyContactPhone || '',
+  });
+  if (profile?.preferredTransport) setters.setImpactTransport(profile.preferredTransport);
+  if (profile?.mobilityNeed) setters.setImpactMobility(profile.mobilityNeed);
+  setters.setPersistedPlaces(savedPlaces);
+}
+
+function savedPlaceToPoint(place) {
+  if (!place?.label) return null;
+  const fallback = defaultPointForPlace(place);
+  return {
+    id: placeIdForType(place),
+    label: place.label,
+    sublabel: place.address || fallback?.sublabel || 'Saved place',
+    lat: Number.isFinite(place.lat) ? place.lat : fallback?.lat,
+    lng: Number.isFinite(place.lng) ? place.lng : fallback?.lng,
+    placeType: place.placeType || pointPlaceType(fallback?.id),
+    isPrimary: Boolean(place.isPrimary),
+    persistedAddress: place.address || '',
+    persistedLat: Number.isFinite(place.lat) ? place.lat : undefined,
+    persistedLng: Number.isFinite(place.lng) ? place.lng : undefined,
+  };
+}
+
+function defaultPointForPlace(place) {
+  const typeId = place.placeType === 'family' ? 'parents' : place.placeType;
+  return DEFAULT_IMPACT_POINTS.find((point) => point.id === typeId || point.label === place.label);
+}
+
+function placeIdForType(place) {
+  if (place.placeType === 'home') return 'home';
+  if (place.placeType === 'work') return 'work';
+  if (place.placeType === 'school') return 'school';
+  if (place.placeType === 'family') return 'parents';
+  return place.id || place.label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'saved-place';
+}
+
+function buildProfileSavedPlaces(residentDetails, savedPlaces) {
+  const existingPlaces = savedPlaces.length > 0 ? savedPlaces : DEFAULT_SAVED_PLACES;
+  const byId = new Map(existingPlaces.map((place) => [place.id, pointToSavedPlace(place)]));
+  byId.set('home', {
+    ...byId.get('home'),
+    label: 'Home',
+    address: residentDetails.homeAddress,
+    placeType: 'home',
+    isPrimary: true,
+  });
+  return Array.from(byId.values()).filter((place) => place.address || place.lat != null || place.lng != null);
+}
+
+function pointToSavedPlace(point) {
+  return {
+    label: point.label,
+    address: point.persistedAddress ?? point.sublabel,
+    lat: point.persistedLat ?? point.lat,
+    lng: point.persistedLng ?? point.lng,
+    placeType: point.placeType ?? pointPlaceType(point.id),
+    isPrimary: point.id === 'home',
+  };
+}
+
+function pointPlaceType(id) {
+  if (id === 'home') return 'home';
+  if (id === 'work') return 'work';
+  if (id === 'school') return 'school';
+  if (id === 'parents') return 'family';
+  return 'other';
+}
+
+function createSavedPlaceDraft() {
+  const id = `saved-${Date.now().toString(36)}`;
+  return {
+    id,
+    label: 'New place',
+    sublabel: 'Add address',
+    lat: DEFAULT_IMPACT_POINTS[0].lat,
+    lng: DEFAULT_IMPACT_POINTS[0].lng,
+    placeType: 'other',
+    isPrimary: false,
+    persistedAddress: '',
+  };
+}
+
+export function ResidentPage({ session }) {
   const { events, status, error } = useEvents();
-  const [activePoint, setActivePoint] = useState(WATCH_POINTS[0].id);
+  const [activePoint, setActivePoint] = useState(DEFAULT_SAVED_PLACES[0].id);
   const [activeProfile, setActiveProfile] = useState(RESIDENT_PROFILES[0].id);
   const [shelterNote, setShelterNote] = useState(null);
   const [shelterLoading, setShelterLoading] = useState(false);
@@ -146,6 +263,12 @@ export function ResidentPage() {
   const [preparedItemIds, setPreparedItemIds] = useState(() => new Set());
   const [statusMessageCopied, setStatusMessageCopied] = useState(false);
   const [residentDetails, setResidentDetails] = useState(DEFAULT_RESIDENT_DETAILS);
+  const [emergencyContact, setEmergencyContact] = useState(DEFAULT_EMERGENCY_CONTACT);
+  const [residentProfileStatus, setResidentProfileStatus] = useState(session?.token ? 'loading' : 'demo');
+  const [residentProfileMessage, setResidentProfileMessage] = useState(
+    session?.token ? 'Loading your saved resident profile...' : 'Demo profile active. Log in to save resident details.'
+  );
+  const [persistedPlaces, setPersistedPlaces] = useState([]);
   const [liveLocation, setLiveLocation] = useState(null);
   const [liveLocationStatus, setLiveLocationStatus] = useState('idle');
   const isLoading = status === 'loading';
@@ -158,13 +281,66 @@ export function ResidentPage() {
         ? 'Demo fallback'
         : `${liveEventCount} live / ${demoEventCount} demo`;
   const watchPoints = useMemo(() => {
-    if (!liveLocation) return WATCH_POINTS;
-    return [liveLocation.point, ...WATCH_POINTS];
-  }, [liveLocation]);
+    const savedPlacePoints = persistedPlaces.length > 0 ? persistedPlaces : DEFAULT_SAVED_PLACES;
+    if (!liveLocation) return savedPlacePoints;
+    return [liveLocation.point, ...savedPlacePoints];
+  }, [liveLocation, persistedPlaces]);
   const impactPoints = useMemo(() => {
-    if (!liveLocation) return IMPACT_POINTS;
-    return [liveLocation.point, ...IMPACT_POINTS.filter((point) => point.id !== 'current')];
-  }, [liveLocation]);
+    const base = mergeImpactPoints(persistedPlaces.length > 0 ? persistedPlaces : DEFAULT_SAVED_PLACES);
+    if (!liveLocation) return base;
+    return [liveLocation.point, ...base.filter((point) => point.id !== 'current')];
+  }, [liveLocation, persistedPlaces]);
+
+  useEffect(() => {
+    if (!watchPoints.some((point) => point.id === activePoint)) {
+      setActivePoint(watchPoints[0]?.id ?? DEFAULT_SAVED_PLACES[0].id);
+    }
+  }, [activePoint, watchPoints]);
+
+  useEffect(() => {
+    if (!impactPoints.some((point) => point.id === impactPointId)) {
+      setImpactPointId(impactPoints[0]?.id ?? 'current');
+    }
+  }, [impactPointId, impactPoints]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadResidentProfile() {
+      if (!session?.token) {
+        setResidentProfileStatus('demo');
+        setResidentProfileMessage('Demo profile active. Log in to save resident details.');
+        setPersistedPlaces([]);
+        return;
+      }
+
+      setResidentProfileStatus('loading');
+      setResidentProfileMessage('Loading your saved resident profile...');
+      try {
+        const profile = await api.residentProfile(session.token);
+        if (cancelled) return;
+        applyResidentProfile(profile, {
+          setResidentDetails,
+          setEmergencyContact,
+          setImpactTransport,
+          setImpactMobility,
+          setPersistedPlaces,
+        });
+        setResidentProfileStatus('ready');
+        setResidentProfileMessage('Saved resident profile loaded for Ask MURUS.');
+      } catch (err) {
+        if (cancelled) return;
+        setResidentProfileStatus('error');
+        setResidentProfileMessage(`Could not load saved profile: ${err.message}`);
+      }
+    }
+
+    loadResidentProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token]);
 
   useEffect(() => {
     let cancelled = false;
@@ -310,59 +486,66 @@ export function ResidentPage() {
     }));
 
     try {
-      const llmAnswer = await api.askMurus({
-        question: trimmedQuestion,
-        deterministicAnswer: fallbackAnswer,
-        alert: {
-          title: alert.title,
-          body: alert.body,
-          publicAction: alert.publicAction,
-          severity: alert.severity,
-          status: alert.status,
-          locationLabel: alert.locationLabel,
-          radiusMeters: alert.radiusMeters,
-        },
-        residentContext: {
-          profile: activeProfile,
-          profileLabel: activeProfileMeta.label,
-          residentDetails,
-          pointLabel: point.label,
-          pointSublabel: point.sublabel,
-          liveLocation: {
-            label: point.label,
-            address: point.sublabel,
-            lat: point.lat,
-            lng: point.lng,
-            accuracyMeters: liveLocation?.point.id === point.id ? liveLocation.accuracyMeters : undefined,
-            capturedAt: liveLocation?.point.id === point.id ? liveLocation.capturedAt : undefined,
-            isInsideAlertRadius: alertAffectsPoint(alert, point),
-            distanceMeters:
-              alert.lat != null && alert.lng != null
-                ? Math.round(distanceMeters(point, { lat: alert.lat, lng: alert.lng }))
+      const llmAnswer = await api.askMurus(
+        {
+          question: trimmedQuestion,
+          deterministicAnswer: fallbackAnswer,
+          alert: {
+            title: alert.title,
+            body: alert.body,
+            publicAction: alert.publicAction,
+            severity: alert.severity,
+            status: alert.status,
+            locationLabel: alert.locationLabel,
+            radiusMeters: alert.radiusMeters,
+          },
+          residentContext: {
+            profile: activeProfile,
+            profileLabel: activeProfileMeta.label,
+            residentDetails: {
+              ...residentDetails,
+              emergencyContactName: emergencyContact.name,
+              emergencyContactPhone: emergencyContact.phone,
+            },
+            pointLabel: point.label,
+            pointSublabel: point.sublabel,
+            liveLocation: {
+              label: point.label,
+              address: point.sublabel,
+              lat: point.lat,
+              lng: point.lng,
+              accuracyMeters: liveLocation?.point.id === point.id ? liveLocation.accuracyMeters : undefined,
+              capturedAt: liveLocation?.point.id === point.id ? liveLocation.capturedAt : undefined,
+              isInsideAlertRadius: alertAffectsPoint(alert, point),
+              distanceMeters:
+                alert.lat != null && alert.lng != null
+                  ? Math.round(distanceMeters(point, { lat: alert.lat, lng: alert.lng }))
+                  : null,
+            },
+            nearestShelter,
+            savedPlaces: buildResidentContextPlaces(impactPoints, officialAlerts),
+            emergencyPack: {
+              readyCount: preparedCount,
+              totalCount: emergencyPack.items.length,
+              readyItems: emergencyPack.items
+                .filter((item) => preparedItemIds.has(item.id))
+                .map((item) => item.label),
+              missingItems: emergencyPack.items
+                .filter((item) => !preparedItemIds.has(item.id))
+                .slice(0, 4)
+                .map((item) => item.label),
+            },
+            currentCheckIn:
+              checkInStatuses[alert.id] != null
+                ? CHECK_IN_OPTIONS.find((option) => option.id === checkInStatuses[alert.id])?.label
                 : null,
+            shareStatusMessage,
+            transportMode: optionLabel(TRANSPORT_MODES, impactTransport),
+            mobilityNeed: optionLabel(MOBILITY_NEEDS, impactMobility),
           },
-          nearestShelter,
-          savedPlaces: buildResidentContextPlaces(impactPoints, officialAlerts),
-          emergencyPack: {
-            readyCount: preparedCount,
-            totalCount: emergencyPack.items.length,
-            readyItems: emergencyPack.items
-              .filter((item) => preparedItemIds.has(item.id))
-              .map((item) => item.label),
-            missingItems: emergencyPack.items
-              .filter((item) => !preparedItemIds.has(item.id))
-              .slice(0, 4)
-              .map((item) => item.label),
-          },
-          currentCheckIn:
-            checkInStatuses[alert.id] != null
-              ? CHECK_IN_OPTIONS.find((option) => option.id === checkInStatuses[alert.id])?.label
-              : null,
-          shareStatusMessage,
-          transportMode: optionLabel(TRANSPORT_MODES, impactTransport),
-          mobilityNeed: optionLabel(MOBILITY_NEEDS, impactMobility),
         },
-      });
+        ...(session?.token ? [session.token] : [])
+      );
       setCopilotAnswers((current) => ({
         ...current,
         [alert.id]: {
@@ -413,6 +596,86 @@ export function ResidentPage() {
       ...current,
       [key]: value,
     }));
+    setResidentProfileMessage(session?.token ? 'Unsaved resident profile changes.' : 'Demo profile active. Log in to save resident details.');
+    setResidentProfileStatus(session?.token ? 'dirty' : 'demo');
+  }
+
+  function handleEmergencyContactChange(key, value) {
+    setEmergencyContact((current) => ({
+      ...current,
+      [key]: value,
+    }));
+    setResidentProfileMessage(session?.token ? 'Unsaved resident profile changes.' : 'Demo profile active. Log in to save resident details.');
+    setResidentProfileStatus(session?.token ? 'dirty' : 'demo');
+  }
+
+  function markResidentProfileDirty() {
+    setResidentProfileMessage(session?.token ? 'Unsaved resident profile changes.' : 'Demo profile active. Log in to save resident details.');
+    setResidentProfileStatus(session?.token ? 'dirty' : 'demo');
+  }
+
+  function handleSavedPlaceChange(placeId, key, value) {
+    setPersistedPlaces((current) => {
+      const base = current.length > 0 ? current : DEFAULT_SAVED_PLACES;
+      return base.map((place) => {
+        if (place.id !== placeId) return place;
+        const next = { ...place, [key]: value };
+        if (key === 'persistedAddress') next.sublabel = value || 'Saved place';
+        return next;
+      });
+    });
+    markResidentProfileDirty();
+  }
+
+  function handleAddSavedPlace() {
+    setPersistedPlaces((current) => [...(current.length > 0 ? current : DEFAULT_SAVED_PLACES), createSavedPlaceDraft()]);
+    markResidentProfileDirty();
+  }
+
+  function handleRemoveSavedPlace(placeId) {
+    if (placeId === 'home') return;
+    setPersistedPlaces((current) => (current.length > 0 ? current : DEFAULT_SAVED_PLACES).filter((place) => place.id !== placeId));
+    if (activePoint === placeId) setActivePoint('home');
+    if (impactPointId === placeId) setImpactPointId('home');
+    markResidentProfileDirty();
+  }
+
+  async function handleSaveResidentProfile() {
+    if (!session?.token) {
+      setResidentProfileStatus('demo');
+      setResidentProfileMessage('Log in as a resident to save this profile.');
+      return;
+    }
+
+    setResidentProfileStatus('saving');
+    setResidentProfileMessage('Saving resident profile...');
+    try {
+      const profile = await api.updateResidentProfile(
+        {
+          displayName: residentDetails.displayName,
+          homeAddress: residentDetails.homeAddress,
+          preferredTransport: impactTransport,
+          mobilityNeed: impactMobility,
+          supportNotes: residentDetails.supportNotes,
+          emergencyContactName: emergencyContact.name,
+          emergencyContactPhone: emergencyContact.phone,
+          savedPlaces: buildProfileSavedPlaces(residentDetails, persistedPlaces),
+        },
+        session.token
+      );
+      applyResidentProfile(profile, {
+        setResidentDetails,
+        setEmergencyContact,
+        setImpactTransport,
+        setImpactMobility,
+        setPersistedPlaces,
+      });
+      setResidentProfileStatus('ready');
+      setResidentProfileMessage('Resident profile saved. Ask MURUS will use this context.');
+    } catch (err) {
+      setResidentProfileStatus('error');
+      setResidentProfileMessage(`Could not save resident profile: ${err.message}`);
+    }
   }
 
   async function findNearestShelterForQuestion(question, point) {
@@ -592,6 +855,86 @@ export function ResidentPage() {
               onChange={(event) => handleResidentDetailChange('supportNotes', event.target.value)}
             />
           </label>
+          <label>
+            <span>Emergency contact</span>
+            <input
+              value={emergencyContact.name}
+              onChange={(event) => handleEmergencyContactChange('name', event.target.value)}
+              placeholder="Name"
+            />
+          </label>
+          <label>
+            <span>Contact phone</span>
+            <input
+              value={emergencyContact.phone}
+              onChange={(event) => handleEmergencyContactChange('phone', event.target.value)}
+              placeholder="+65..."
+            />
+          </label>
+          <div className="resident-profile-save-row">
+            <p className={`resident-profile-status is-${residentProfileStatus}`}>
+              {residentProfileMessage}
+            </p>
+            <button
+              type="button"
+              className="resident-profile-save-button"
+              onClick={handleSaveResidentProfile}
+              disabled={residentProfileStatus === 'saving'}
+            >
+              {residentProfileStatus === 'saving' ? 'Saving...' : 'Save profile'}
+            </button>
+          </div>
+        </div>
+        <div className="resident-saved-places-editor" aria-label="Saved resident places editor">
+          <div className="resident-saved-places-head">
+            <div>
+              <p className="resident-guidance-label">Saved places</p>
+              <p>Ask MURUS checks these places when you ask about home, family, work, or school.</p>
+            </div>
+            <button type="button" onClick={handleAddSavedPlace}>
+              Add place
+            </button>
+          </div>
+          <div className="resident-saved-places-list">
+            {(persistedPlaces.length > 0 ? persistedPlaces : DEFAULT_SAVED_PLACES).map((place) => (
+              <article key={place.id} className="resident-saved-place-row">
+                <label>
+                  <span>Label</span>
+                  <input
+                    value={place.label}
+                    onChange={(event) => handleSavedPlaceChange(place.id, 'label', event.target.value)}
+                  />
+                </label>
+                <label>
+                  <span>Address</span>
+                  <input
+                    value={place.persistedAddress ?? place.sublabel}
+                    onChange={(event) => handleSavedPlaceChange(place.id, 'persistedAddress', event.target.value)}
+                  />
+                </label>
+                <label>
+                  <span>Type</span>
+                  <select
+                    value={place.placeType ?? pointPlaceType(place.id)}
+                    onChange={(event) => handleSavedPlaceChange(place.id, 'placeType', event.target.value)}
+                  >
+                    <option value="home">Home</option>
+                    <option value="work">Work</option>
+                    <option value="school">School</option>
+                    <option value="family">Family</option>
+                    <option value="other">Other</option>
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveSavedPlace(place.id)}
+                  disabled={place.id === 'home'}
+                >
+                  Remove
+                </button>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -615,7 +958,18 @@ export function ResidentPage() {
           </label>
           <label>
             <span>Transport mode</span>
-            <select value={impactTransport} onChange={(event) => setImpactTransport(event.target.value)}>
+            <select
+              value={impactTransport}
+              onChange={(event) => {
+                setImpactTransport(event.target.value);
+                setResidentProfileStatus(session?.token ? 'dirty' : 'demo');
+                setResidentProfileMessage(
+                  session?.token
+                    ? 'Unsaved resident profile changes.'
+                    : 'Demo profile active. Log in to save resident details.'
+                );
+              }}
+            >
               {TRANSPORT_MODES.map((mode) => (
                 <option key={mode.id} value={mode.id}>
                   {mode.label}
@@ -625,7 +979,18 @@ export function ResidentPage() {
           </label>
           <label>
             <span>Mobility needs</span>
-            <select value={impactMobility} onChange={(event) => setImpactMobility(event.target.value)}>
+            <select
+              value={impactMobility}
+              onChange={(event) => {
+                setImpactMobility(event.target.value);
+                setResidentProfileStatus(session?.token ? 'dirty' : 'demo');
+                setResidentProfileMessage(
+                  session?.token
+                    ? 'Unsaved resident profile changes.'
+                    : 'Demo profile active. Log in to save resident details.'
+                );
+              }}
+            >
               {MOBILITY_NEEDS.map((need) => (
                 <option key={need.id} value={need.id}>
                   {need.label}
@@ -880,6 +1245,14 @@ export function ResidentPage() {
                     </ol>
                     <p>{guidance.reassurance}</p>
                   </section>
+                  <ResidentAlertVisualGuide
+                    alert={alert}
+                    point={activeAlerts.point}
+                    homePoint={impactPoints.find((candidate) => candidate.id === 'home')}
+                    transportMode={impactTransport}
+                    mobilityNeed={impactMobility}
+                    profileLabel={activeProfileMeta.label}
+                  />
                   <section className="resident-copilot-card" aria-label={`Ask MURUS about ${alert.title}`}>
                     <div>
                       <p className="resident-guidance-label">Ask MURUS</p>

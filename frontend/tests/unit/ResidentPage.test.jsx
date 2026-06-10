@@ -9,6 +9,10 @@ vi.mock('../../src/components/CrisisMap', () => ({
   CrisisMap: ({ events }) => <div data-testid="resident-map">{events.length} events</div>,
 }));
 
+vi.mock('../../src/components/ResidentAlertVisualGuide', () => ({
+  ResidentAlertVisualGuide: () => <section>Visual next steps</section>,
+}));
+
 vi.mock('../../src/hooks/useEvents', () => ({
   useEvents: () => ({
     events: [],
@@ -95,6 +99,7 @@ describe('ResidentPage alert inbox', () => {
     expect(screen.getByText('Action: Use Somerset MRT exits and avoid basement links.')).toBeInTheDocument();
     expect(screen.getAllByText('Does this affect me?').length).toBeGreaterThan(1);
     expect(screen.getByText('Next safe action')).toBeInTheDocument();
+    expect(screen.getByText('Visual next steps')).toBeInTheDocument();
     expect(screen.getByText('Emergency pack mode')).toBeInTheDocument();
     expect(screen.getByText('0 / 5 ready')).toBeInTheDocument();
 
