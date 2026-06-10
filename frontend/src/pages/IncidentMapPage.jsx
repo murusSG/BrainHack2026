@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useMemo, useRef, useState } from 'react';
 import { CrisisMap } from '../components/CrisisMap';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
 import { useEvents } from '../hooks/useEvents';
+import { usePageAwarePolling } from '../hooks/usePageAwarePolling';
 import { api } from '../services/api';
 import { normaliseIncidentClusters } from '../services/incidentClusterAdapter';
 
@@ -29,27 +30,30 @@ export function IncidentMapPage() {
   const [clusterError, setClusterError] = useState('');
   const clusterEventsRef = useRef([]);
   const clusterRefreshPromiseRef = useRef(null);
+  const deferredQuery = useDeferredValue(query);
   const isLoading = status === 'loading' || clusterStatus === 'loading';
   const mapEvents = useMemo(() => {
     const byId = new Map(events.map((event) => [event.id, event]));
     clusterEvents.forEach((event) => byId.set(event.id, event));
     return Array.from(byId.values());
   }, [events, clusterEvents]);
-  const filteredEvents = mapEvents.filter((event) => {
-    const normalizedQuery = query.trim().toLowerCase();
-    const matchesHazard = hazardFilter === 'all' || event.hazardType === hazardFilter;
-    const searchable = [
-      event.title,
-      event.location,
-      event.source,
-      event.hazardType,
-      event.severity,
-    ]
-      .join(' ')
-      .toLowerCase();
+  const filteredEvents = useMemo(() => {
+    const normalizedQuery = deferredQuery.trim().toLowerCase();
+    return mapEvents.filter((event) => {
+      const matchesHazard = hazardFilter === 'all' || event.hazardType === hazardFilter;
+      const searchable = [
+        event.title,
+        event.location,
+        event.source,
+        event.hazardType,
+        event.severity,
+      ]
+        .join(' ')
+        .toLowerCase();
 
-    return matchesHazard && (!normalizedQuery || searchable.includes(normalizedQuery));
-  });
+      return matchesHazard && (!normalizedQuery || searchable.includes(normalizedQuery));
+    });
+  }, [deferredQuery, hazardFilter, mapEvents]);
   const activeHazardCount =
     hazardFilter === 'all'
       ? new Set(mapEvents.map((event) => event.hazardType).filter(Boolean)).size
@@ -89,16 +93,7 @@ export function IncidentMapPage() {
     return refreshPromise;
   }
 
-  useEffect(() => {
-    refreshIncidentClusters();
-    const intervalId = window.setInterval(refreshIncidentClusters, 5000);
-    window.addEventListener('focus', refreshIncidentClusters);
-
-    return () => {
-      window.clearInterval(intervalId);
-      window.removeEventListener('focus', refreshIncidentClusters);
-    };
-  }, []);
+  usePageAwarePolling(refreshIncidentClusters, 5000);
 
   return (
     <div className="incident-map-page">

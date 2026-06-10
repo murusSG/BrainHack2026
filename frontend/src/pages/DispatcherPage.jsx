@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CrisisMap } from '../components/CrisisMap';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
+import { usePageAwarePolling } from '../hooks/usePageAwarePolling';
 import { api } from '../services/api';
 import {
   agenciesForCluster,
@@ -28,6 +29,10 @@ function severityTone(value = '') {
   if (severity === 'high') return 'high';
   if (severity === 'moderate' || severity === 'medium') return 'medium';
   return 'support';
+}
+
+function sameIncidentQueue(current, next) {
+  return current.length === next.length && JSON.stringify(current) === JSON.stringify(next);
 }
 
 export function DispatcherPage({ session }) {
@@ -78,11 +83,12 @@ export function DispatcherPage({ session }) {
           mapEventsRef.current
         );
         mapEventsRef.current = events;
-        setQueue(nextQueue ?? []);
+        const queueItems = nextQueue ?? [];
+        setQueue((current) => (sameIncidentQueue(current, queueItems) ? current : queueItems));
         setMapEvents(events);
         setSelectedId((current) => {
-          if ((nextQueue ?? []).some((incident) => incident.incident_id === current)) return current;
-          return nextQueue?.[0]?.incident_id ?? null;
+          if (queueItems.some((incident) => incident.incident_id === current)) return current;
+          return queueItems[0]?.incident_id ?? null;
         });
         setStatus('done');
         setFeedError('');
@@ -98,15 +104,7 @@ export function DispatcherPage({ session }) {
     return refreshPromise;
   }
 
-  useEffect(() => {
-    refresh();
-    const intervalId = window.setInterval(refresh, 5000);
-    window.addEventListener('focus', refresh);
-    return () => {
-      window.clearInterval(intervalId);
-      window.removeEventListener('focus', refresh);
-    };
-  }, []);
+  usePageAwarePolling(refresh, 5000);
 
   useEffect(() => {
     setSelectedAgencies(recommendedAgencies.map((agency) => agency.agency));
@@ -150,6 +148,11 @@ export function DispatcherPage({ session }) {
   const selectedMapEvent = mapEvents.find(
     (event) => event.raw?.incident_id === selectedIncident?.incident_id
   );
+  const selectMapEvent = useCallback((event) => {
+    if (event.raw?.status === 'pending_approval') {
+      setSelectedId(event.raw.incident_id);
+    }
+  }, []);
 
   return (
     <div className="dispatcher-page">
@@ -345,11 +348,7 @@ export function DispatcherPage({ session }) {
               <CrisisMap
                 events={mapEvents}
                 selectedId={selectedMapEvent?.id}
-                onSelect={(event) => {
-                  if (event.raw?.status === 'pending_approval') {
-                    setSelectedId(event.raw.incident_id);
-                  }
-                }}
+                onSelect={selectMapEvent}
               />
             </MapErrorBoundary>
           )}

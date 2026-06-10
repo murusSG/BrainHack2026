@@ -37,7 +37,14 @@ export async function normaliseIncidentClusters(clusters = [], api, previousEven
       clusterToMapEvent(cluster, api, previousByIncidentId.get(cluster.incident_id))
     )
   );
-  return mapped.filter(Boolean);
+  const nextEvents = mapped.filter(Boolean);
+  if (
+    nextEvents.length === previousEvents.length &&
+    nextEvents.every((event, index) => event === previousEvents[index])
+  ) {
+    return previousEvents;
+  }
+  return nextEvents;
 }
 
 export function isClusterPendingReview(cluster) {
@@ -108,7 +115,7 @@ async function clusterToMapEvent(cluster, api, previousEvent) {
     : 'Awaiting selected agency approval.';
   const location = extracted.location_text || cluster.canonical_event?.location?.addressText || 'Location pending';
 
-  return {
+  const nextEvent = {
     id: `cluster-${cluster.incident_id}`,
     source: 'MURUS',
     hazardType: hazardFromCluster(cluster),
@@ -126,6 +133,28 @@ async function clusterToMapEvent(cluster, api, previousEvent) {
     dispatchLog,
     raw: cluster,
   };
+  return canReuseMapEvent(previousEvent, nextEvent) ? previousEvent : nextEvent;
+}
+
+function canReuseMapEvent(previous, next) {
+  if (!previous) return false;
+  return [
+    'id',
+    'source',
+    'hazardType',
+    'severity',
+    'title',
+    'location',
+    'lat',
+    'lng',
+    'vicinityRadiusMeters',
+    'timestamp',
+    'publicAction',
+    'approvalStatus',
+    'incidentStatus',
+    'markerColor',
+    'dispatchLog',
+  ].every((key) => previous[key] === next[key]);
 }
 
 export function agenciesForCluster(cluster) {

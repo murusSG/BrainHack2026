@@ -75,7 +75,7 @@ PROGRESS.md                 Session handoff history
 
 ## Prerequisites
 
-- Node.js 20 or newer
+- Node.js 20.19 or newer
 - npm
 - Optional: Supabase project for durable command state
 - Optional: VectorEngine/OpenAI-compatible API key for LLM leader briefs

@@ -133,6 +133,18 @@ describe('incident cluster map normalization', () => {
     expect(api.oneMapSearch).toHaveBeenCalledTimes(1);
   });
 
+  it('retains the event array when a polling response has no visible changes', async () => {
+    const api = {
+      oneMapSearch: vi.fn().mockResolvedValue([
+        { latitude: '1.301', longitude: '103.801' },
+      ]),
+    };
+    const first = await normaliseIncidentClusters([cluster()], api);
+    const second = await normaliseIncidentClusters([cluster()], api, first);
+
+    expect(second).toBe(first);
+  });
+
   it('skips out-of-region coordinates instead of moving the marker off the Singapore map', async () => {
     const api = {
       oneMapSearch: vi.fn().mockRejectedValue(new Error('OneMap unavailable')),

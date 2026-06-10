@@ -1,8 +1,11 @@
 {
   "name": "brainhack2026",
   "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
-    "build": "npm --prefix frontend install && npm --prefix frontend run build"
+    "build": "npm --prefix frontend ci && npm --prefix frontend run build"
   },
   "dependencies": {
     "react-router-dom": "^7.16.0"

@@ -223,7 +223,7 @@ describe('dispatcher and responder incident flow', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText(/Jurong East Station/)).toBeInTheDocument();
+    expect((await screen.findAllByText(/Jurong East Station/)).length).toBeGreaterThan(0);
 
     await user.selectOptions(screen.getByLabelText('Agency'), 'SPF');
     await user.type(screen.getByLabelText('Author / unit'), 'alpha');
