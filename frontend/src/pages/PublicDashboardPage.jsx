@@ -10,6 +10,7 @@ import {
   publicSubscriptions,
 } from '../data/dashboardData';
 import { OneMapPreviewMap } from '../components/OneMapPreviewMap';
+import { AppLogo } from '../components/AppLogo';
 import { useState } from 'react';
 import { api } from '../services/api';
 
@@ -82,11 +83,7 @@ export function PublicDashboardPage({ onReturnToOps }) {
     <div className="public-shell">
       <aside className="public-sidebar">
         <div className="public-brand">
-          <div className="public-brand-mark">C</div>
-          <div>
-            <p className="public-brand-name">{publicDashboardMeta.brand}</p>
-            <p className="public-brand-subtitle">{publicDashboardMeta.subtitle}</p>
-          </div>
+          <AppLogo variant="public" />
         </div>
 
         <section className="public-sidebar-section">

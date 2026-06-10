@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CrisisMap } from '../components/CrisisMap';
+import { AppLogo } from '../components/AppLogo';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
 import { MapLegend } from '../components/MapLegend';
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
-import { VisualPanel } from '../components/visuals';
+import { ScreenHeader, ScreenPage, ScreenPanel } from '../components/ui';
 import { usePageAwarePolling } from '../hooks/usePageAwarePolling';
 import { api } from '../services/api';
 import {
@@ -14,24 +15,6 @@ import {
 } from '../services/incidentClusterAdapter';
 
 const MANUAL_AGENCIES = ['SPF', 'SCDF', 'MOH', 'PUB', 'LTA'];
-
-function formatReportedAt(value) {
-  const timestamp = Date.parse(value);
-  if (!Number.isFinite(timestamp)) return 'Time unavailable';
-  return new Intl.DateTimeFormat('en-SG', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'Asia/Singapore',
-  }).format(timestamp);
-}
-
-function severityTone(value = '') {
-  const severity = value.toLowerCase();
-  if (severity === 'critical') return 'critical';
-  if (severity === 'high') return 'high';
-  if (severity === 'moderate' || severity === 'medium') return 'medium';
-  return 'support';
-}
 
 function sameIncidentQueue(current, next) {
   return current.length === next.length && JSON.stringify(current) === JSON.stringify(next);
@@ -157,9 +140,14 @@ export function DispatcherPage({ session }) {
   }, []);
 
   return (
-    <div className="dispatcher-page">
-      <header className="dispatcher-header">
+    <ScreenPage className="dispatcher-page">
+      <ScreenHeader
+        className="dispatcher-header"
+        visual="flyer"
+        visualVariant="panel"
+      >
         <div>
+          <AppLogo variant="header" />
           <p className="eyebrow">Human-approved response coordination</p>
           <h1>Ops Dispatcher View</h1>
           <p>
@@ -170,32 +158,7 @@ export function DispatcherPage({ session }) {
         <Link to="/responder" className="responder-command-link">
           Responder View
         </Link>
-      </header>
-
-      <section className="dispatcher-summary-strip" aria-label="Dispatcher operational summary">
-        <article>
-          <span>Queue</span>
-          <strong>{status === 'loading' ? '--' : queue.length}</strong>
-          <small>Awaiting review</small>
-        </article>
-        <article>
-          <span>Selected priority</span>
-          <strong>
-            {selectedIncident ? `${selectedIncident.priority_score}/100` : '--'}
-          </strong>
-          <small>Priority score</small>
-        </article>
-        <article>
-          <span>Feed status</span>
-          <strong>{status === 'error' ? 'Degraded' : status === 'loading' ? 'Syncing' : 'Live'}</strong>
-          <small>5 second refresh</small>
-        </article>
-        <article>
-          <span>Authority</span>
-          <strong>Human</strong>
-          <small>Approval required</small>
-        </article>
-      </section>
+      </ScreenHeader>
 
       {notice && <p className="allocation-command-note">{notice}</p>}
 
@@ -206,58 +169,7 @@ export function DispatcherPage({ session }) {
       )}
 
       <section className="dispatcher-grid">
-        <aside className="panel dispatcher-queue-panel">
-          <div className="responder-section-heading">
-            <div>
-              <p className="eyebrow">Priority Queue</p>
-              <h2>Awaiting dispatch approval</h2>
-            </div>
-            <span className="pill">{queue.length} pending</span>
-          </div>
-
-          {status === 'loading' ? (
-            <LoadingSkeleton rows={4} compact />
-          ) : queue.length === 0 ? (
-            <div className="responder-empty-state">
-              <p>No incidents awaiting dispatch approval.</p>
-            </div>
-          ) : (
-            <div className="dispatcher-queue-list">
-              {queue.map((incident) => {
-                const agencies = agenciesForCluster(incident);
-                const isActive = incident.incident_id === selectedIncident?.incident_id;
-                return (
-                  <button
-                    type="button"
-                    key={incident.incident_id}
-                    className={`dispatcher-queue-item${isActive ? ' is-active' : ''}`}
-                    onClick={() => setSelectedId(incident.incident_id)}
-                  >
-                    <span className="responder-rank">{incident.queue_position}</span>
-                    <span className="responder-incident-copy">
-                      <span className="dispatcher-queue-topline">
-                        <strong>{incidentTitle(incident)}</strong>
-                        <span className={`severity-chip chip-${severityTone(incident.extracted_incident?.severity)}`}>
-                          {incident.priority_score}
-                        </span>
-                      </span>
-                      <span className="responder-incident-meta">
-                        {formatReportedAt(incident.created_at)} | {incident.reports?.length ?? 0}{' '}
-                        grouped report{incident.reports?.length === 1 ? '' : 's'}
-                      </span>
-                      <span className="responder-incident-meta">
-                        {agencies.map((agency) => agency.agency).join(', ') || 'Manual agency review'}
-                        {' | '}Pending Approval
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </aside>
-
-        <VisualPanel
+        <ScreenPanel
           className="panel dispatcher-detail-panel"
           visual="routeGrid"
           visualVariant="subtleBackground"
@@ -268,24 +180,33 @@ export function DispatcherPage({ session }) {
               <p className="eyebrow">Selected incident</p>
               <h2>{selectedIncident ? incidentTitle(selectedIncident) : 'No incident selected'}</h2>
             </div>
-            {selectedIncident && (
-              <span className={`severity-chip chip-${severityTone(selectedIncident.extracted_incident?.severity)}`}>
-                {selectedIncident.extracted_incident?.severity ?? 'Unknown'}
-              </span>
+            {queue.length > 0 && (
+              <label className="dispatcher-incident-picker">
+                <span>Incident awaiting approval</span>
+                <select
+                  aria-label="Incident awaiting approval"
+                  value={selectedIncident?.incident_id ?? ''}
+                  onChange={(event) => setSelectedId(event.target.value)}
+                >
+                  {queue.map((incident) => (
+                    <option key={incident.incident_id} value={incident.incident_id}>
+                      {incidentTitle(incident)}
+                    </option>
+                  ))}
+                </select>
+              </label>
             )}
           </div>
 
-          {!selectedIncident ? (
+          {status === 'loading' ? (
+            <LoadingSkeleton rows={5} compact />
+          ) : !selectedIncident ? (
             <div className="responder-empty-state">
-              <p>Select an incident when the Priority Queue receives a report.</p>
+              <p>No incidents awaiting dispatch approval.</p>
             </div>
           ) : (
             <>
               <dl className="dispatcher-facts">
-                <div>
-                  <dt>Priority</dt>
-                  <dd>{selectedIncident.priority_score}/100</dd>
-                </div>
                 <div>
                   <dt>Location</dt>
                   <dd>{selectedIncident.extracted_incident?.location_text || 'Location pending'}</dd>
@@ -361,10 +282,10 @@ export function DispatcherPage({ session }) {
               </div>
             </>
           )}
-        </VisualPanel>
+        </ScreenPanel>
       </section>
 
-      <section className="panel dispatcher-map-panel">
+      <ScreenPanel className="panel dispatcher-map-panel">
         <div className="responder-section-heading">
           <div>
             <p className="eyebrow">Incident map</p>
@@ -393,7 +314,7 @@ export function DispatcherPage({ session }) {
             </MapErrorBoundary>
           )}
         </div>
-      </section>
-    </div>
+      </ScreenPanel>
+    </ScreenPage>
   );
 }

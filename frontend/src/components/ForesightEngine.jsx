@@ -169,7 +169,7 @@ export function ForesightEngine({ onStageAction }) {
       confidence: prediction.confidence,
       evidence: prediction.evidence ?? [],
       recommendedAction: prediction.recommendedAction,
-      status: 'Staged for dispatcher review',
+      status: 'Staged for command review',
     };
     setStagedActions((current) => [action, ...current].slice(0, 5));
     setActionStatus(`${action.title} (${action.owner})`);

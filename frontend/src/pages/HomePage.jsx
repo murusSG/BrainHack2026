@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Badge, Box, Button, Card, Container, Group, SimpleGrid, Text, Title } from '@mantine/core';
+import { AppLogo } from '../components/AppLogo';
 
 const FEATURES = [
   { title: 'Live Incident Map', body: 'Active hazards & shelters near you.' },
@@ -11,23 +12,7 @@ export function HomePage() {
   return (
     <Box className="standalone-page-content" mih="100vh">
       <Group component="header" justify="space-between" px="lg" py="md" style={{ borderBottom: '1px solid rgba(166,17,34,0.12)' }}>
-        <Group gap="sm">
-          <Box
-            w={28}
-            h={28}
-            style={{
-              borderRadius: 8,
-              display: 'grid',
-              placeItems: 'center',
-              color: '#fff8f8',
-              fontWeight: 900,
-              background: 'linear-gradient(180deg, #ea3948, #c5162b)',
-            }}
-          >
-            M
-          </Box>
-          <Text fw={900}>MURUS SG</Text>
-        </Group>
+        <AppLogo variant="landing" />
         <Group gap="sm">
           <Button component={Link} to="/login" variant="default">
             Log In

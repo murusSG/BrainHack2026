@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AppLogo } from '../components/AppLogo';
 import {
   Anchor, Box, Button, Card, Container, Divider, Group, PasswordInput, Stack, Text, TextInput, Title,
 } from '@mantine/core';
@@ -62,6 +63,7 @@ export function SignUpPage({ onAuthenticate }) {
     <Box className="standalone-page-content auth-page-content" mih="100vh">
       <Container size={460} py={56}>
         <Card className="identity-auth-card" withBorder radius="md" padding="xl">
+          <AppLogo variant="auth" />
           <Text c="brandRed.6" fz="xs" fw={700} tt="uppercase" lts="0.12em">
             Public Registration
           </Text>

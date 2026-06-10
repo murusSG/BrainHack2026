@@ -4,7 +4,7 @@ export function TimelinePanel({ commandItems = [] }) {
   const items = [...commandItems, ...timelineItems];
 
   return (
-    <section className="panel timeline-panel">
+    <section className="panel timeline-panel ui-surface">
       <div className="section-heading">
         <h2>Live Event Timeline</h2>
         <span className="pill live-feed-pill">{commandItems.length ? 'Command + live feed' : 'Live feed'}</span>

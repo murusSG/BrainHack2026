@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import { AppLogo } from './AppLogo';
 
 const navItems = [
   { id: 'overview', label: 'Overview', path: '/overview', icon: 'overview' },
@@ -14,13 +15,9 @@ export function SidebarNav() {
 
   return (
     <aside className="sidebar">
-      <div className="brand-block">
-        <div className="brand-mark">M</div>
-        <div>
-          <p className="brand-name">MURUS SG</p>
-          <p className="brand-subtitle">Crisis command network</p>
-        </div>
-      </div>
+      <Link to="/overview" className="brand-block" aria-label="MURUS SG overview">
+        <AppLogo variant="sidebar" />
+      </Link>
 
       <p className="nav-section-label">Operations</p>
       <nav className="nav-list" aria-label="Primary">

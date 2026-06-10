@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -16,12 +16,6 @@ vi.mock('../../src/hooks/useEvents', () => ({
 vi.mock('../../src/services/api', () => ({
   api: {
     foresightPredictions: vi.fn(),
-    commandAllocations: vi.fn(),
-    commandTimeline: vi.fn(),
-    incidentClusters: vi.fn(),
-    createCommandAllocation: vi.fn(),
-    updateCommandAllocationAgencies: vi.fn(),
-    approveResourceAllocation: vi.fn(),
   },
 }));
 
@@ -85,71 +79,9 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('Foresight to allocation review flow', () => {
-  it('stages a forecast action into the dispatcher review queue', async () => {
+describe('Foresight staging on the cleaned Overview', () => {
+  it('keeps staged actions within Foresight without rendering a dispatcher review queue', async () => {
     api.foresightPredictions.mockResolvedValue(foresightPayload);
-    api.commandAllocations.mockResolvedValue([]);
-    api.incidentClusters.mockResolvedValue([]);
-    api.commandTimeline
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          id: 'timeline-staged',
-          time: '12:00 SGT',
-          title: 'Allocation staged - Flood escalation watch - Orchard Road',
-          detail: 'Dispatcher review opened for PUB, LTA, CMD.',
-          location: 'Flood escalation watch - Orchard Road',
-          severity: 'critical',
-        },
-      ])
-      .mockResolvedValueOnce([
-        {
-          id: 'timeline-approved',
-          time: '12:01 SGT',
-          title: 'Allocation approved - Flood escalation watch - Orchard Road',
-          detail: 'PUB, LTA, CMD marked approved.',
-          location: 'Flood escalation watch - Orchard Road',
-          severity: 'critical',
-        },
-      ])
-      .mockResolvedValueOnce([
-        {
-          id: 'timeline-contacted',
-          time: '12:02 SGT',
-          title: 'Agencies contacted - Flood escalation watch - Orchard Road',
-          detail: 'PUB, LTA, CMD marked contacted.',
-          location: 'Flood escalation watch - Orchard Road',
-          severity: 'critical',
-        },
-      ]);
-    api.createCommandAllocation.mockImplementation(async (recommendation) => ({
-      ...recommendation,
-      id: 'alloc-persisted-1',
-      createdAt: '2026-06-04T04:00:00.000Z',
-      updatedAt: '2026-06-04T04:00:00.000Z',
-    }));
-    api.updateCommandAllocationAgencies.mockImplementation(async (id, payload) => ({
-      id,
-      incidentId: 'FORESIGHT',
-      incidentTitle: 'Flood escalation watch - Orchard Road',
-      severity: 'critical',
-      confidence: 88,
-      generatedAt: 'just now',
-      generatedFrom: 'Generated from Foresight staged action',
-      linkedPrediction: 'Flood escalation watch - Orchard Road',
-      modelVersion: 'MURUS-FORESIGHT-ALLOC-1.0',
-      triggerSignals: ['Forecast source: PUB', 'Recommended owner: PUB', 'PUB sensor above threshold'],
-      draftMessage: 'Please confirm agency availability.',
-      agencies: ['pub', 'lta', 'command'].map((agencyId) => ({
-        id: agencyId,
-        agency: agencyId === 'command' ? 'CMD' : agencyId.toUpperCase(),
-        channel: agencyId === 'command' ? 'Ops Command' : 'Ops',
-        confidence: 80,
-        reason: 'Reason',
-        suggestedAction: 'Action',
-        status: payload.status,
-      })),
-    }));
     const user = userEvent.setup();
 
     render(
@@ -163,30 +95,9 @@ describe('Foresight to allocation review flow', () => {
     await user.click(screen.getByRole('button', { name: 'Stage PUB crew' }));
 
     expect(await screen.findByRole('heading', { name: 'Staged Actions' })).toBeInTheDocument();
-    expect(screen.getByText('Staged for dispatcher review')).toBeInTheDocument();
-    expect(screen.getByText('Generated from Foresight staged action')).toBeInTheDocument();
-    expect(await screen.findByText('Saved to command state')).toBeInTheDocument();
-    expect(screen.getAllByText('Flood escalation watch - Orchard Road').length).toBeGreaterThan(0);
-    expect(screen.getByText('MURUS-FORESIGHT-ALLOC-1.0')).toBeInTheDocument();
-    expect(screen.getAllByText('PUB sensor above threshold').length).toBeGreaterThan(0);
-    expect(await screen.findByText('Allocation staged - Flood escalation watch - Orchard Road')).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Approve selected' }));
-
-    await waitFor(() => {
-      expect(screen.getByText('PUB: Approved')).toBeInTheDocument();
-      expect(screen.getByText('LTA: Approved')).toBeInTheDocument();
-      expect(screen.getByText('CMD: Approved')).toBeInTheDocument();
-    });
-    expect(await screen.findByText('Allocation approved - Flood escalation watch - Orchard Road')).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Contact agencies' }));
-
-    await waitFor(() => {
-      expect(screen.getByText('PUB: Contacted')).toBeInTheDocument();
-      expect(screen.getByText('LTA: Contacted')).toBeInTheDocument();
-      expect(screen.getByText('CMD: Contacted')).toBeInTheDocument();
-    });
-    expect(await screen.findByText('Agencies contacted - Flood escalation watch - Orchard Road')).toBeInTheDocument();
+    expect(screen.getByText('Staged for command review')).toBeInTheDocument();
+    expect(screen.queryByText('Dispatcher Review Queue')).not.toBeInTheDocument();
+    expect(screen.queryByText('AI Recommendations')).not.toBeInTheDocument();
+    expect(api.foresightPredictions).toHaveBeenCalled();
   });
 });

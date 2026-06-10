@@ -27,10 +27,8 @@ export const visualIntensities = ['none', 'subtle', 'medium'];
 
 export const commandPageVisuals = {
   overview: {
-    visual: 'mbs',
-    visualVariant: 'hero',
-    visualPosition: 'topRight',
-    visualIntensity: 'medium',
+    visual: 'none',
+    visualIntensity: 'none',
   },
   'incident-map': {
     visual: 'routeGrid',
@@ -39,10 +37,8 @@ export const commandPageVisuals = {
     visualIntensity: 'subtle',
   },
   resources: {
-    visual: 'flyer',
-    visualVariant: 'corner',
-    visualPosition: 'topRight',
-    visualIntensity: 'subtle',
+    visual: 'none',
+    visualIntensity: 'none',
   },
   hospitals: {
     visual: 'flyer',
@@ -51,10 +47,8 @@ export const commandPageVisuals = {
     visualIntensity: 'subtle',
   },
   alerts: {
-    visual: 'routeGrid',
-    visualVariant: 'subtleBackground',
-    visualPosition: 'centerRight',
-    visualIntensity: 'subtle',
+    visual: 'none',
+    visualIntensity: 'none',
   },
   'system-flow': {
     visual: 'routeGrid',
@@ -96,16 +90,12 @@ export const standalonePageVisuals = {
     visualIntensity: 'subtle',
   },
   responder: {
-    visual: 'flyer',
-    visualVariant: 'panel',
-    visualPosition: 'topRight',
-    visualIntensity: 'subtle',
+    visual: 'none',
+    visualIntensity: 'none',
   },
   dispatcher: {
-    visual: 'flyer',
-    visualVariant: 'panel',
-    visualPosition: 'topRight',
-    visualIntensity: 'subtle',
+    visual: 'none',
+    visualIntensity: 'none',
   },
   loading: {
     visual: 'routeGrid',

@@ -83,7 +83,7 @@ afterEach(() => {
 });
 
 describe('dispatcher and responder incident flow', () => {
-  it('renders backend queue order and removes an approved incident', async () => {
+  it('selects backend incidents without rendering a queue panel and removes an approved incident', async () => {
     const critical = cluster({
       id: 'INC-002',
       severity: 'critical',
@@ -114,10 +114,13 @@ describe('dispatcher and responder incident flow', () => {
       </MemoryRouter>
     );
 
-    const queueItems = await screen.findAllByRole('button', { name: /incident description|Tampines|Jurong/i });
-    expect(queueItems[0]).toHaveTextContent('Tampines');
-    expect(queueItems[1]).toHaveTextContent('Jurong');
-    expect(screen.getByText('100')).toBeInTheDocument();
+    const incidentPicker = await screen.findByLabelText('Incident awaiting approval');
+    expect(Array.from(incidentPicker.options).map((option) => option.textContent)).toEqual([
+      expect.stringContaining('Tampines'),
+      expect.stringContaining('Jurong'),
+    ]);
+    expect(screen.queryByText('Priority Queue')).not.toBeInTheDocument();
+    expect(screen.queryByText('Priority')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Approve Dispatch' }));
 

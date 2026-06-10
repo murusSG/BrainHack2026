@@ -1,25 +1,17 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AgencyFeedPanel } from '../components/AgencyFeedPanel';
-import { AllocationApprovalPanel } from '../components/AllocationApprovalPanel';
 import { ForesightEngine } from '../components/ForesightEngine';
 import { MetricCard } from '../components/MetricCard';
 import { QuickActionsPanel } from '../components/QuickActionsPanel';
-import { RecommendationPanel } from '../components/RecommendationPanel';
 import { TimelinePanel } from '../components/TimelinePanel';
-import {
-  VisualPanel,
-} from '../components/visuals';
+import { ScreenHeader, ScreenPage, ScreenPanel } from '../components/ui';
 import {
   dataSources,
   dorsconStatus,
   quickActions,
-  recommendations,
-  roleViews,
   topStats
 } from '../data/dashboardData';
 import { useEvents } from '../hooks/useEvents';
-import { api } from '../services/api';
 import {
   CHECK_IN_OPTIONS,
   readResidentCheckins,
@@ -29,9 +21,6 @@ import {
 export function OverviewPage() {
   const navigate = useNavigate();
   const { events, status } = useEvents();
-  const [foresightRecommendation, setForesightRecommendation] = useState(null);
-  const [commandTimeline, setCommandTimeline] = useState([]);
-  const [commandStateStatus, setCommandStateStatus] = useState('loading');
   const [activeQuickAction, setActiveQuickAction] = useState(null);
   const [guidelinesVisible, setGuidelinesVisible] = useState(false);
   const [residentCheckins, setResidentCheckins] = useState(() => readResidentCheckins());
@@ -62,24 +51,6 @@ export function OverviewPage() {
     [activeIncidentDelta, events.length, status]
   );
 
-  const refreshCommandState = useCallback(async () => {
-    try {
-      const [allocations, timeline] = await Promise.all([
-        api.commandAllocations(),
-        api.commandTimeline(),
-      ]);
-      setForesightRecommendation(allocations[0] ?? null);
-      setCommandTimeline(timeline ?? []);
-      setCommandStateStatus('done');
-    } catch {
-      setCommandStateStatus('error');
-    }
-  }, []);
-
-  useEffect(() => {
-    refreshCommandState();
-  }, []);
-
   useEffect(() => {
     function refreshResidentCheckins() {
       setResidentCheckins(readResidentCheckins());
@@ -98,43 +69,6 @@ export function OverviewPage() {
     () => summarizeResidentCheckins(residentCheckins),
     [residentCheckins]
   );
-
-  const handleStageAction = useCallback(async (action) => {
-    const recommendation = buildForesightRecommendation(action);
-    setForesightRecommendation(recommendation);
-    requestAnimationFrame(() => {
-      document.getElementById('dispatcher-review-queue')?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      });
-    });
-    try {
-      const saved = await api.createCommandAllocation(recommendation);
-      setForesightRecommendation(saved);
-      const timeline = await api.commandTimeline();
-      setCommandTimeline(timeline ?? []);
-      setCommandStateStatus('done');
-    } catch {
-      setCommandStateStatus('error');
-    }
-  }, []);
-
-  const handleAgencyStatusChange = useCallback(async (recommendationId, agencyIds, status) => {
-    try {
-      const saved = await api.updateCommandAllocationAgencies(recommendationId, {
-        agencyIds,
-        status,
-      });
-      setForesightRecommendation(saved);
-      const timeline = await api.commandTimeline();
-      setCommandTimeline(timeline ?? []);
-      setCommandStateStatus('done');
-      return saved;
-    } catch {
-      setCommandStateStatus('error');
-      return null;
-    }
-  }, []);
 
   const handleQuickAction = useCallback((action) => {
     setActiveQuickAction(action.label);
@@ -184,8 +118,15 @@ export function OverviewPage() {
   }, [navigate]);
 
   return (
-    <div className="overview-page">
-      <section className="hero-panel">
+    <ScreenPage className="overview-page">
+      <ScreenHeader
+        as="section"
+        className="hero-panel"
+        visual="mbs"
+        visualVariant="subtleBackground"
+        visualPosition="center"
+        visualIntensity="subtle"
+      >
         <div>
           <p className="eyebrow">National crisis picture</p>
           <h1>Emergency Overview</h1>
@@ -207,10 +148,11 @@ export function OverviewPage() {
             Incident Map
           </Link>
         </div>
-      </section>
+      </ScreenHeader>
 
-      <VisualPanel
+      <ScreenPanel
         className={`status-banner panel status-banner-${dorsconStatus.level}`}
+        tone="warning"
         visual="flyer"
         visualVariant="corner"
         visualPosition="bottomRight"
@@ -255,7 +197,7 @@ export function OverviewPage() {
             {guidelinesVisible ? 'Hide DORSCON guide' : 'View guidelines'}
           </button>
         </div>
-      </VisualPanel>
+      </ScreenPanel>
 
       <section className="stats-grid">
         {overviewStats.map((stat) => (
@@ -263,7 +205,7 @@ export function OverviewPage() {
         ))}
       </section>
 
-      <VisualPanel
+      <ScreenPanel
         className="resident-response-panel panel"
         aria-label="Resident response summary"
         visual="merlion"
@@ -302,58 +244,17 @@ export function OverviewPage() {
             No residents have requested help yet. Check-ins from the resident alert page will appear here instantly.
           </p>
         )}
-      </VisualPanel>
+      </ScreenPanel>
 
-      <ForesightEngine onStageAction={handleStageAction} />
+      <ForesightEngine />
 
-      <section className="content-grid">
-        <div className="left-column">
-          <TimelinePanel commandItems={commandTimeline} />
-          <AgencyFeedPanel />
-        </div>
-        <div className="right-column">
-          <RecommendationPanel recommendations={recommendations} />
-          <AllocationApprovalPanel
-            recommendation={foresightRecommendation ?? undefined}
-            commandStateStatus={commandStateStatus}
-            onAgencyStatusChange={handleAgencyStatusChange}
-          />
-        </div>
-      </section>
-
-      <section className="overview-support-grid">
+      <section className="overview-operations-grid">
+        <TimelinePanel />
         <QuickActionsPanel
           actions={quickActions}
           activeAction={activeQuickAction}
           onAction={handleQuickAction}
         />
-
-        <div className="panel">
-          <div className="section-heading">
-            <h2>Role-Specific Decisions</h2>
-            <span className="pill">Unified outputs</span>
-          </div>
-          <div className="roles-list">
-            {roleViews.map((view) => (
-              <article key={view.role} className="role-card">
-                <p className="role-title">{view.role}</p>
-                <p className="muted-copy">{view.summary}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-
-        <div className="panel">
-          <div className="section-heading">
-            <h2>Unified Data Ingestion Layer</h2>
-            <span className="pill">Normalised event schema</span>
-          </div>
-          <p className="muted-copy">
-            Every incoming signal is transformed into a shared internal incident schema so
-            command, field teams, hospitals, and public channels operate from the same event
-            record.
-          </p>
-        </div>
       </section>
 
       <section className="sources-section">
@@ -363,7 +264,7 @@ export function OverviewPage() {
         </div>
         <div className="sources-grid">
           {dataSources.map((source) => (
-            <article key={source.agency} className="source-card">
+            <article key={source.agency} className="source-card ui-surface">
               <div className="source-row">
                 <h3>{source.agency}</h3>
                 <span className={`status-chip status-${source.status.toLowerCase()}`}>
@@ -376,122 +277,6 @@ export function OverviewPage() {
           ))}
         </div>
       </section>
-    </div>
+    </ScreenPage>
   );
-}
-
-function buildForesightRecommendation(action) {
-  const owner = action.owner ?? 'Command';
-  const supportAgencies = agenciesForOwner(owner);
-  return {
-    id: `FORESIGHT-${Date.now()}`,
-    incidentId: 'FORESIGHT',
-    incidentTitle: action.linkedPrediction,
-    severity: severityForAllocation(action.severity),
-    confidence: action.confidence ?? 72,
-    generatedAt: 'just now',
-    generatedFrom: 'Generated from Foresight staged action',
-    linkedPrediction: action.linkedPrediction,
-    modelVersion: 'MURUS-FORESIGHT-ALLOC-1.0',
-    triggerSignals: [
-      `Forecast source: ${action.source}`,
-      `Recommended owner: ${owner}`,
-      action.evidence?.[0] ?? 'Deterministic Foresight signal selected by command',
-    ],
-    draftMessage:
-      `Foresight has staged the following action for dispatcher review: ${sentence(action.title)} ` +
-      `Please confirm agency availability and response window for ${action.linkedPrediction}.`,
-    agencies: supportAgencies.map((agency, index) => ({
-      id: agency.id,
-      agency: agency.agency,
-      channel: agency.channel,
-      confidence: Math.max(62, (action.confidence ?? 74) - index * 6),
-      reason: agency.reason(action),
-      suggestedAction: agency.suggestedAction(action),
-      status: 'pending_approval',
-    })),
-  };
-}
-
-function agenciesForOwner(owner) {
-  const common = {
-    command: {
-      id: 'command',
-      agency: 'CMD',
-      channel: 'Ops Command',
-      reason: () => 'Command review is required before operational tasking is issued.',
-      suggestedAction: (action) => `Approve staged action: ${action.title}`,
-    },
-  };
-
-  const catalog = {
-    NEA: [
-      {
-        id: 'nea',
-        agency: 'NEA',
-        channel: 'Public Health / Environmental Ops',
-        reason: (action) => `${action.linkedPrediction} is owned by NEA signal context.`,
-        suggestedAction: (action) => action.title,
-      },
-      common.command,
-    ],
-    PUB: [
-      {
-        id: 'pub',
-        agency: 'PUB',
-        channel: 'Drainage Ops',
-        reason: (action) => `${action.linkedPrediction} indicates flood or water-risk escalation.`,
-        suggestedAction: (action) => action.title,
-      },
-      {
-        id: 'lta',
-        agency: 'LTA',
-        channel: 'Traffic Ops',
-        reason: () => 'Traffic diversion may be required if access routes degrade.',
-        suggestedAction: () => 'Prepare diversion messaging and route control support.',
-      },
-      common.command,
-    ],
-    LTA: [
-      {
-        id: 'lta',
-        agency: 'LTA',
-        channel: 'Traffic Ops',
-        reason: (action) => `${action.linkedPrediction} may affect responder routing.`,
-        suggestedAction: (action) => action.title,
-      },
-      common.command,
-    ],
-    MOH: [
-      {
-        id: 'moh',
-        agency: 'MOH',
-        channel: 'Healthcare Ops',
-        reason: (action) => `${action.linkedPrediction} may affect hospital or care capacity.`,
-        suggestedAction: (action) => action.title,
-      },
-      {
-        id: 'scdf',
-        agency: 'SCDF',
-        channel: 'Emergency Medical Dispatch',
-        reason: () => 'Ambulance or field response posture may need adjustment.',
-        suggestedAction: () => 'Confirm ambulance routing and standby status.',
-      },
-      common.command,
-    ],
-  };
-
-  return catalog[owner] ?? [common.command];
-}
-
-function severityForAllocation(severity) {
-  if (severity === 'critical' || severity === 'danger') return 'critical';
-  if (severity === 'warning' || severity === 'high') return 'high';
-  return 'medium';
-}
-
-function sentence(value = '') {
-  const text = value.trim();
-  if (!text) return '';
-  return /[.!?]$/.test(text) ? text : `${text}.`;
 }

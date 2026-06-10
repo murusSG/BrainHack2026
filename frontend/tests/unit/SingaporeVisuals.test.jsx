@@ -6,6 +6,7 @@ import {
   VisualPanel,
   visualVariants,
 } from '../../src/components/visuals';
+import { ScreenHeader } from '../../src/components/ui';
 
 describe('Singapore visual system', () => {
   it.each(visualVariants)('renders the %s preset as decorative artwork', (visualVariant) => {
@@ -34,7 +35,7 @@ describe('Singapore visual system', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('applies route presets through the shared page shell', () => {
+  it('keeps affected route artwork out of the page-wide shell', () => {
     const { container } = render(
       <AppPage mode="command" page="overview">
         <p>Operational content</p>
@@ -42,9 +43,20 @@ describe('Singapore visual system', () => {
     );
 
     expect(container.querySelector('.app-page--overview')).toBeInTheDocument();
+    expect(container.querySelector('.sg-visual-layer')).not.toBeInTheDocument();
+    expect(container).toHaveTextContent('Operational content');
+  });
+
+  it('bounds route artwork inside the shared screen header', () => {
+    const { container } = render(
+      <ScreenHeader visual="mbs" visualIntensity="medium">
+        <h1>Emergency Overview</h1>
+      </ScreenHeader>
+    );
+
+    expect(container.querySelector('.ui-page-header')).toBeInTheDocument();
     expect(container.querySelector('.sg-visual-layer--hero')).toBeInTheDocument();
     expect(container.querySelector('.sg-visual-layer--topRight')).toBeInTheDocument();
-    expect(container).toHaveTextContent('Operational content');
   });
 
   it('keeps panel content within a standardized visual wrapper', () => {

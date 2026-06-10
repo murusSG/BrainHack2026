@@ -88,24 +88,6 @@ export const timelineItems = [
   }
 ];
 
-export const recommendations = [
-  {
-    category: 'Resource reallocation',
-    priority: 'Critical',
-    text: 'Dispatch 2 additional ambulances from Clementi station to the Jurong West industrial fire site.'
-  },
-  {
-    category: 'Logistics alert',
-    priority: 'High',
-    text: 'Restock PPE kits at NUH. Current burn rate exceeds the remaining 24-hour stock threshold.'
-  },
-  {
-    category: 'Public messaging',
-    priority: 'Action',
-    text: 'Issue a regional SMS advisory for Toa Payoh residents regarding localised flooding and alternate routes.'
-  }
-];
-
 export const dorsconStatus = {
   level: 'orange',
   updatedLabel: 'Updated 2m ago',
@@ -216,21 +198,6 @@ export const quickActions = [
     label: 'Request Resource Transfer',
     note: 'Reroute vehicles, medics, or supplies across active sectors.',
     icon: 'transfer'
-  }
-];
-
-export const roleViews = [
-  {
-    role: 'Commanders',
-    summary: 'Cross-agency common operating picture with severity ranking, deployment health, and escalation triggers.'
-  },
-  {
-    role: 'Responders',
-    summary: 'Ground updates, route changes, supply gaps, and tasking aligned to the same incident record.'
-  },
-  {
-    role: 'Communities',
-    summary: 'Public-safe advisories, disruption radius, and updated instructions from the verified command feed.'
   }
 ];
 
@@ -385,16 +352,6 @@ export const resourceSummaryCards = [
     tone: 'down'
   }
 ];
-
-export const resourceTrend = {
-  title: 'Supply Consumption Trend',
-  subtitle: 'Aggregate PPE and medication stock level vs. projected demand (Last 24h)',
-  timeframe: '24 Hours',
-  labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:59'],
-  currentStock: [4500, 4300, 4100, 5200, 5000, 4800, 4700],
-  projectedDemand: [3200, 3400, 3900, 4100, 4250, 4600, 4200],
-  yMax: 6000
-};
 
 export const interAgencyRequestForm = {
   title: 'Inter-Agency Request',
@@ -710,15 +667,8 @@ export const alertDetail = {
     { label: 'Time detected', value: '2 mins ago' },
     { label: 'At-risk pop.', value: '~15,000 commuters' },
     { label: 'Data source', value: 'Verified Sensor' }
-  ],
-  mapLabel: "Live coordinates: 1.3521° N, 103.8198° E"
+  ]
 };
-
-export const alertResponders = [
-  { team: 'SCDF Alpha 4', role: 'Fire/Rescue', eta: 'ETA 3 mins' },
-  { team: 'Police Patrol 92', role: 'Security', eta: 'ETA 5 mins' },
-  { team: 'PUB Maintenance', role: 'Technical', eta: 'ETA 12 mins' }
-];
 
 export const broadcastSteps = [
   '1. Select Channels',
