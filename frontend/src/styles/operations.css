@@ -2904,7 +2904,7 @@
   object-fit: contain;
   object-position: center;
   border-radius: 10px;
-  background: #ffffff;
+  background: transparent;
   user-select: none;
 }
 
