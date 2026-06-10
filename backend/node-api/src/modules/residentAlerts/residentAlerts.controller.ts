@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { BadRequestError } from "../../utils/apiError";
 import { getResidentProfile } from "../residents/residents.service";
-import { answerAskMurus } from "./residentAskMurus.service";
+import { answerAskMurus, checkResidentRumorWithLlm } from "./residentAskMurus.service";
 import { createResidentAlert, listResidentAlerts, updateResidentAlert } from "./residentAlerts.service";
 import type { ResidentAlertFilter } from "./residentAlerts.types";
 
@@ -50,6 +50,19 @@ export async function postAskMurus(req: Request, res: Response, next: NextFuncti
     res.json({
       data,
       source: "Ask MURUS resident copilot",
+      fetchedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function postRumorCheck(req: Request, res: Response, next: NextFunction) {
+  try {
+    const data = await checkResidentRumorWithLlm(await buildAskMurusInput(req));
+    res.json({
+      data,
+      source: "Ask MURUS rumor checker",
       fetchedAt: new Date().toISOString(),
     });
   } catch (err) {

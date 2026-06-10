@@ -48,6 +48,20 @@ jest.mock("../../src/modules/residentAlerts/residentAskMurus.service", () => ({
     model: "deepseek-v4-pro:stable",
     guardrail: "Grounded in official alert fields and approved fallback rules.",
   }),
+  checkResidentRumorWithLlm: jest.fn().mockResolvedValue({
+    status: "partial",
+    label: "Partly related, not confirmed",
+    message: "This mentions Orchard Road, but the exact claim is not confirmed by the current alert.",
+    matchedAlert: {
+      id: "resident-alert:1",
+      title: "Avoid Orchard Road",
+      locationLabel: "Orchard Road",
+    },
+    confidence: "medium",
+    mode: "llm",
+    model: "deepseek-v4-pro:stable",
+    guardrail: "Grounded in current official alert fields.",
+  }),
 }));
 
 jest.mock("../../src/modules/crisis/crisis.service", () => ({
@@ -77,7 +91,7 @@ import {
   sendResidentAlertTelegram,
   sendResidentAlertWhatsapp,
 } from "../../src/modules/residentAlerts/residentAlertSms.service";
-import { answerAskMurus } from "../../src/modules/residentAlerts/residentAskMurus.service";
+import { answerAskMurus, checkResidentRumorWithLlm } from "../../src/modules/residentAlerts/residentAskMurus.service";
 
 const app = createApp();
 const getUserMock = supabase?.auth.getUser as jest.Mock;
@@ -86,6 +100,7 @@ const sendResidentAlertSmsMock = sendResidentAlertSms as jest.Mock;
 const sendResidentAlertWhatsappMock = sendResidentAlertWhatsapp as jest.Mock;
 const sendResidentAlertTelegramMock = sendResidentAlertTelegram as jest.Mock;
 const answerAskMurusMock = answerAskMurus as jest.Mock;
+const checkResidentRumorWithLlmMock = checkResidentRumorWithLlm as jest.Mock;
 
 describe("resident alert routes", () => {
   beforeEach(() => {
@@ -97,6 +112,7 @@ describe("resident alert routes", () => {
     sendResidentAlertWhatsappMock.mockClear();
     sendResidentAlertTelegramMock.mockClear();
     answerAskMurusMock.mockClear();
+    checkResidentRumorWithLlmMock.mockClear();
     getUserMock.mockResolvedValue({
       data: {
         user: {
@@ -286,6 +302,46 @@ describe("resident alert routes", () => {
       model: "deepseek-v4-pro:stable",
     });
     expect(answerAskMurusMock).toHaveBeenCalledWith(payload);
+  });
+
+  it("checks resident rumors through the Ask MURUS rumor endpoint", async () => {
+    const payload = {
+      claim: "Orchard Road MRT is closed",
+      officialAlerts: [
+        {
+          id: "resident-alert:1",
+          title: "Avoid Orchard Road",
+          body: "Flash flooding has been reported near Orchard Road.",
+          publicAction: "Use Somerset MRT exits and avoid basement links.",
+          severity: "danger",
+          status: "updated",
+          locationLabel: "Orchard Road",
+        },
+      ],
+      residentContext: {
+        profile: "general",
+        pointLabel: "Work",
+        pointSublabel: "Orchard Road",
+      },
+      deterministicResult: {
+        status: "partial",
+        label: "Partly related, not fully confirmed",
+        message: "This mentions a similar area, but the exact closure is not confirmed.",
+      },
+    };
+
+    const response = await request(app)
+      .post("/api/v1/resident-alerts/rumor-check")
+      .send(payload)
+      .expect(200);
+
+    expect(response.body.source).toContain("rumor checker");
+    expect(response.body.data).toMatchObject({
+      status: "partial",
+      label: "Partly related, not confirmed",
+      mode: "llm",
+    });
+    expect(checkResidentRumorWithLlmMock).toHaveBeenCalledWith(payload);
   });
 
   it("rejects missing or non-leader publish attempts", async () => {

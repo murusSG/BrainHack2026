@@ -4,7 +4,10 @@ import { AppLogo } from '../components/AppLogo';
 import { CrisisMap } from '../components/CrisisMap';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
-import { ResidentAlertVisualGuide } from '../components/ResidentAlertVisualGuide';
+import {
+  buildResidentEvacuationGuideContext,
+  ResidentAlertVisualGuide,
+} from '../components/ResidentAlertVisualGuide';
 import { useEvents } from '../hooks/useEvents';
 import { api } from '../services/api';
 import { CHECK_IN_OPTIONS, saveResidentCheckin } from '../utils/residentCheckins';
@@ -88,6 +91,15 @@ const MOBILITY_NEEDS = [
   { id: 'elderly', label: 'Elderly / slower walking' },
   { id: 'mobility', label: 'Wheelchair / mobility aid' },
   { id: 'child', label: 'With young child' },
+];
+
+const RESIDENT_TABS = [
+  { id: 'alerts', label: 'Alerts' },
+  { id: 'profile', label: 'Profile' },
+  { id: 'impact', label: 'Impact' },
+  { id: 'preparedness', label: 'Preparedness' },
+  { id: 'rumor', label: 'Rumor check' },
+  { id: 'map', label: 'Map' },
 ];
 
 const DEFAULT_RESIDENT_DETAILS = {
@@ -261,11 +273,13 @@ export function ResidentPage({ session }) {
   const [checkInStatuses, setCheckInStatuses] = useState({});
   const [rumorText, setRumorText] = useState('');
   const [rumorCheck, setRumorCheck] = useState(null);
+  const [rumorCheckStatus, setRumorCheckStatus] = useState('idle');
   const [impactPointId, setImpactPointId] = useState('current');
   const [impactTransport, setImpactTransport] = useState('walking');
   const [impactMobility, setImpactMobility] = useState('none');
   const [impactResult, setImpactResult] = useState(null);
   const [simpleMode, setSimpleMode] = useState(false);
+  const [activeResidentTab, setActiveResidentTab] = useState('alerts');
   const [preparedItemIds, setPreparedItemIds] = useState(() => new Set());
   const [statusMessageCopied, setStatusMessageCopied] = useState(false);
   const [residentDetails, setResidentDetails] = useState(DEFAULT_RESIDENT_DETAILS);
@@ -473,7 +487,27 @@ export function ResidentPage({ session }) {
   async function handleAskCopilot(alert, point, question) {
     const trimmedQuestion = question.trim();
     if (!trimmedQuestion) return;
-    const nearestShelter = await findNearestShelterForQuestion(trimmedQuestion, point);
+    const intent = detectResidentQuestionIntent(trimmedQuestion);
+    const homePoint = impactPoints.find((candidate) => candidate.id === 'home');
+    const evacuationGuide =
+      intent === 'evacuate'
+        ? await buildAskMurusEvacuationContext({
+            alert,
+            point,
+            homePoint,
+            transportMode: impactTransport,
+            mobilityNeed: impactMobility,
+            profileLabel: activeProfileMeta.label,
+          })
+        : null;
+    const nearestShelter = evacuationGuide?.destination?.type === 'shelter'
+      ? {
+          name: evacuationGuide.destination.label,
+          address: evacuationGuide.destination.address,
+          distanceMeters: evacuationGuide.destination.distanceMeters,
+          source: 'Filtered evacuation guide',
+        }
+      : await findNearestShelterForQuestion(trimmedQuestion, point);
     const fallbackAnswer = answerResidentQuestion(trimmedQuestion, alert, point, activeProfile, {
       residentDetails,
       impactPoints,
@@ -534,6 +568,7 @@ export function ResidentPage({ session }) {
                   : null,
             },
             nearestShelter,
+            evacuationGuide,
             savedPlaces: buildResidentContextPlaces(impactPoints, officialAlerts),
             emergencyPack: {
               readyCount: preparedCount,
@@ -576,6 +611,70 @@ export function ResidentPage({ session }) {
           status: 'fallback',
         },
       }));
+    }
+  }
+
+  async function handleCheckResidentRumor() {
+    const claim = rumorText.trim();
+    const deterministicResult = checkResidentRumor(claim, officialAlerts);
+
+    if (!claim) {
+      setRumorCheck(deterministicResult);
+      setRumorCheckStatus('idle');
+      return;
+    }
+
+    setRumorCheck({
+      ...deterministicResult,
+      label: 'Ask MURUS is checking this',
+      message: 'Comparing the claim with current official alerts...',
+      mode: 'loading',
+    });
+    setRumorCheckStatus('loading');
+
+    try {
+      const result = await api.checkResidentRumor(
+        {
+          claim,
+          officialAlerts: officialAlerts.map((alert) => ({
+            id: alert.id,
+            title: alert.title,
+            body: alert.body,
+            publicAction: alert.publicAction,
+            severity: alert.severity,
+            status: alert.status,
+            locationLabel: alert.locationLabel,
+          })),
+          residentContext: {
+            profile: activeProfile,
+            profileLabel: activeProfileMeta.label,
+            pointLabel: activeAlerts?.point?.label ?? active?.point?.label,
+            pointSublabel: activeAlerts?.point?.sublabel ?? active?.point?.sublabel,
+            transportMode: optionLabel(TRANSPORT_MODES, impactTransport),
+            mobilityNeed: optionLabel(MOBILITY_NEEDS, impactMobility),
+          },
+          deterministicResult,
+        },
+        ...(session?.token ? [session.token] : [])
+      );
+
+      setRumorCheck({
+        status: result.status ?? deterministicResult.status,
+        label: result.label ?? deterministicResult.label,
+        message: result.message ?? deterministicResult.message,
+        matchedAlert: result.matchedAlert ?? deterministicResult.matchedAlert,
+        confidence: result.confidence,
+        mode: result.mode ?? 'llm',
+        guardrail: result.guardrail,
+      });
+      setRumorCheckStatus(result.mode === 'fallback' ? 'fallback' : 'ready');
+    } catch (err) {
+      setRumorCheck({
+        ...deterministicResult,
+        mode: 'fallback',
+        guardrail: `Ask MURUS rumor checker unavailable: ${err.message}`,
+      });
+      setRumorCheckStatus('fallback');
     }
   }
 
@@ -714,6 +813,49 @@ export function ResidentPage({ session }) {
     }
   }
 
+  async function buildAskMurusEvacuationContext({
+    alert,
+    point,
+    homePoint,
+    transportMode,
+    mobilityNeed,
+    profileLabel,
+  }) {
+    try {
+      return await buildResidentEvacuationGuideContext({
+        alert,
+        point,
+        homePoint,
+        transportMode,
+        mobilityNeed,
+        profileLabel,
+      });
+    } catch (err) {
+      return {
+        heading: 'Evacuation route preview unavailable',
+        summary: 'MURUS could not generate an evacuation route preview for this question.',
+        detail: err instanceof Error ? err.message : 'Route context unavailable.',
+        riskLabel: 'Needs staff confirmation',
+        routeLabel: 'Check route',
+        routeTone: 'warning',
+        destination: null,
+        route: {
+          source: 'unavailable',
+          distanceMeters: null,
+          durationSeconds: null,
+          pointCount: 0,
+        },
+        routeConfidence: {
+          label: 'Needs staff confirmation',
+          tone: 'warning',
+          reasons: ['Route preview was unavailable, so Ask MURUS should rely on the official alert and resident context.'],
+        },
+        skippedCandidates: [],
+        steps: [],
+      };
+    }
+  }
+
   function handleUseLiveLocation() {
     if (!navigator.geolocation) {
       setLiveLocationStatus('unsupported');
@@ -803,7 +945,31 @@ export function ResidentPage({ session }) {
         })}
       </div>
 
-      <section className="resident-persona-panel" aria-label="Personalized guidance profile">
+      <nav className="resident-tab-list" role="tablist" aria-label="Resident safety features">
+        {RESIDENT_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            id={`resident-tab-${tab.id}`}
+            aria-selected={activeResidentTab === tab.id}
+            aria-controls={`resident-panel-${tab.id}`}
+            className={`resident-tab-button ${activeResidentTab === tab.id ? 'is-active' : ''}`}
+            onClick={() => setActiveResidentTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      {activeResidentTab === 'profile' && (
+      <section
+        className="resident-persona-panel"
+        role="tabpanel"
+        id="resident-panel-profile"
+        aria-labelledby="resident-tab-profile"
+        aria-label="Personalized guidance profile"
+      >
         <div>
           <p className="resident-persona-title">Personalize this alert</p>
           <p className="resident-persona-copy">
@@ -993,7 +1159,15 @@ export function ResidentPage({ session }) {
           </>
         )}
       </section>
+      )}
 
+      {activeResidentTab === 'impact' && (
+      <div
+        className="resident-tab-panel resident-tab-panel-stack"
+        role="tabpanel"
+        id="resident-panel-impact"
+        aria-labelledby="resident-tab-impact"
+      >
       <section className="resident-impact-panel" aria-label="Does this affect me check">
         <div>
           <p className="resident-persona-title">Does this affect me?</p>
@@ -1125,8 +1299,17 @@ export function ResidentPage({ session }) {
         </div>
         <p className="resident-family-message">{savedPlacesImpact.familyMessage}</p>
       </section>
+      </div>
+      )}
 
-      <section className="resident-preparedness-panel" aria-label="Emergency pack readiness">
+      {activeResidentTab === 'preparedness' && (
+      <section
+        className="resident-preparedness-panel"
+        role="tabpanel"
+        id="resident-panel-preparedness"
+        aria-labelledby="resident-tab-preparedness"
+        aria-label="Emergency pack readiness"
+      >
         <div className="resident-preparedness-head">
           <div>
             <p className="resident-persona-title">Emergency pack mode</p>
@@ -1186,8 +1369,16 @@ export function ResidentPage({ session }) {
           </button>
         </div>
       </section>
+      )}
 
-      <section className="resident-rumor-panel" aria-label="Rumor check">
+      {activeResidentTab === 'rumor' && (
+      <section
+        className="resident-rumor-panel"
+        role="tabpanel"
+        id="resident-panel-rumor"
+        aria-labelledby="resident-tab-rumor"
+        aria-label="Rumor check"
+      >
         <div>
           <p className="resident-persona-title">Rumor check</p>
           <p className="resident-persona-copy">
@@ -1206,12 +1397,13 @@ export function ResidentPage({ session }) {
         <button
           type="button"
           className="resident-rumor-button"
-          onClick={() => setRumorCheck(checkResidentRumor(rumorText, officialAlerts))}
+          onClick={handleCheckResidentRumor}
+          disabled={rumorCheckStatus === 'loading'}
         >
-          Check against official alerts
+          {rumorCheckStatus === 'loading' ? 'Checking with Ask MURUS...' : 'Check with Ask MURUS'}
         </button>
         {rumorCheck && (
-          <div className={`resident-rumor-result is-${rumorCheck.status}`}>
+          <div className={`resident-rumor-result is-${rumorCheck.status} ${rumorCheck.mode ? `is-${rumorCheck.mode}` : ''}`}>
             <strong>{rumorCheck.label}</strong>
             <p>{rumorCheck.message}</p>
             {rumorCheck.matchedAlert && (
@@ -1219,10 +1411,24 @@ export function ResidentPage({ session }) {
                 Matched official alert: {rumorCheck.matchedAlert.title} / {rumorCheck.matchedAlert.locationLabel}
               </span>
             )}
+            {rumorCheck.mode && rumorCheck.mode !== 'loading' && (
+              <span>
+                Source: {rumorCheck.mode === 'llm' ? 'Ask MURUS AI' : 'Official-alert fallback'}
+                {rumorCheck.confidence ? ` / Confidence: ${rumorCheck.confidence}` : ''}
+              </span>
+            )}
           </div>
         )}
       </section>
+      )}
 
+      {activeResidentTab === 'alerts' && (
+      <div
+        className="resident-tab-panel resident-tab-panel-stack"
+        role="tabpanel"
+        id="resident-panel-alerts"
+        aria-labelledby="resident-tab-alerts"
+      >
       <section className={`resident-crisis-card is-${activeTone}`}>
         {isLoading || residentAlertStatus === 'loading' ? (
           <>
@@ -1438,8 +1644,17 @@ export function ResidentPage({ session }) {
           Resident alert channel unavailable ({residentAlertError}). Showing event-derived alerts.
         </p>
       )}
+      </div>
+      )}
 
-      <section className="resident-map-shell" aria-label="Nearby crisis map">
+      {activeResidentTab === 'map' && (
+      <section
+        className="resident-map-shell"
+        role="tabpanel"
+        id="resident-panel-map"
+        aria-labelledby="resident-tab-map"
+        aria-label="Nearby crisis map"
+      >
         {isLoading ? (
           <MapLoadingSkeleton label="Syncing nearby hazards" />
         ) : (
@@ -1448,6 +1663,7 @@ export function ResidentPage({ session }) {
           </MapErrorBoundary>
         )}
       </section>
+      )}
     </div>
   );
 }

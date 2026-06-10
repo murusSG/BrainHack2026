@@ -16,6 +16,7 @@ import { incidentRouter } from "../modules/incidents/incident.routes";
 import { resourceAllocationRouter } from "../modules/resourceAllocation/resourceAllocation.routes";
 import { residentAlertsRouter } from "../modules/residentAlerts/residentAlerts.routes";
 import { residentsRouter } from "../modules/residents/residents.routes";
+import { streetViewRouter } from "../modules/streetView/streetView.routes";
 
 export const v1Router = Router();
 
@@ -37,3 +38,4 @@ v1Router.use("/incidents", incidentRouter);
 v1Router.use("/resource-allocation", resourceAllocationRouter);
 v1Router.use("/resident-alerts", residentAlertsRouter);
 v1Router.use("/residents", residentsRouter);
+v1Router.use("/street-view", streetViewRouter);
