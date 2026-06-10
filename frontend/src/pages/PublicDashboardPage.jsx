@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   publicAdvisories,
   publicAffectedAreas,
@@ -11,6 +12,7 @@ import {
 } from '../data/dashboardData';
 import { OneMapPreviewMap } from '../components/OneMapPreviewMap';
 import { AppLogo } from '../components/AppLogo';
+import { api } from '../services/api';
 
 const PUBLIC_MAP_POINTS = [
   {
@@ -80,6 +82,43 @@ export function PublicDashboardPage({
   mobileView = false,
   showBackButton = true,
 }) {
+  const [isReportFormOpen, setIsReportFormOpen] = useState(false);
+  const [reportText, setReportText] = useState('');
+  const [reportStatus, setReportStatus] = useState('idle');
+  const [reportError, setReportError] = useState('');
+  const [reportResult, setReportResult] = useState(null);
+
+  async function handleReportSubmit(event) {
+    event.preventDefault();
+
+    const trimmedReport = reportText.trim();
+    if (!trimmedReport) {
+      setReportStatus('error');
+      setReportError('Please describe what you are seeing before submitting.');
+      return;
+    }
+
+    setReportStatus('submitting');
+    setReportError('');
+
+    try {
+      const result = await api.reportIncident({
+        report_text: trimmedReport,
+        reported_at: new Date().toISOString(),
+        source: 'public',
+      });
+      setReportResult(result);
+      setReportStatus('success');
+      setReportText('');
+    } catch (error) {
+      setReportStatus('error');
+      setReportError(error instanceof Error ? error.message : 'Could not submit your report.');
+    }
+  }
+
+  const reportResultTone =
+    reportResult?.status === 'needs_manual_review' ? 'warning' : 'success';
+
   return (
     <div
       className={[
@@ -148,11 +187,67 @@ export function PublicDashboardPage({
           </section>
 
           <div className="public-report-cta-row">
-            <button type="button" className="public-primary-button public-report-cta">
+            <button
+              type="button"
+              className="public-primary-button public-report-cta"
+              aria-expanded={isReportFormOpen}
+              onClick={() => {
+                setIsReportFormOpen((current) => !current);
+                setReportError('');
+              }}
+            >
               {publicDashboardMeta.reportLabel}
               <span>{publicDashboardMeta.reportCopy}</span>
             </button>
           </div>
+
+          {isReportFormOpen ? (
+            <form className="public-report-form" onSubmit={handleReportSubmit}>
+              <label>
+                What is happening?
+                <textarea
+                  name="public-incident-report"
+                  value={reportText}
+                  onChange={(event) => {
+                    setReportText(event.target.value);
+                    if (reportStatus === 'error') setReportError('');
+                  }}
+                  placeholder="Describe what you are seeing, where it is happening, and whether anyone needs urgent help."
+                />
+              </label>
+              <div className="public-advisory-actions">
+                <button type="submit" className="public-primary-button" disabled={reportStatus === 'submitting'}>
+                  {reportStatus === 'submitting' ? 'Submitting...' : 'Submit to Command'}
+                </button>
+                <button
+                  type="button"
+                  className="public-outline-button"
+                  onClick={() => {
+                    setIsReportFormOpen(false);
+                    setReportError('');
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+              <p className="public-privacy-note">
+                MURUS will assess this report with the command-side AI workflow and route it for
+                dispatcher approval before any operational action is taken.
+              </p>
+              {reportError ? <p className="public-report-error">{reportError}</p> : null}
+              {reportResult ? (
+                <div className={`public-report-result ${reportResultTone === 'warning' ? 'warning' : ''}`}>
+                  <strong>
+                    {reportResult.status === 'needs_manual_review'
+                      ? 'Report queued for dispatcher review'
+                      : 'Report sent to command'}
+                  </strong>
+                  <p>{reportResult.message || 'Your report has been added to the command review flow.'}</p>
+                  <span>Incident ID: {reportResult.incident_id}</span>
+                </div>
+              ) : null}
+            </form>
+          ) : null}
 
           <section className="public-overview-grid">
             <div className="public-left-column">
