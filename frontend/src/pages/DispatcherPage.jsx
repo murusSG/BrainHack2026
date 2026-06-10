@@ -4,6 +4,7 @@ import { CrisisMap } from '../components/CrisisMap';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
 import { MapLegend } from '../components/MapLegend';
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
+import { VisualPanel } from '../components/visuals';
 import { usePageAwarePolling } from '../hooks/usePageAwarePolling';
 import { api } from '../services/api';
 import {
@@ -256,7 +257,12 @@ export function DispatcherPage({ session }) {
           )}
         </aside>
 
-        <section className="panel dispatcher-detail-panel">
+        <VisualPanel
+          className="panel dispatcher-detail-panel"
+          visual="routeGrid"
+          visualVariant="subtleBackground"
+          visualPosition="center"
+        >
           <div className="responder-section-heading">
             <div>
               <p className="eyebrow">Selected incident</p>
@@ -355,7 +361,7 @@ export function DispatcherPage({ session }) {
               </div>
             </>
           )}
-        </section>
+        </VisualPanel>
       </section>
 
       <section className="panel dispatcher-map-panel">

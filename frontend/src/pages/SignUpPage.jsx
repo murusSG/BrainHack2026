@@ -59,9 +59,9 @@ export function SignUpPage({ onAuthenticate }) {
   }
 
   return (
-    <Box mih="100vh" bg="linear-gradient(180deg, #fff9f7 0%, #fff1ed 100%)">
+    <Box className="standalone-page-content auth-page-content" mih="100vh">
       <Container size={460} py={56}>
-        <Card withBorder radius="md" padding="xl" bg="rgba(255,255,255,0.94)">
+        <Card className="identity-auth-card" withBorder radius="md" padding="xl">
           <Text c="brandRed.6" fz="xs" fw={700} tt="uppercase" lts="0.12em">
             Public Registration
           </Text>

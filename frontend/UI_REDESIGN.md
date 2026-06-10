@@ -66,6 +66,22 @@ truth command product and can be rendered entirely in CSS without adding asset w
   selected-incident summary, and improved empty/loading/error styling.
 - Theme: centralized Mantine colour scales, typography, radius, and shadow choices.
 
+## Singapore Visual Assets
+
+The command surfaces use reusable inline SVG components from `src/components/visuals/`:
+
+- `SingaporeSkylineBackground`: lower-edge skyline divider in the Overview hero.
+- `MerlionWatermark`: low-opacity watermark in the resident response summary.
+- `SupertreeGroveAccent`: restrained advisory-panel corner detail.
+- `SingaporeLandmarkFrame`: Marina Bay Sands and Singapore Flyer frame in Dispatcher.
+- `CivicGridBackground`: low-opacity operational grid behind Dispatcher incident details.
+- `SingaporeRoutePattern`: connecting-route texture behind Dispatcher and the map sidebar.
+- `MarinaBaySandsSilhouette` and `SingaporeFlyerAccent`: standalone landmark primitives used by
+  the composite frame and available for future section-level layouts.
+
+All drawings use `currentColor`, are hidden from assistive technology, ignore pointer events, and
+render without raster assets, external requests, filters, or animation.
+
 ## Validation
 
 Run from `frontend/`:
@@ -86,3 +102,144 @@ CommonJS `html-encoding-sniffer` with ESM-only `@exodus/bytes`. The project decl
 - Check 1280px, 1024px, 768px, and mobile navigation/layout breakpoints.
 - Verify contrast with real incident severity combinations and long agency names.
 - Confirm Vercel uses Node `>=20.19.0` for reproducible test tooling.
+
+## Site-Wide Audit
+
+The route audit covers every route declared in `src/App.jsx`.
+
+| Route | Surface | Previous state | Current visual treatment |
+| --- | --- | --- | --- |
+| `/` | Landing | Missed | Marina Bay hero, network texture, unified cards |
+| `/login` | Authentication | Missed | Flyer-backed auth canvas and elevated form card |
+| `/signup` | Registration | Missed | Marina Bay-backed auth canvas and elevated form card |
+| `/auth/callback` | Auth loading | Partial | Shared loading shell and global civic-tech theme |
+| `/public-dashboard` | Resident public dashboard | Missed | Network canvas, skyline incident banner, refined cards |
+| `/resident` | Resident tools | Missed | Low-opacity network canvas and Merlion panel treatment |
+| `/responder` | Responder operations | Missed | Flyer header, network canvas, Merlion shared-log accent |
+| `/dispatcher` | Dispatcher operations | Redesigned | Canva Flyer/Marina composition replaces line artwork |
+| `/overview` | Command overview | Redesigned | Strong Marina Bay hero and Merlion summary watermark |
+| `/incident-map` | Command map | Redesigned | Restrained route-grid treatment outside the map canvas |
+| `/resources` | Resource operations | Partial | Flyer hero, shared command surfaces, Merlion request accent |
+| `/hospitals` | Hospital capacity | Partial | Flyer hero, shared command surfaces, Merlion registry accent |
+| `/alerts` | Alert operations | Partial | Network canvas and Merlion detail-panel accent |
+| `/system-flow` | Architecture view | Partial | Civic network hero and Merlion implementation accent |
+
+The command routes also share the redesigned sidebar, topbar, footer, typography, status language,
+buttons, cards, tables, forms, loading states, and error/empty-state surfaces through
+`DashboardLayout`, `theme.js`, and `operations.css`.
+
+## Canva Asset Handoff
+
+The production artwork is stored under `src/assets/singapore/` and exposed through the reusable
+components in `src/components/visuals/`. The checked-in files are optimized PNG previews because
+the Canva connector did not expose SVG export in this session.
+
+| Asset | Frontend file | Primary use | Canva source |
+| --- | --- | --- | --- |
+| Marina Bay command hero | `marina-bay-command-hero.png` | Landing, Overview, public banner, auth variant | [Edit in Canva](https://www.canva.com/d/AdrXGC3L7kdcq1u) |
+| Singapore Flyer command hero | `singapore-flyer-command-hero.png` | Dispatcher, responder, resources, hospitals, login | [Edit in Canva](https://www.canva.com/d/BMKiIQ1y8lJkLMn) |
+| Merlion panel watermark | `merlion-panel-watermark.png` | Summary, detail, request, registry, shared-log panels | [Edit in Canva](https://www.canva.com/d/EYnfjzuYs-vAfIo) |
+| Civic route-grid | `civic-route-grid.png` | Dense pages, sidebars, forms, map-adjacent areas | [Edit in Canva](https://www.canva.com/d/CKVYD-gekQ98wZw) |
+
+The four files total about 390 KB before build hashing. Vite emits them as separate cacheable
+assets, and route-level code splitting remains intact.
+
+## Reusable Usage Pattern
+
+- Use `SingaporeSkylineBackground` or `MarinaBaySandsSilhouette` for prominent hero surfaces.
+- Use `SingaporeLandmarkFrame` or `SingaporeFlyerAccent` for operational headers and corners.
+- Use `MerlionWatermark` inside large summary or informational panels.
+- Use `SingaporeRoutePattern` or `CivicGridBackground` behind dense non-map content.
+- Keep all artwork decorative with empty alt text and `aria-hidden="true"`.
+- Prefer the centralized CSS variables in `operations.css` over page-specific asset URLs.
+
+## Asset Integration Baseline Validation
+
+- Before the scale-system correction, `npm run build` passed.
+- Before the correction, Vitest with Node `20.19.0` passed 16 files and 52 tests.
+- Default Node `20.17.0`: still cannot start Vitest because of the existing
+  `html-encoding-sniffer` / `@exodus/bytes` CommonJS-to-ESM incompatibility.
+
+## Consistency And Scale Correction
+
+The first Canva integration still allowed individual pages to size and position artwork through
+page-specific classes. That produced conflicting rules for Overview, Dispatcher, and Incident Map
+at desktop and mobile breakpoints. The corrected system removes raw asset sizing from page modules.
+
+### Route Audit
+
+| Route | Audit finding before correction | Corrected treatment |
+| --- | --- | --- |
+| `/` | Asset scale and placement issue | Shared landing shell with `hero` preset |
+| `/login` | Partially aligned; auth styling differed | Shared auth canvas with `subtleBackground` |
+| `/signup` | Partially aligned; auth styling differed | Shared auth canvas with `subtleBackground` |
+| `/auth/callback` | Not aligned; plain loading shell | Shared loading shell and route-grid background |
+| `/public-dashboard` | Partially aligned; overly independent public style | Shared standalone shell and `sectionDivider` |
+| `/resident` | Partially aligned; old page background | Shared standalone shell and Merlion `watermark` |
+| `/responder` | Partially aligned; header/background mismatch | Shared standalone shell and Flyer `panel` |
+| `/dispatcher` | Asset scale and placement issue | Shared shell; removed manual route/header artwork |
+| `/overview` | Asset scale issue and duplicate hero artwork | Shared command shell; MBS `hero` preset |
+| `/incident-map` | Readability and placement issue | Route grid at 2.5% opacity outside map canvas |
+| `/resources` | Partially aligned | Shared command shell and Flyer `corner` |
+| `/hospitals` | Partially aligned | Shared command shell and Flyer `corner` |
+| `/alerts` | Partially aligned | Shared command shell and route-grid background |
+| `/system-flow` | Partially aligned | Shared command shell and `sectionDivider` |
+
+`DebugPage.jsx` is a development-only screen and is not declared in `App.jsx`; it is therefore not
+part of the navigable product. No settings, configuration, or admin routes currently exist.
+
+### Shared Components
+
+- `AppPage` is the route-level page background, clipping, stacking, and width boundary.
+- `SingaporeVisualLayer` is the only component permitted to render Singapore artwork.
+- `VisualPanel` provides standardized panel watermarks and corner accents.
+- `DashboardLayout` applies command-route presets using its existing `activePage` property.
+- `StandalonePage` applies the same system to landing, auth, public, resident, responder, and
+  dispatcher routes.
+
+The previous visual exports that accepted arbitrary `size`, `opacity`, and inline positioning were
+removed. Pages now select only semantic values:
+
+```jsx
+<SingaporeVisualLayer
+  visual="mbs"
+  visualVariant="hero"
+  visualPosition="topRight"
+  visualIntensity="medium"
+/>
+```
+
+### Asset Presets
+
+| Preset | Desktop size | Mobile size | Intended use |
+| --- | --- | --- | --- |
+| `hero` | `420-640px` wide, `210-340px` high | Up to `440px` by `190px` | Landing and Overview |
+| `panel` | `190-320px` wide, `130-220px` high | `210px` by `145px` | Responder/Dispatcher headers |
+| `corner` | `140-240px` wide, `100-170px` high | `150px` by `105px` | Dense operational pages |
+| `watermark` | `220-360px` wide, `155-255px` high | `230px` by `165px` | Summary and status panels |
+| `sectionDivider` | Container width, `72-120px` high | `72px` high | Public and architecture sections |
+| `subtleBackground` | Container bounds | Container bounds | Forms, lists, map side panels |
+
+Opacity is limited to `subtle` (`5.5%`, reduced to `3.5%` on mobile) and `medium` (`12%`, reduced
+to `7.5%` on mobile). All layers are absolutely positioned, clipped by their wrapper, use
+`pointer-events: none`, and reserve no layout space.
+
+### Normalized Foundations
+
+- Page maximum width: `1480px`.
+- Page padding: responsive `16-34px`.
+- Control radius: `10px`.
+- Panel radius: `14px`.
+- Feature/header radius: `18px`.
+- One panel border, canvas color, muted surface, and elevation scale.
+- Shared treatment for cards, forms, tables/lists, chips, status badges, loading states, and empty
+  states.
+- Map artwork is suppressed inside the actual map panel and limited to surrounding UI.
+
+### Correction Validation
+
+- `git diff --check`: passed.
+- Route inventory: all 14 declared product paths use `AppPage`.
+- Legacy per-page visual sizing selectors and arbitrary sizing props: removed.
+- Production build and Vitest rerun: pending because the command approval service reached its
+  temporary usage limit during this correction.

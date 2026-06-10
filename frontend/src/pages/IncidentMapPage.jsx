@@ -3,6 +3,7 @@ import { CrisisMap } from '../components/CrisisMap';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
 import { MapLegend } from '../components/MapLegend';
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
+import { VisualPanel } from '../components/visuals';
 import { useEvents } from '../hooks/useEvents';
 import { usePageAwarePolling } from '../hooks/usePageAwarePolling';
 import { api } from '../services/api';
@@ -150,7 +151,12 @@ export function IncidentMapPage() {
         </div>
 
         <aside className="incident-map-sidebar">
-          <section className="panel incident-list-panel">
+          <VisualPanel
+            className="panel incident-list-panel"
+            visual="routeGrid"
+            visualVariant="subtleBackground"
+            visualPosition="center"
+          >
             <div className="section-heading incident-list-heading">
               <div>
                 <p className="eyebrow">Active incidents</p>
@@ -214,7 +220,7 @@ export function IncidentMapPage() {
                 ))}
               </div>
             )}
-          </section>
+          </VisualPanel>
         </aside>
       </section>
     </div>

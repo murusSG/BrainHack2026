@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { resolvePostLoginPath } from './lib/authRouting';
+import { AppPage } from './components/visuals';
 import { HomePage } from './pages/HomePage';
 
 function lazyNamed(loader, exportName) {
@@ -26,12 +27,22 @@ const SystemFlowPage = lazyNamed(() => import('./pages/SystemFlowPage'), 'System
 
 function RouteLoadingFallback() {
   return (
-    <div className="route-loading-shell">
-      <div className="route-loading-card">
-        <p className="eyebrow">Loading workspace</p>
-        <h1>Preparing the latest operational view</h1>
+    <AppPage mode="standalone" page="loading">
+      <div className="route-loading-shell">
+        <div className="route-loading-card">
+          <p className="eyebrow">Loading workspace</p>
+          <h1>Preparing the latest operational view</h1>
+        </div>
       </div>
-    </div>
+    </AppPage>
+  );
+}
+
+function StandalonePage({ children, page }) {
+  return (
+    <AppPage mode="standalone" page={page}>
+      {children}
+    </AppPage>
   );
 }
 
@@ -57,13 +68,15 @@ function ProtectedCommandShell({ page, session, onSignOut, restoring }) {
 
   if (restoring) {
     return (
-      <div className="route-loading-shell">
-        <div className="route-loading-card">
-          <p className="eyebrow">Restoring session</p>
-          <h1>Loading command workspace</h1>
-          <p className="hero-copy">Checking your access and preparing the latest operational view.</p>
+      <AppPage mode="standalone" page="loading">
+        <div className="route-loading-shell">
+          <div className="route-loading-card">
+            <p className="eyebrow">Restoring session</p>
+            <h1>Loading command workspace</h1>
+            <p className="hero-copy">Checking your access and preparing the latest operational view.</p>
+          </div>
         </div>
-      </div>
+      </AppPage>
     );
   }
 
@@ -113,13 +126,15 @@ function AuthCallbackRoute({ session, restoring }) {
   }, [session, restoring, navigate]);
 
   return (
-    <div className="route-loading-shell">
-      <div className="route-loading-card">
-        <p className="eyebrow">Signing you in</p>
-        <h1>Completing sign-in</h1>
-        <p className="hero-copy">Verifying your account and preparing your dashboard.</p>
+    <AppPage mode="standalone" page="loading">
+      <div className="route-loading-shell">
+        <div className="route-loading-card">
+          <p className="eyebrow">Signing you in</p>
+          <h1>Completing sign-in</h1>
+          <p className="hero-copy">Verifying your account and preparing your dashboard.</p>
+        </div>
       </div>
-    </div>
+    </AppPage>
   );
 }
 
@@ -130,39 +145,86 @@ function ProtectedPublicDashboard({ session, restoring }) {
   if (!session) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
-  return <PublicDashboardPage onReturnToOps={() => navigate(session.role === 'public' ? '/' : '/overview')} />;
+  return (
+    <StandalonePage page="public">
+      <PublicDashboardPage
+        onReturnToOps={() => navigate(session.role === 'public' ? '/' : '/overview')}
+      />
+    </StandalonePage>
+  );
 }
 
 function ProtectedDispatcherRoute({ session, restoring }) {
   const location = useLocation();
   if (restoring) {
     return (
-      <div className="route-loading-shell">
-        <div className="route-loading-card">
-          <p className="eyebrow">Restoring session</p>
-          <h1>Loading dispatcher workspace</h1>
-          <p className="hero-copy">Checking your access and preparing the review queue.</p>
+      <AppPage mode="standalone" page="loading">
+        <div className="route-loading-shell">
+          <div className="route-loading-card">
+            <p className="eyebrow">Restoring session</p>
+            <h1>Loading dispatcher workspace</h1>
+            <p className="hero-copy">Checking your access and preparing the review queue.</p>
+          </div>
         </div>
-      </div>
+      </AppPage>
     );
   }
   if (!session) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
-  return <DispatcherPage session={session} />;
+  return (
+    <StandalonePage page="dispatcher">
+      <DispatcherPage session={session} />
+    </StandalonePage>
+  );
 }
 
 export function AppRoutes({ session, restoring, onAuthenticate, onSignOut }) {
   return (
     <Suspense fallback={<RouteLoadingFallback />}>
       <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<LoginRoute onAuthenticate={onAuthenticate} />} />
-        <Route path="/signup" element={<SignUpRoute onAuthenticate={onAuthenticate} />} />
+        <Route
+          path="/"
+          element={
+            <StandalonePage page="landing">
+              <HomePage />
+            </StandalonePage>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <StandalonePage page="login">
+              <LoginRoute onAuthenticate={onAuthenticate} />
+            </StandalonePage>
+          }
+        />
+        <Route
+          path="/signup"
+          element={
+            <StandalonePage page="signup">
+              <SignUpRoute onAuthenticate={onAuthenticate} />
+            </StandalonePage>
+          }
+        />
         <Route path="/auth/callback" element={<AuthCallbackRoute session={session} restoring={restoring} />} />
         <Route path="/public-dashboard" element={<ProtectedPublicDashboard session={session} restoring={restoring} />} />
-        <Route path="/resident" element={<ResidentPage />} />
-        <Route path="/responder" element={<ResponderPage />} />
+        <Route
+          path="/resident"
+          element={
+            <StandalonePage page="resident">
+              <ResidentPage />
+            </StandalonePage>
+          }
+        />
+        <Route
+          path="/responder"
+          element={
+            <StandalonePage page="responder">
+              <ResponderPage />
+            </StandalonePage>
+          }
+        />
         <Route path="/dispatcher" element={<ProtectedDispatcherRoute session={session} restoring={restoring} />} />
 
         <Route path="/overview" element={<ProtectedCommandShell page="overview" session={session} onSignOut={onSignOut} restoring={restoring} />} />

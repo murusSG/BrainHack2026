@@ -8,6 +8,9 @@ import { QuickActionsPanel } from '../components/QuickActionsPanel';
 import { RecommendationPanel } from '../components/RecommendationPanel';
 import { TimelinePanel } from '../components/TimelinePanel';
 import {
+  VisualPanel,
+} from '../components/visuals';
+import {
   dataSources,
   dorsconStatus,
   quickActions,
@@ -206,7 +209,12 @@ export function OverviewPage() {
         </div>
       </section>
 
-      <section className={`status-banner panel status-banner-${dorsconStatus.level}`}>
+      <VisualPanel
+        className={`status-banner panel status-banner-${dorsconStatus.level}`}
+        visual="flyer"
+        visualVariant="corner"
+        visualPosition="bottomRight"
+      >
         <div className="status-mark">Advisories</div>
         <div className="status-content">
           <p className="status-title">{dorsconStatus.commandTitle}</p>
@@ -247,7 +255,7 @@ export function OverviewPage() {
             {guidelinesVisible ? 'Hide DORSCON guide' : 'View guidelines'}
           </button>
         </div>
-      </section>
+      </VisualPanel>
 
       <section className="stats-grid">
         {overviewStats.map((stat) => (
@@ -255,7 +263,13 @@ export function OverviewPage() {
         ))}
       </section>
 
-      <section className="resident-response-panel panel" aria-label="Resident response summary">
+      <VisualPanel
+        className="resident-response-panel panel"
+        aria-label="Resident response summary"
+        visual="merlion"
+        visualVariant="watermark"
+        visualPosition="bottomRight"
+      >
         <div className="section-heading">
           <div>
             <p className="eyebrow">Resident response loop</p>
@@ -288,7 +302,7 @@ export function OverviewPage() {
             No residents have requested help yet. Check-ins from the resident alert page will appear here instantly.
           </p>
         )}
-      </section>
+      </VisualPanel>
 
       <ForesightEngine onStageAction={handleStageAction} />
 
