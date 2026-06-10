@@ -51,10 +51,10 @@ export function SidebarNav() {
           <span className="nav-icon nav-icon-resident" aria-hidden="true" />
           <span>Resident View</span>
         </Link>
-        <Link to="/public-dashboard" className="nav-item persona-jump">
+        {/* <Link to="/public-dashboard" className="nav-item persona-jump">
           <span className="nav-icon nav-icon-resident" aria-hidden="true" />
           <span>Public Dashboard</span>
-        </Link>
+        </Link> */}
         <div className="sidebar-status-card">
           <span className="live-dot" />
           <div>
