@@ -4,11 +4,11 @@ import 'leaflet/dist/leaflet.css';
 
 // Severity colours reuse the existing theme tokens.
 const SEVERITY_COLOR = {
-  critical: '#ff7676',
-  high: '#ffb554',
-  medium: '#ffb554',
-  low: '#55a7ff',
-  info: '#19d39a',
+  critical: '#d62f43',
+  high: '#b87516',
+  medium: '#b87516',
+  low: '#2f6f9f',
+  info: '#287a58',
 };
 
 const HYPERLOCAL_HAZARDS = new Set(['flood', 'fire', 'dengue']);
@@ -94,11 +94,11 @@ function FitBounds({ events }) {
 
 export const CrisisMap = memo(function CrisisMap({ events = [], onSelect, selectedId, height = '100%' }) {
   return (
-    <div style={{ height, width: '100%', borderRadius: 16, overflow: 'hidden' }}>
+    <div className="crisis-map-frame" style={{ height }}>
       <MapContainer
         center={SG_CENTER}
         zoom={12}
-        style={{ height: '100%', width: '100%', background: '#0b0d11' }}
+        style={{ height: '100%', width: '100%', background: '#102c30' }}
         scrollWheelZoom
       >
         {/* OneMap Night basemap — matches the dark theme, no API key needed for tiles */}
@@ -114,7 +114,7 @@ export const CrisisMap = memo(function CrisisMap({ events = [], onSelect, select
         {events.map((e) => {
           const coordinates = coordinatesForEvent(e);
           if (!coordinates) return null;
-          const color = e.markerColor ?? SEVERITY_COLOR[e.severity] ?? '#55a7ff';
+          const color = e.markerColor ?? SEVERITY_COLOR[e.severity] ?? '#2f6f9f';
           const isSelected = e.id === selectedId;
           const showCircle = isSelected && HYPERLOCAL_HAZARDS.has(e.hazardType);
           return (
