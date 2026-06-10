@@ -55,15 +55,15 @@ export function ResidentAlertVisualGuide({
     () =>
       [
         [point.lat, point.lng],
-        alert.lat != null && alert.lng != null ? [Number(alert.lat), Number(alert.lng)] : null,
+        alert?.lat != null && alert?.lng != null ? [Number(alert.lat), Number(alert.lng)] : null,
         guide.target ? [guide.target.lat, guide.target.lng] : null,
         ...(guide.routePoints ?? []),
       ].filter(isValidMapPoint),
-    [alert.lat, alert.lng, guide.routePoints, guide.target, point.lat, point.lng]
+    [alert?.lat, alert?.lng, guide.routePoints, guide.target, point.lat, point.lng]
   );
 
   return (
-    <section className="resident-visual-guide-card" aria-label={`Visual guidance for ${alert.title}`}>
+    <section className="resident-visual-guide-card" aria-label={`Visual guidance for ${alert?.title ?? point.label}`}>
       <div className="resident-visual-guide-head">
         <div>
           <p className="resident-guidance-label">Visual next steps</p>
@@ -87,7 +87,7 @@ export function ResidentAlertVisualGuide({
             maxZoom={18}
           />
           <FitRouteBounds points={mapPoints} />
-          {alert.lat != null && alert.lng != null && (
+          {alert?.lat != null && alert?.lng != null && (
             <>
               <Circle
                 center={[Number(alert.lat), Number(alert.lng)]}
@@ -174,7 +174,8 @@ function useResidentVisualGuide({ alert, point, homePoint, transportMode, mobili
 
     async function loadRoute() {
       setGuide((current) => ({ ...current, routeStatus: 'loading' }));
-      const shelter = await findNearestShelter(point);
+      const shelters = await fetchNearbyShelters(point);
+      const shelter = pickSafeShelter(shelters, alert);
       const target = shelter ?? homePoint ?? null;
       const route = target
         ? await findRoute({
@@ -204,24 +205,37 @@ function useStateForGuide(alert, point, homePoint, transportMode, mobilityNeed, 
   return [guide, setGuide];
 }
 
-async function findNearestShelter(point) {
+async function fetchNearbyShelters(point) {
   try {
     const nearest = await api.scdfNearest(point.lat, point.lng, 'SHELTER');
-    const shelter = Array.isArray(nearest)
-      ? nearest.find((item) => item.latitude != null && item.longitude != null)
-      : null;
-    if (!shelter) return null;
-    return {
-      id: shelter.id ?? shelter.name ?? 'nearest-shelter',
-      label: shelter.name ?? 'Nearest shelter',
-      sublabel: shelter.address ?? 'SCDF shelter lookup',
-      lat: Number(shelter.latitude),
-      lng: Number(shelter.longitude),
-      distanceMeters: shelter.distance_meters,
-    };
+    if (!Array.isArray(nearest)) return [];
+    return nearest
+      .filter((item) => item.latitude != null && item.longitude != null)
+      .map((shelter) => ({
+        id: shelter.id ?? shelter.name ?? 'nearest-shelter',
+        label: shelter.name ?? 'Nearest shelter',
+        sublabel: shelter.address ?? 'SCDF shelter lookup',
+        lat: Number(shelter.latitude),
+        lng: Number(shelter.longitude),
+        distanceMeters: shelter.distance_meters,
+      }));
   } catch {
-    return null;
+    return [];
   }
+}
+
+// Prefer the nearest shelter that sits OUTSIDE the active danger radius so the
+// evacuation target moves people away from the hazard. Fall back to the closest
+// shelter when none are clear (the route preview then flags the crossing).
+function pickSafeShelter(shelters, alert) {
+  if (!shelters.length) return null;
+  if (alert?.lat == null || alert?.lng == null) return shelters[0];
+  const alertPoint = { lat: Number(alert.lat), lng: Number(alert.lng) };
+  const radius = alert.radiusMeters ?? 500;
+  const outside = shelters.find(
+    (shelter) => distanceMeters({ lat: shelter.lat, lng: shelter.lng }, alertPoint) > radius
+  );
+  return outside ?? shelters[0];
 }
 
 async function findRoute({ start, target, transportMode }) {
@@ -257,8 +271,14 @@ function buildGuide({ alert, point, homePoint, transportMode, mobilityNeed, prof
   const duration = route?.durationSeconds ? `${Math.round(route.durationSeconds / 60)} min` : null;
   const travelMeta = [distance, duration].filter(Boolean).join(' / ');
 
+  const hasAlert = alert?.lat != null && alert?.lng != null;
+
   return {
-    heading: shelter ? `Route preview to ${shelter.label}` : `Move away from ${alert.locationLabel ?? 'the alert area'}`,
+    heading: shelter
+      ? `Route preview to ${shelter.label}`
+      : hasAlert
+        ? `Move away from ${alert.locationLabel ?? 'the alert area'}`
+        : `Know your route from ${point.label}`,
     routeTone: routeCrossesAlert ? 'warning' : shelter ? 'ready' : 'caution',
     routeLabel: routeCrossesAlert ? 'Check route' : shelter ? 'Shelter lookup' : 'Guidance preview',
     target,
@@ -266,7 +286,9 @@ function buildGuide({ alert, point, homePoint, transportMode, mobilityNeed, prof
     summary: routeCrossesAlert
       ? 'This preview may cross the affected radius.'
       : shelter
-        ? 'Nearest shelter lookup found a possible destination.'
+        ? hasAlert
+          ? 'Nearest shelter clear of the alert area found as a possible destination.'
+          : 'Nearest shelter found — know this route before an emergency.'
         : 'No confirmed shelter route is available yet.',
     detail: travelMeta
       ? `${travelMeta}. Confirm with MURUS or staff before moving.`
@@ -284,15 +306,18 @@ function buildGuide({ alert, point, homePoint, transportMode, mobilityNeed, prof
 }
 
 function buildVisualSteps({ alert, targetLabel, transportMode, mobilityNeed, profileLabel, routeCrossesAlert, hasShelter }) {
-  const location = alert.locationLabel ?? 'the affected area';
-  const action = alert.publicAction ?? 'Follow official MURUS instructions.';
+  const hasAlert = alert?.lat != null && alert?.lng != null;
+  const location = alert?.locationLabel ?? 'the affected area';
+  const action = alert?.publicAction ?? 'Follow official MURUS instructions.';
   const mobility = mobilityNeed !== 'none' || profileLabel === 'Elderly' || profileLabel === 'Mobility support';
 
   return [
     {
       icon: '1',
-      title: 'Leave the hazard edge',
-      body: `Move away from ${location}; ${action}`,
+      title: hasAlert ? 'Leave the hazard edge' : 'No active alert here',
+      body: hasAlert
+        ? `Move away from ${location}; ${action}`
+        : 'This location has no active alert right now. Use this preview to learn your route to the nearest shelter before an emergency.',
     },
     {
       icon: '2',
@@ -319,7 +344,7 @@ function buildVisualSteps({ alert, targetLabel, transportMode, mobilityNeed, pro
 }
 
 function routeTouchesAlert(routePoints, alert) {
-  if (alert.lat == null || alert.lng == null || !routePoints.length) return false;
+  if (alert?.lat == null || alert?.lng == null || !routePoints.length) return false;
   const alertPoint = { lat: Number(alert.lat), lng: Number(alert.lng) };
   const radius = alert.radiusMeters ?? 500;
   return routePoints.some(([lat, lng]) => distanceMeters({ lat, lng }, alertPoint) <= radius);

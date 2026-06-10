@@ -5290,6 +5290,7 @@ h1 {
 .resident-affects-card,
 .resident-rumor-panel,
 .resident-impact-panel,
+.resident-evacuation-panel,
 .resident-family-panel,
 .resident-preparedness-panel {
   border: 1px solid var(--resident-border);
@@ -5301,11 +5302,37 @@ h1 {
 .resident-persona-panel,
 .resident-rumor-panel,
 .resident-impact-panel,
+.resident-evacuation-panel,
 .resident-family-panel,
 .resident-preparedness-panel {
   display: grid;
   gap: 12px;
   padding: 14px;
+}
+
+.resident-evacuation-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.resident-evacuation-pill {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 0.72rem;
+  font-weight: 850;
+  border: 1px solid rgba(12, 130, 88, 0.24);
+  background: #ecfff8;
+  color: #08754e;
+}
+
+.resident-evacuation-pill.is-warning,
+.resident-evacuation-pill.is-critical {
+  border-color: rgba(180, 35, 47, 0.24);
+  background: var(--resident-red-soft);
+  color: var(--resident-red-dark);
 }
 
 .resident-persona-title,
