@@ -34,6 +34,13 @@ export const theme = createTheme({
   primaryShade: 6,
   colors: { brandRed, commandTeal },
   defaultRadius: 'md',
+  radius: {
+    xs: '6px',
+    sm: '10px',
+    md: '14px',
+    lg: '18px',
+    xl: '24px',
+  },
   headings: {
     fontFamily: '"Segoe UI Variable Display", "Aptos Display", Inter, ui-sans-serif, sans-serif',
     fontWeight: '750',
@@ -42,5 +49,14 @@ export const theme = createTheme({
     xs: '0 2px 8px rgba(16, 44, 48, 0.06)',
     sm: '0 10px 28px rgba(16, 44, 48, 0.09)',
     md: '0 18px 44px rgba(16, 44, 48, 0.12)',
+  },
+  other: {
+    pageMaxWidth: 1480,
+    pagePaddingDesktop: 32,
+    pagePaddingTablet: 24,
+    pagePaddingMobile: 16,
+    panelBorder: '#cfdcda',
+    panelBackground: '#ffffff',
+    canvasBackground: '#f2f6f5',
   },
 });

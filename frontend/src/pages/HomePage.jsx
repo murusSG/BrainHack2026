@@ -9,7 +9,7 @@ const FEATURES = [
 
 export function HomePage() {
   return (
-    <Box mih="100vh" bg="linear-gradient(180deg, #fff9f7 0%, #fff1ed 100%)">
+    <Box className="standalone-page-content" mih="100vh">
       <Group component="header" justify="space-between" px="lg" py="md" style={{ borderBottom: '1px solid rgba(166,17,34,0.12)' }}>
         <Group gap="sm">
           <Box
@@ -38,7 +38,7 @@ export function HomePage() {
         </Group>
       </Group>
 
-      <Container component="main" size="md" py={56} ta="center">
+      <Container className="landing-page-content" component="main" size="md" py={56} ta="center">
         <Badge color="brandRed.6" variant="light" radius="xl" mb="md">
           Unified Crisis Management
         </Badge>
