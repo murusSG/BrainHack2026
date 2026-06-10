@@ -9,7 +9,9 @@ export function Topbar({ session, onSignOut }) {
   function handleSubmit(event) {
     event.preventDefault();
     const target = routeForQuery(query);
-    navigate(target.path);
+    const trimmed = query.trim();
+    const path = trimmed ? `${target.path}?q=${encodeURIComponent(trimmed)}` : target.path;
+    navigate(path);
     setTopbarNotice(target.notice);
   }
 

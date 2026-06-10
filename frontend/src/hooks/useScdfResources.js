@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { resourceLedgerEntries, resourceLedgerMeta, resourceSummaryCards } from '../data/dashboardData';
+import { resourceLedgerEntries, resourceLedgerMeta, resourceSummaryCards, supplyLedgerEntries } from '../data/dashboardData';
 import { api } from '../services/api';
 
 export function useScdfResources() {
@@ -8,6 +8,7 @@ export function useScdfResources() {
     resources: [],
     error: null,
   });
+  const [aedCount, setAedCount] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -30,7 +31,23 @@ export function useScdfResources() {
     };
   }, []);
 
-  const summaryCards = useMemo(() => buildResourceSummary(state.resources), [state.resources]);
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .scdfResources('aed')
+      .then((resources) => {
+        if (!cancelled) setAedCount(Array.isArray(resources) ? resources.length : 0);
+      })
+      .catch(() => {
+        if (!cancelled) setAedCount(0);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const summaryCards = useMemo(
+    () => buildResourceSummary(state.resources, aedCount),
+    [state.resources, aedCount],
+  );
   const ledgerEntries = useMemo(() => buildLedgerEntries(state.resources), [state.resources]);
   const ledgerMeta = useMemo(
     () =>
@@ -53,12 +70,12 @@ export function useScdfResources() {
   };
 }
 
-function buildResourceSummary(resources) {
+function buildResourceSummary(resources, aedCount) {
   if (!resources.length) return resourceSummaryCards;
 
   const fireStations = countType(resources, 'FIRE_STATION');
   const shelters = countType(resources, 'SHELTER');
-  const aeds = countType(resources, 'AED');
+  const aeds = aedCount ?? countType(resources, 'AED');
   const mapped = resources.filter((resource) => resource.latitude != null && resource.longitude != null).length;
 
   return [
@@ -80,10 +97,10 @@ function buildResourceSummary(resources) {
     },
     {
       label: 'AED Network',
-      value: String(aeds),
+      value: aedCount == null ? 'Loading…' : String(aeds),
       detail: 'Public AED locations',
       icon: 'beds',
-      change: 'Live',
+      change: aedCount == null ? '…' : 'Live',
       tone: 'up',
     },
     {
@@ -98,20 +115,41 @@ function buildResourceSummary(resources) {
 }
 
 function buildLedgerEntries(resources) {
-  if (!resources.length) return resourceLedgerEntries;
+  if (!resources.length) return [...resourceLedgerEntries, ...supplyLedgerEntries];
 
-  return resources.slice(0, 8).map((resource, index) => {
-    const isMapped = resource.latitude != null && resource.longitude != null;
-    return {
-      unitId: resource.raw_source_id || resource.id || `SCDF-${index + 1}`,
-      type: resourceTypeLabel(resource.resource_type),
-      baseStation: resource.name,
-      crew: resource.address || resource.operating_hours || 'Public resource record',
-      capacity: isMapped ? 100 : 45,
-      status: isMapped ? 'Mapped' : 'Listed',
-      statusTone: isMapped ? 'available' : 'maintenance',
-    };
-  });
+  const infraEntries = resources
+    .filter((r) => r.resource_type === 'FIRE_STATION')
+    .slice(0, 8)
+    .map((resource, index) => {
+      const isMapped = resource.latitude != null && resource.longitude != null;
+      return {
+        unitId: resource.raw_source_id || resource.id || `SCDF-${index + 1}`,
+        type: resourceTypeLabel(resource.resource_type),
+        baseStation: resource.name,
+        crew: resource.address || resource.operating_hours || 'Public resource record',
+        capacity: isMapped ? 100 : 45,
+        status: isMapped ? 'Mapped' : 'Listed',
+        statusTone: isMapped ? 'available' : 'maintenance',
+      };
+    });
+
+  const shelterEntries = resources
+    .filter((r) => r.resource_type === 'SHELTER')
+    .slice(0, 5)
+    .map((resource, index) => {
+      const isMapped = resource.latitude != null && resource.longitude != null;
+      return {
+        unitId: resource.raw_source_id || resource.id || `SHELTER-${index + 1}`,
+        type: resourceTypeLabel(resource.resource_type),
+        baseStation: resource.name,
+        crew: resource.address || resource.operating_hours || 'Civil defence shelter',
+        capacity: isMapped ? 100 : 45,
+        status: isMapped ? 'Mapped' : 'Listed',
+        statusTone: isMapped ? 'available' : 'maintenance',
+      };
+    });
+
+  return [...infraEntries, ...shelterEntries, ...supplyLedgerEntries];
 }
 
 function countType(resources, type) {

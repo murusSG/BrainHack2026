@@ -441,6 +441,63 @@ export const resourceLedgerEntries = [
   }
 ];
 
+export const supplyLedgerEntries = [
+  {
+    unitId: 'SUP-BLD-001',
+    type: 'Blood (O-)',
+    baseStation: 'Singapore General Hospital',
+    crew: 'Blood Bank, Level 2',
+    capacity: 22,
+    status: 'Critical',
+    statusTone: 'critical',
+  },
+  {
+    unitId: 'SUP-BLD-002',
+    type: 'Blood (A+)',
+    baseStation: 'Tan Tock Seng Hospital',
+    crew: 'Blood Bank, Level 1',
+    capacity: 61,
+    status: 'Low',
+    statusTone: 'maintenance',
+  },
+  {
+    unitId: 'SUP-PPE-001',
+    type: 'PPE (Level C)',
+    baseStation: 'SCDF Disaster Store',
+    crew: 'Logistics Hub, Tuas',
+    capacity: 74,
+    status: 'Available',
+    statusTone: 'available',
+  },
+  {
+    unitId: 'SUP-AED-001',
+    type: 'AED (Portable)',
+    baseStation: 'Community First Responder Pool',
+    crew: '410 active units registered',
+    capacity: 85,
+    status: 'Available',
+    statusTone: 'available',
+  },
+  {
+    unitId: 'SUP-VENT-001',
+    type: 'Ventilator (ICU Grade)',
+    baseStation: 'MOH Central Stockpile',
+    crew: 'Medical Equipment Hub, Jurong',
+    capacity: 55,
+    status: 'Partial',
+    statusTone: 'maintenance',
+  },
+  {
+    unitId: 'SUP-WATER-001',
+    type: 'Water (Potable Jerricans)',
+    baseStation: 'Civil Defence Cache',
+    crew: 'West Logistics Hub',
+    capacity: 91,
+    status: 'Available',
+    statusTone: 'available',
+  },
+];
+
 export const resourceLedgerMeta = {
   title: 'Inventory & Capacity Ledger',
   subtitle: 'Detailed tracking across primary response pillars.',

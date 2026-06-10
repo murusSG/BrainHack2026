@@ -15,9 +15,9 @@ const API_BASE = configuredApiBase.endsWith('/api/v1')
 const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS) || 15000;
 const inFlightGets = new Map();
 
-async function request(path, { unwrap = true, method = 'GET', body, headers: extraHeaders } = {}) {
+async function request(path, { unwrap = true, method = 'GET', body, headers: extraHeaders, timeout = REQUEST_TIMEOUT_MS } = {}) {
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeoutId = window.setTimeout(() => controller.abort(), timeout);
   let res;
   try {
     res = await fetch(`${API_BASE}${path}`, {
@@ -28,7 +28,7 @@ async function request(path, { unwrap = true, method = 'GET', body, headers: ext
     });
   } catch (error) {
     if (error?.name === 'AbortError') {
-      throw new Error(`API ${path} timed out after ${REQUEST_TIMEOUT_MS}ms.`);
+      throw new Error(`API ${path} timed out after ${timeout}ms.`);
     }
     const message = error instanceof Error ? error.message : 'Network request failed.';
     console.error('[api] request failed before response', { apiBase: API_BASE, path, method, message });
@@ -155,8 +155,8 @@ export const api = {
   residentProfile: (token) => authedGet('/residents/me', token),
   updateResidentProfile: (payload, token) => authedPatch('/residents/me', token, payload),
 
-  // Deterministic foresight engine with optional LLM narrative layer
-  foresightPredictions: (params = {}) => get(withQuery('/foresight/predictions', params)),
+  // Deterministic foresight engine with optional LLM narrative layer (90s — LLM calls are slow)
+  foresightPredictions: (params = {}) => request(withQuery('/foresight/predictions', params), { timeout: 90000 }),
 
   // Command state: persisted demo recommendations and timeline decisions
   commandAllocations: () => get('/command/allocations'),

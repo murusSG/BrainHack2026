@@ -28,7 +28,7 @@ export function ResourcesPage() {
   const location = useLocation();
   const routedRequestForm = location.state?.requestForm;
   const { status, error, summaryCards, ledgerEntries, ledgerMeta } = useScdfResources();
-  const [ledgerQuery, setLedgerQuery] = useState('');
+  const [ledgerQuery, setLedgerQuery] = useState(() => new URLSearchParams(location.search).get('q') ?? '');
   const [activeLedgerTab, setActiveLedgerTab] = useState(resourceLedgerTabs[0].id);
   const [resourceNotice, setResourceNotice] = useState(
     location.state?.quickActionNotice ?? 'Resource desk ready for allocation review.'
