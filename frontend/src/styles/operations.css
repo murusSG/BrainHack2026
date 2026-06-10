@@ -1277,8 +1277,8 @@
   --ui-page-max: 1480px;
   --ui-page-padding: clamp(16px, 2.5vw, 34px);
   --ui-section-gap: clamp(16px, 2vw, 24px);
-  --sg-layer-subtle: 0.055;
-  --sg-layer-medium: 0.12;
+  --sg-layer-subtle: 0.12;
+  --sg-layer-medium: 0.24;
   --sg-z-background: 0;
   --sg-z-content: 1;
 }
@@ -1457,6 +1457,18 @@
   background: linear-gradient(115deg, #f8fbfa 0 52%, #eaf3f1 100%);
 }
 
+.app-page--landing > .sg-visual-layer--hero {
+  width: clamp(760px, 62vw, 1180px);
+  height: clamp(320px, 30vw, 520px);
+  right: max(-2vw, -24px);
+  bottom: 0;
+}
+
+.app-page--landing > .sg-visual-layer--hero img {
+  object-fit: contain;
+  object-position: right bottom;
+}
+
 .app-page--login,
 .app-page--signup {
   background: linear-gradient(110deg, #f7fbfa 0 58%, #e8f2f0 100%);
@@ -1560,16 +1572,28 @@
     height: clamp(190px, 30vw, 280px);
   }
 
+  .app-page--landing > .sg-visual-layer--hero {
+    width: min(92vw, 860px);
+    height: clamp(260px, 34vw, 380px);
+    right: -18px;
+  }
+
   .sg-visual-layer--panel,
   .sg-visual-layer--corner {
-    opacity: 0.04;
+    opacity: 0.1;
   }
 }
 
 @media (max-width: 680px) {
   :root {
-    --sg-layer-subtle: 0.035;
-    --sg-layer-medium: 0.075;
+    --sg-layer-subtle: 0.08;
+    --sg-layer-medium: 0.16;
+  }
+
+  .app-page--landing > .sg-visual-layer--hero {
+    width: min(100vw, 640px);
+    height: clamp(220px, 42vw, 300px);
+    right: -24px;
   }
 
   .sg-visual-layer--hero {
@@ -2935,7 +2959,8 @@
 }
 
 .app-shell .brand-block {
-  display: block;
+  display: grid;
+  justify-items: center;
   padding: 0 8px 22px;
   text-decoration: none;
 }
@@ -2945,13 +2970,23 @@
 }
 
 .public-brand {
-  align-items: flex-start;
+  justify-content: center;
 }
 
 .resident-header-brand {
   display: grid;
   gap: 10px;
-  justify-items: start;
+  justify-items: center;
+  text-align: center;
+}
+
+.app-shell .brand-block .app-logo--sidebar,
+.public-brand .app-logo--public,
+.resident-header-brand .app-logo--resident,
+.dispatcher-header .app-logo--header,
+.responder-header .app-logo--header,
+.identity-auth-card .app-logo--auth {
+  margin-inline: auto;
 }
 
 .overview-page .ui-page-header,
@@ -2968,7 +3003,7 @@
   width: 100%;
   max-width: none;
   height: 100%;
-  opacity: 0.055;
+  opacity: 0.09;
 }
 
 .overview-page .ui-page-header > .sg-visual-layer img,
