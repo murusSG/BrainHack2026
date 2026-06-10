@@ -1,6 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { renderWithProviders } from '../renderWithProviders';
 import { ResidentAlertVisualGuide } from '../../src/components/ResidentAlertVisualGuide';
 import { api } from '../../src/services/api';
 
@@ -48,7 +49,7 @@ describe('ResidentAlertVisualGuide', () => {
     api.oneMapRoute.mockRejectedValue(new Error('route unavailable'));
     api.streetViewPreview.mockRejectedValue(new Error('Google Street View is not configured.'));
 
-    render(
+    renderWithProviders(
       <ResidentAlertVisualGuide
         alert={orchardAlert}
         point={livePoint}
@@ -96,7 +97,7 @@ describe('ResidentAlertVisualGuide', () => {
     });
     api.streetViewPreview.mockRejectedValue(new Error('Google Street View is not configured.'));
 
-    render(
+    renderWithProviders(
       <ResidentAlertVisualGuide
         alert={orchardAlert}
         point={livePoint}
@@ -115,7 +116,7 @@ describe('ResidentAlertVisualGuide', () => {
 
     expect(screen.getByRole('dialog', { name: /Route preview to Tampines shelter/i })).toBeInTheDocument();
     expect(screen.getByText('Full evacuation guide')).toBeInTheDocument();
-    expect(screen.getByText('Possible destination')).toBeInTheDocument();
+    expect(screen.getByText('Nearest suitable destination')).toBeInTheDocument();
     expect(screen.getAllByText('Needs staff confirmation').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Your current location is inside the alert radius/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Closest suitable SCDF shelter candidate/i).length).toBeGreaterThan(0);
@@ -145,7 +146,7 @@ describe('ResidentAlertVisualGuide', () => {
       metadata: { date: '2025-01' },
     });
 
-    render(
+    renderWithProviders(
       <ResidentAlertVisualGuide
         alert={orchardAlert}
         point={livePoint}
@@ -166,7 +167,7 @@ describe('ResidentAlertVisualGuide', () => {
       expect(screen.getByText('Images available')).toBeInTheDocument();
     });
     expect(screen.getAllByRole('img', { name: /Street-view visual aid/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/captured 2025-01/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/visual aid only, not live clearance; captured 2025-01/i).length).toBeGreaterThan(0);
   });
 
   it('rejects shelter candidates inside the alert buffer and generates a move-away waypoint', async () => {
@@ -182,7 +183,7 @@ describe('ResidentAlertVisualGuide', () => {
     api.oneMapRoute.mockRejectedValue(new Error('route unavailable'));
     api.streetViewPreview.mockRejectedValue(new Error('Google Street View is not configured.'));
 
-    render(
+    renderWithProviders(
       <ResidentAlertVisualGuide
         alert={orchardAlert}
         point={livePoint}
@@ -197,7 +198,7 @@ describe('ResidentAlertVisualGuide', () => {
       expect(screen.getByText(/Route preview to Move/i)).toBeInTheDocument();
     });
     expect(screen.getByText('Generated waypoint fallback')).toBeInTheDocument();
-    expect(screen.getByText(/No suitable shelter candidate was found/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/No suitable shelter candidate was found/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/not an official shelter/i)).toBeInTheDocument();
     expect(screen.queryByText(/Nearby shelter inside alert, then confirm entry/i)).not.toBeInTheDocument();
   });

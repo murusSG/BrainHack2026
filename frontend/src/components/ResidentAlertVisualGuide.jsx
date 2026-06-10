@@ -1,6 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Timeline } from '@mantine/core';
 import { Circle, CircleMarker, MapContainer, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import { ResidentSourceBadge } from './ResidentSourceBadge';
 import { api } from '../services/api';
 
 const SG_CENTER = [1.3521, 103.8198];
@@ -75,6 +77,11 @@ export function ResidentAlertVisualGuide({
         </div>
         <span className={`resident-route-badge is-${guide.routeTone}`}>{guide.routeLabel}</span>
       </div>
+      <div className="resident-source-row" aria-label="Evacuation guide source labels">
+        <ResidentSourceBadge tone="generated">Generated route preview</ResidentSourceBadge>
+        <ResidentSourceBadge tone="current">From current location</ResidentSourceBadge>
+        <ResidentSourceBadge tone="visual">Visual aid, not clearance</ResidentSourceBadge>
+      </div>
 
       <RouteMapPreview
         alert={alert}
@@ -89,6 +96,7 @@ export function ResidentAlertVisualGuide({
       <div className="resident-route-summary">
         <strong>{guide.summary}</strong>
         <span>{guide.detail}</span>
+        <small>{guide.routeBasis}</small>
       </div>
 
       <div className={`resident-route-confidence is-${guide.routeConfidence.tone}`}>
@@ -106,7 +114,7 @@ export function ResidentAlertVisualGuide({
         <button type="button" className="resident-guide-open-button" onClick={() => setIsGuideOpen(true)}>
           Open full evacuation guide
         </button>
-        <span>Expanded map, turn-by-turn steps, and street-image fallback views.</span>
+        <span>Expanded generated route, turn-by-turn steps, and Street View visual aids where available.</span>
       </div>
 
       <section className="resident-evacuation-plan" aria-label="Step-by-step evacuation route">
@@ -132,22 +140,28 @@ export function ResidentAlertVisualGuide({
           ))}
         </div>
         <p className="resident-evacuation-note">
-          These are generated schematic visuals from the route preview, not live street images. Follow staff,
-          agency, and MURUS updates if they differ.
+          These are generated schematic visuals from your selected current location to the next suitable destination.
+          They are not live route clearance. Follow staff, agency, and MURUS updates if they differ.
         </p>
       </section>
 
-      <ol className="resident-route-steps">
+      <Timeline
+        active={guide.steps.length - 1}
+        bulletSize={30}
+        lineWidth={2}
+        className="resident-route-timeline"
+        color="brandRed.6"
+      >
         {guide.steps.map((step) => (
-          <li key={step.title}>
-            <span aria-hidden="true">{step.icon}</span>
-            <div>
-              <strong>{step.title}</strong>
-              <p>{step.body}</p>
-            </div>
-          </li>
+          <Timeline.Item
+            key={step.title}
+            bullet={<span aria-hidden="true">{step.icon}</span>}
+            title={step.title}
+          >
+            <p>{step.body}</p>
+          </Timeline.Item>
         ))}
-      </ol>
+      </Timeline>
       {isGuideOpen && (
         <EvacuationGuideModal
           alert={alert}
@@ -279,9 +293,14 @@ function EvacuationGuideModal({ alert, point, homePoint, guide, mapPoints, onClo
             <p className="resident-guidance-label">Full evacuation guide</p>
             <h2 id={titleId}>{guide.heading}</h2>
             <p>
-              Generated from your selected location and the active alert. Treat this as a visual aid, not an
-              official safety clearance.
+              Generated from your current location to the next suitable destination outside the alert buffer.
+              Treat this as a visual aid, not an official safety clearance.
             </p>
+            <div className="resident-source-row">
+              <ResidentSourceBadge tone="generated">Generated route preview</ResidentSourceBadge>
+              <ResidentSourceBadge tone="visual">Street View is visual aid only</ResidentSourceBadge>
+              <ResidentSourceBadge tone="fallback">Schematics appear when imagery is unavailable</ResidentSourceBadge>
+            </div>
           </div>
           <button type="button" className="resident-guide-close-button" onClick={onClose} aria-label="Close evacuation guide">
             Close
@@ -328,7 +347,7 @@ function EvacuationGuideModal({ alert, point, homePoint, guide, mapPoints, onClo
               {point.sublabel && <p>{point.sublabel}</p>}
             </div>
             <div className="resident-guide-status-card">
-              <span>Possible destination</span>
+              <span>Nearest suitable destination</span>
               <strong>{destination}</strong>
               <p>{destinationDetail}</p>
             </div>
@@ -354,7 +373,7 @@ function EvacuationGuideModal({ alert, point, homePoint, guide, mapPoints, onClo
               </div>
             )}
             <div className="resident-guide-status-card">
-              <span>Street-view imagery</span>
+              <span>Street View visual aids</span>
               <strong>{streetViewStatusTitle(streetView.status)}</strong>
               <p>{streetViewStatusCopy(streetView)}</p>
             </div>
@@ -378,7 +397,7 @@ function StreetViewStepVisual({ step, preview }) {
       <figure className="resident-guide-step-image">
         <img src={preview.imageUrl} alt={`Street-view visual aid for ${step.title}`} />
         <figcaption>
-          Google Street View visual aid{preview.metadata?.date ? `, captured ${preview.metadata.date}` : ''}.
+          Google Street View visual aid only, not live clearance{preview.metadata?.date ? `; captured ${preview.metadata.date}` : ''}.
         </figcaption>
       </figure>
     );
@@ -464,7 +483,7 @@ function streetViewStatusTitle(status) {
 
 function streetViewStatusCopy(streetView) {
   if (streetView.status === 'ready') {
-    return 'Where available, steps show Google Street View imagery facing the next move.';
+    return 'Where available, steps show Google Street View imagery facing the next move. Imagery is historical and does not confirm the route is clear.';
   }
   if (streetView.status === 'loading') {
     return 'Checking whether a provider has outdoor street imagery near each waypoint.';
@@ -473,7 +492,7 @@ function streetViewStatusCopy(streetView) {
   if (statuses.includes('NOT_CONFIGURED')) {
     return 'Street View can be enabled by adding a server-side Google Street View key; schematic guidance remains available now.';
   }
-  return 'No street-level provider image is available for this step, so the guide uses generated schematic visuals.';
+  return 'No street-level provider image is available for this step, so the guide uses generated schematic visuals instead.';
 }
 
 function streetViewFallbackLabel(preview) {
@@ -619,6 +638,7 @@ function serializeEvacuationGuideContext(guide, route) {
     heading: guide.heading,
     summary: guide.summary,
     detail: guide.detail,
+    routeBasis: guide.routeBasis,
     riskLabel: guide.riskLabel,
     routeLabel: guide.routeLabel,
     routeTone: guide.routeTone,
@@ -859,10 +879,26 @@ function routeRiskIssues({ routeCrossesAlert, pointInsideAlert, targetInsideAler
 
 function routeSummary({ routeIssues, destination }) {
   if (routeIssues.length) return routeIssues[0];
-  if (destination?.type === 'shelter') return 'SCDF shelter lookup found a candidate outside the alert buffer.';
+  if (destination?.type === 'shelter') return 'SCDF shelter lookup found the nearest suitable candidate outside the alert buffer.';
   if (destination?.type === 'saved-place') return 'Saved-place fallback appears outside the alert buffer.';
   if (destination?.type === 'away-waypoint') return 'Generated waypoint moves away from the alert radius.';
   return 'No confirmed shelter route is available yet.';
+}
+
+function routeBasisCopy({ startLabel, target, destinationType }) {
+  if (!target) {
+    return `Based on ${startLabel}; no suitable destination is confirmed yet.`;
+  }
+  if (destinationType === 'shelter') {
+    return `Based on ${startLabel} to ${target.label}; MURUS chose the nearest suitable SCDF shelter candidate outside the active alert buffer.`;
+  }
+  if (destinationType === 'saved-place') {
+    return `Based on ${startLabel} to ${target.label}; no suitable shelter candidate was found, so this uses your saved place outside the alert buffer.`;
+  }
+  if (destinationType === 'away-waypoint') {
+    return `Based on ${startLabel}; no suitable shelter candidate was found, so this generated a move-away waypoint outside the alert radius.`;
+  }
+  return `Based on ${startLabel} to ${target.label}; confirm the destination and route before moving.`;
 }
 
 function buildGuide({ alert, point, homePoint, transportMode, mobilityNeed, profileLabel, destination, route }) {
@@ -879,6 +915,12 @@ function buildGuide({ alert, point, homePoint, transportMode, mobilityNeed, prof
   const travelMeta = [distance, duration].filter(Boolean).join(' / ');
   const routeIssues = routeRiskIssues({ routeCrossesAlert, pointInsideAlert, targetInsideAlert, route, destination: resolvedDestination });
   const routeTone = routeIssues.length ? 'warning' : resolvedDestination.tone ?? 'caution';
+  const startLabel = `${point.label}${point.sublabel ? ` (${point.sublabel})` : ''}`;
+  const routeBasis = routeBasisCopy({
+    startLabel,
+    target,
+    destinationType: resolvedDestination.type,
+  });
 
   return {
     heading: target ? `Route preview to ${target.label}` : `Move away from ${alert.locationLabel ?? 'the alert area'}`,
@@ -900,6 +942,7 @@ function buildGuide({ alert, point, homePoint, transportMode, mobilityNeed, prof
     },
     routePoints,
     summary: routeSummary({ routeIssues, destination: resolvedDestination }),
+    routeBasis,
     detail: travelMeta
       ? `${travelMeta}. Confirm with MURUS or staff before moving.`
       : 'Confirm with MURUS, staff, or emergency services before moving.',

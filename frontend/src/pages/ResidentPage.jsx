@@ -1,9 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Accordion, Tabs } from '@mantine/core';
+import {
+  IconAlertTriangle,
+  IconChecklist,
+  IconHelpCircle,
+  IconMap2,
+  IconMapPin,
+  IconUserCircle,
+} from '@tabler/icons-react';
 import { Link } from 'react-router-dom';
 import { AppLogo } from '../components/AppLogo';
 import { CrisisMap } from '../components/CrisisMap';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
+import { ResidentSourceBadge } from '../components/ResidentSourceBadge';
 import {
   buildResidentEvacuationGuideContext,
   ResidentAlertVisualGuide,
@@ -102,6 +112,17 @@ const RESIDENT_TABS = [
   { id: 'map', label: 'Map' },
 ];
 
+const RESIDENT_TAB_ICONS = {
+  alerts: IconAlertTriangle,
+  profile: IconUserCircle,
+  impact: IconMapPin,
+  preparedness: IconChecklist,
+  rumor: IconHelpCircle,
+  map: IconMap2,
+};
+
+const RESIDENT_ALERT_SECTION_DEFAULTS = ['guidance', 'route', 'ask', 'checkin'];
+
 const DEFAULT_RESIDENT_DETAILS = {
   displayName: 'Resident',
   homeAddress: 'Tampines St 21',
@@ -140,6 +161,29 @@ function formatGpsPoint(lat, lng, accuracyMeters) {
     ? `, accuracy about ${Math.round(accuracyMeters)}m`
     : '';
   return `GPS ${lat.toFixed(5)}, ${lng.toFixed(5)}${accuracy}`;
+}
+
+function cleanLocationPart(value) {
+  if (value == null) return '';
+  const text = String(value).trim();
+  if (!text || text.toUpperCase() === 'NIL') return '';
+  return text;
+}
+
+function oneMapLocationLabel(location) {
+  return (
+    cleanLocationPart(location.building) ||
+    cleanLocationPart(location.road_name) ||
+    cleanLocationPart(location.address) ||
+    'Typed location'
+  );
+}
+
+function oneMapLocationAddress(location) {
+  const address = cleanLocationPart(location.address);
+  const postal = cleanLocationPart(location.postal_code);
+  if (address && postal && !address.includes(postal)) return `${address} Singapore ${postal}`;
+  return address || postal || 'OneMap search result';
 }
 
 function mergeImpactPoints(savedPlaces) {
@@ -292,6 +336,10 @@ export function ResidentPage({ session }) {
   const [persistedPlaces, setPersistedPlaces] = useState([]);
   const [liveLocation, setLiveLocation] = useState(null);
   const [liveLocationStatus, setLiveLocationStatus] = useState('idle');
+  const [locationSearchText, setLocationSearchText] = useState('');
+  const [locationSearchStatus, setLocationSearchStatus] = useState('idle');
+  const [locationSearchMessage, setLocationSearchMessage] = useState('');
+  const [locationSearchResults, setLocationSearchResults] = useState([]);
   const isLoading = status === 'loading';
   const demoEventCount = events.filter((event) => event.isDemo).length;
   const liveEventCount = events.length - demoEventCount;
@@ -856,6 +904,68 @@ export function ResidentPage({ session }) {
     }
   }
 
+  async function handleSearchTypedLocation(event) {
+    event.preventDefault();
+    const query = locationSearchText.trim();
+    if (!query) {
+      setLocationSearchStatus('error');
+      setLocationSearchMessage('Type a building, road, postal code, or nearby landmark first.');
+      setLocationSearchResults([]);
+      return;
+    }
+
+    setLocationSearchStatus('loading');
+    setLocationSearchMessage('Searching OneMap for this location...');
+    try {
+      const results = await api.oneMapSearch(query);
+      const usableResults = (Array.isArray(results) ? results : [])
+        .filter((location) => Number.isFinite(location.latitude) && Number.isFinite(location.longitude))
+        .slice(0, 4);
+      if (usableResults.length === 0) {
+        setLocationSearchStatus('error');
+        setLocationSearchMessage('No OneMap result found. Try a postal code, building name, or road name.');
+        setLocationSearchResults([]);
+        return;
+      }
+      setLocationSearchResults(usableResults);
+      setLocationSearchStatus('ready');
+      setLocationSearchMessage('Choose the matching result to use it as your current location.');
+    } catch (err) {
+      setLocationSearchStatus('error');
+      setLocationSearchMessage(`Could not search OneMap: ${err.message}`);
+      setLocationSearchResults([]);
+    }
+  }
+
+  function handleUseSearchedLocation(location) {
+    const label = oneMapLocationLabel(location);
+    const address = oneMapLocationAddress(location);
+    const point = {
+      id: 'typed',
+      label: 'Typed location',
+      sublabel: `${label}${address && address !== label ? `, ${address}` : ''}`,
+      lat: Number(location.latitude),
+      lng: Number(location.longitude),
+    };
+
+    setLiveLocation({
+      point,
+      accuracyMeters: undefined,
+      capturedAt: new Date().toISOString(),
+      source: 'ONEMAP_SEARCH',
+    });
+    setActivePoint('typed');
+    setImpactPointId('typed');
+    setResidentDetails((current) => ({
+      ...current,
+      currentLocationNote: `Typed location selected via OneMap: ${point.sublabel}`,
+    }));
+    setLiveLocationStatus('ready');
+    setLocationSearchStatus('selected');
+    setLocationSearchResults([]);
+    setLocationSearchMessage(`Using ${point.sublabel} as your current location and evacuation route start.`);
+  }
+
   function handleUseLiveLocation() {
     if (!navigator.geolocation) {
       setLiveLocationStatus('unsupported');
@@ -945,22 +1055,32 @@ export function ResidentPage({ session }) {
         })}
       </div>
 
-      <nav className="resident-tab-list" role="tablist" aria-label="Resident safety features">
-        {RESIDENT_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            id={`resident-tab-${tab.id}`}
-            aria-selected={activeResidentTab === tab.id}
-            aria-controls={`resident-panel-${tab.id}`}
-            className={`resident-tab-button ${activeResidentTab === tab.id ? 'is-active' : ''}`}
-            onClick={() => setActiveResidentTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
+      <Tabs
+        value={activeResidentTab}
+        onChange={(value) => {
+          if (value) setActiveResidentTab(value);
+        }}
+        variant="pills"
+        radius="xl"
+        className="resident-tabs"
+      >
+        <Tabs.List className="resident-tab-list" aria-label="Resident safety features">
+          {RESIDENT_TABS.map((tab) => {
+            const TabIcon = RESIDENT_TAB_ICONS[tab.id];
+            return (
+              <Tabs.Tab
+                key={tab.id}
+                value={tab.id}
+                id={`resident-tab-${tab.id}`}
+                className={`resident-tab-button ${activeResidentTab === tab.id ? 'is-active' : ''}`}
+                leftSection={TabIcon ? <TabIcon size={15} stroke={1.8} aria-hidden="true" /> : null}
+              >
+                {tab.label}
+              </Tabs.Tab>
+            );
+          })}
+        </Tabs.List>
+      </Tabs>
 
       {activeResidentTab === 'profile' && (
       <section
@@ -978,10 +1098,49 @@ export function ResidentPage({ session }) {
           <button type="button" className="resident-location-button" onClick={handleUseLiveLocation}>
             {liveLocationStatus === 'loading' ? 'Getting live location...' : 'Use my live location'}
           </button>
+          <form className="resident-location-search" onSubmit={handleSearchTypedLocation}>
+            <label htmlFor="resident-location-search">
+              <span>Or type your current location</span>
+              <div>
+                <input
+                  id="resident-location-search"
+                  value={locationSearchText}
+                  onChange={(event) => setLocationSearchText(event.target.value)}
+                  placeholder="Example: Orchard Gateway or 238858"
+                />
+                <button type="submit" disabled={locationSearchStatus === 'loading'}>
+                  {locationSearchStatus === 'loading' ? 'Searching...' : 'Search'}
+                </button>
+              </div>
+            </label>
+          </form>
+          {locationSearchMessage && (
+            <p className={`resident-location-status is-${locationSearchStatus}`}>
+              {locationSearchMessage}
+            </p>
+          )}
+          {locationSearchResults.length > 0 && (
+            <div className="resident-location-results" aria-label="OneMap location search results">
+              {locationSearchResults.map((location) => {
+                const label = oneMapLocationLabel(location);
+                const address = oneMapLocationAddress(location);
+                return (
+                  <button
+                    key={`${location.latitude}-${location.longitude}-${address}`}
+                    type="button"
+                    onClick={() => handleUseSearchedLocation(location)}
+                  >
+                    <strong>{label}</strong>
+                    <span>{address}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {liveLocationStatus !== 'idle' && (
             <p className={`resident-location-status is-${liveLocationStatus}`}>
               {liveLocationStatus === 'ready'
-                ? `Live location active: ${liveLocation.point.sublabel}`
+                ? `Current location active: ${liveLocation.point.sublabel}`
                 : liveLocationStatus === 'unsupported'
                   ? 'Live location is not available in this browser.'
                   : liveLocationStatus === 'error'
@@ -989,6 +1148,12 @@ export function ResidentPage({ session }) {
                     : 'Requesting permission from your browser.'}
             </p>
           )}
+          <p className="resident-current-route-start">
+            Evacuation guides start from: <strong>{activeAlerts?.point?.label ?? active?.point?.label ?? 'selected area'}</strong>
+            {(activeAlerts?.point?.sublabel ?? active?.point?.sublabel)
+              ? ` (${activeAlerts?.point?.sublabel ?? active?.point?.sublabel})`
+              : ''}
+          </p>
         </div>
         <div className="resident-persona-list">
           {RESIDENT_PROFILES.map((profile) => (
@@ -1412,10 +1577,15 @@ export function ResidentPage({ session }) {
               </span>
             )}
             {rumorCheck.mode && rumorCheck.mode !== 'loading' && (
-              <span>
-                Source: {rumorCheck.mode === 'llm' ? 'Ask MURUS AI' : 'Official-alert fallback'}
-                {rumorCheck.confidence ? ` / Confidence: ${rumorCheck.confidence}` : ''}
-              </span>
+              <div className="resident-source-row">
+                <ResidentSourceBadge tone={rumorCheck.mode === 'llm' ? 'ai' : 'fallback'}>
+                  {rumorCheck.mode === 'llm' ? 'Ask MURUS AI guidance' : 'Fallback guidance'}
+                </ResidentSourceBadge>
+                <ResidentSourceBadge tone="official">Compared with official alerts</ResidentSourceBadge>
+              </div>
+            )}
+            {rumorCheck.confidence && rumorCheck.mode !== 'loading' && (
+              <span>Confidence: {rumorCheck.confidence}</span>
             )}
           </div>
         )}
@@ -1470,6 +1640,7 @@ export function ResidentPage({ session }) {
                 return (
                 <article key={alert.id} className={`resident-alert-card ${acknowledged ? 'is-read' : ''}`}>
                   <div className="resident-alert-meta">
+                    <ResidentSourceBadge tone="official">Official alert</ResidentSourceBadge>
                     <span className={`resident-alert-source is-${alert.sourceType}`}>
                       {alert.sourceType === 'command_broadcast' ? 'Command alert' : 'Incident active'}
                     </span>
@@ -1492,7 +1663,28 @@ export function ResidentPage({ session }) {
                       </ul>
                     </section>
                   )}
+                  <Accordion
+                    multiple
+                    defaultValue={RESIDENT_ALERT_SECTION_DEFAULTS}
+                    className="resident-alert-accordion"
+                    classNames={{
+                      item: 'resident-alert-accordion-item',
+                      control: 'resident-alert-accordion-control',
+                      panel: 'resident-alert-accordion-panel',
+                      content: 'resident-alert-accordion-content',
+                      chevron: 'resident-alert-accordion-chevron',
+                    }}
+                  >
+                    <Accordion.Item value="guidance">
+                      <Accordion.Control icon={<IconUserCircle size={16} stroke={1.8} aria-hidden="true" />}>
+                        Personalized guidance
+                      </Accordion.Control>
+                      <Accordion.Panel>
                   <section className="resident-guidance-card" aria-label={`Personalized guidance for ${alert.title}`}>
+                    <div className="resident-source-row">
+                      <ResidentSourceBadge tone="official">Official alert basis</ResidentSourceBadge>
+                      <ResidentSourceBadge tone="generated">Generated profile guidance</ResidentSourceBadge>
+                    </div>
                     <div className="resident-guidance-head">
                       <div>
                         <p className="resident-guidance-label">Next safe action</p>
@@ -1507,6 +1699,13 @@ export function ResidentPage({ session }) {
                     </ol>
                     <p>{guidance.reassurance}</p>
                   </section>
+                      </Accordion.Panel>
+                    </Accordion.Item>
+                    <Accordion.Item value="route">
+                      <Accordion.Control icon={<IconMap2 size={16} stroke={1.8} aria-hidden="true" />}>
+                        Evacuation guide
+                      </Accordion.Control>
+                      <Accordion.Panel>
                   <ResidentAlertVisualGuide
                     alert={alert}
                     point={activeAlerts.point}
@@ -1515,6 +1714,13 @@ export function ResidentPage({ session }) {
                     mobilityNeed={impactMobility}
                     profileLabel={activeProfileMeta.label}
                   />
+                      </Accordion.Panel>
+                    </Accordion.Item>
+                    <Accordion.Item value="ask">
+                      <Accordion.Control icon={<IconHelpCircle size={16} stroke={1.8} aria-hidden="true" />}>
+                        Ask MURUS guidance
+                      </Accordion.Control>
+                      <Accordion.Panel>
                   <section className="resident-copilot-card" aria-label={`Ask MURUS about ${alert.title}`}>
                     <div>
                       <p className="resident-guidance-label">Ask MURUS</p>
@@ -1556,6 +1762,12 @@ export function ResidentPage({ session }) {
                     </form>
                     {copilotAnswer && (
                       <div className="resident-copilot-answer" role="status">
+                        <div className="resident-source-row">
+                          <ResidentSourceBadge tone={copilotAnswer.mode === 'llm' ? 'ai' : 'fallback'}>
+                            {copilotAnswer.mode === 'llm' ? 'Ask MURUS AI guidance' : 'Fallback guidance'}
+                          </ResidentSourceBadge>
+                          <ResidentSourceBadge tone="official">Grounded in official alert</ResidentSourceBadge>
+                        </div>
                         <span>
                           You asked: {copilotAnswer.question}
                           {copilotAnswer.status === 'thinking'
@@ -1568,6 +1780,13 @@ export function ResidentPage({ session }) {
                       </div>
                     )}
                   </section>
+                      </Accordion.Panel>
+                    </Accordion.Item>
+                    <Accordion.Item value="checkin">
+                      <Accordion.Control icon={<IconChecklist size={16} stroke={1.8} aria-hidden="true" />}>
+                        Resident check-in
+                      </Accordion.Control>
+                      <Accordion.Panel>
                   <section className="resident-checkin-card" aria-label={`Resident check-in for ${alert.title}`}>
                     <div>
                       <p className="resident-guidance-label">Check in with command</p>
@@ -1595,6 +1814,9 @@ export function ResidentPage({ session }) {
                       </p>
                     )}
                   </section>
+                      </Accordion.Panel>
+                    </Accordion.Item>
+                  </Accordion>
                   <div className="resident-card-actions">
                     <Link to="/incident-map" className="resident-primary-button resident-button-link">
                       View on map

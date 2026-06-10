@@ -43,6 +43,7 @@ export interface ResidentAskMurusInput {
       heading?: string;
       summary?: string;
       detail?: string;
+      routeBasis?: string;
       riskLabel?: string;
       routeLabel?: string;
       routeTone?: string;
@@ -403,6 +404,7 @@ function summarizeResidentContext(context: ResidentAskMurusInput["residentContex
           heading: context.evacuationGuide.heading,
           summary: context.evacuationGuide.summary,
           detail: context.evacuationGuide.detail,
+          routeBasis: context.evacuationGuide.routeBasis,
           riskLabel: context.evacuationGuide.riskLabel,
           routeLabel: context.evacuationGuide.routeLabel,
           routeTone: context.evacuationGuide.routeTone,

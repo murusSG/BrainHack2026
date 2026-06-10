@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { renderWithProviders } from '../renderWithProviders';
 import { ResidentPage } from '../../src/pages/ResidentPage';
 import { api } from '../../src/services/api';
 
@@ -30,6 +30,7 @@ vi.mock('../../src/services/api', () => ({
     scdfNearest: vi.fn(),
     askMurus: vi.fn(),
     checkResidentRumor: vi.fn(),
+    oneMapSearch: vi.fn(),
   },
 }));
 
@@ -73,6 +74,17 @@ describe('ResidentPage alert inbox', () => {
         distance_meters: 320,
       },
     ]);
+    api.oneMapSearch.mockResolvedValue([
+      {
+        address: '277 ORCHARD ROAD',
+        postal_code: '238858',
+        building: 'ORCHARD GATEWAY',
+        road_name: 'ORCHARD ROAD',
+        latitude: 1.3008,
+        longitude: 103.8391,
+        source: 'ONEMAP',
+      },
+    ]);
     api.checkResidentRumor
       .mockResolvedValueOnce({
         status: 'verified',
@@ -98,6 +110,8 @@ describe('ResidentPage alert inbox', () => {
       heading: 'Route preview to Somerset shelter',
       summary: 'Your current location is inside the alert radius.',
       detail: 'Confirm with MURUS or staff before moving.',
+      routeBasis:
+        'Based on Live location (GPS 1.30080, 103.83910, accuracy about 18m) to Somerset shelter; MURUS chose the nearest suitable SCDF shelter candidate outside the active alert buffer.',
       riskLabel: 'High-risk zone: leave by the clearest staffed route',
       routeLabel: 'Check route',
       routeTone: 'warning',
@@ -154,16 +168,13 @@ describe('ResidentPage alert inbox', () => {
     });
     const user = userEvent.setup();
 
-    render(
-      <MemoryRouter>
-        <ResidentPage />
-      </MemoryRouter>
-    );
+    renderWithProviders(<ResidentPage />);
 
     await user.click(screen.getByRole('button', { name: /WorkOrchard Road/i }));
 
     expect(await screen.findByText('Avoid Orchard Road')).toBeInTheDocument();
     expect(screen.getByText('Command alert')).toBeInTheDocument();
+    expect(screen.getAllByText('Official alert').length).toBeGreaterThan(0);
     expect(screen.getByText('Updated')).toBeInTheDocument();
     expect(screen.getByText('Action: Use Somerset MRT exits and avoid basement links.')).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Alerts' })).toHaveAttribute('aria-selected', 'true');
@@ -235,10 +246,20 @@ describe('ResidentPage alert inbox', () => {
     fireEvent.change(screen.getByLabelText('Support notes'), {
       target: { value: 'Mum walks slowly and needs lift access' },
     });
+    await user.type(screen.getByLabelText('Or type your current location'), 'Orchard Gateway');
+    await user.click(screen.getByRole('button', { name: 'Search' }));
+    await waitFor(() => {
+      expect(screen.getByText('ORCHARD GATEWAY')).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole('button', { name: /ORCHARD GATEWAY/i }));
+    expect(screen.getByText(/Using ORCHARD GATEWAY/i)).toBeInTheDocument();
+    expect(screen.getByText(/evacuation route start/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Typed locationORCHARD GATEWAY/i })).toBeInTheDocument();
+
     await user.click(screen.getByRole('button', { name: 'Use my live location' }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Live location active: GPS 1.30080, 103.83910/i)).toBeInTheDocument();
+      expect(screen.getByText(/Current location active: GPS 1.30080, 103.83910/i)).toBeInTheDocument();
     });
     expect(screen.getByRole('button', { name: /Live locationGPS 1.30080, 103.83910/i })).toBeInTheDocument();
 
@@ -257,6 +278,8 @@ describe('ResidentPage alert inbox', () => {
     await waitFor(() => {
       expect(screen.getByText(/AI-grounded: use the MRT only if station staff confirm/i)).toBeInTheDocument();
     });
+    expect(screen.getByText('Ask MURUS AI guidance')).toBeInTheDocument();
+    expect(screen.getByText('Grounded in official alert')).toBeInTheDocument();
     expect(api.askMurus).toHaveBeenCalledWith(
       expect.objectContaining({
         question: 'Can I still take the MRT?',
@@ -345,6 +368,7 @@ describe('ResidentPage alert inbox', () => {
           }),
           evacuationGuide: expect.objectContaining({
             heading: 'Route preview to Somerset shelter',
+            routeBasis: expect.any(String),
             routeLabel: 'Check route',
             routeConfidence: expect.objectContaining({
               label: 'Needs staff confirmation',
@@ -390,7 +414,9 @@ describe('ResidentPage alert inbox', () => {
       expect(screen.getByText('Likely true from MURUS')).toBeInTheDocument();
     });
     expect(screen.getByText(/Matched official alert: Avoid Orchard Road/i)).toBeInTheDocument();
-    expect(screen.getByText(/Source: Ask MURUS AI \/ Confidence: high/i)).toBeInTheDocument();
+    expect(screen.getAllByText('Ask MURUS AI guidance').length).toBeGreaterThan(0);
+    expect(screen.getByText('Compared with official alerts')).toBeInTheDocument();
+    expect(screen.getByText(/Confidence: high/i)).toBeInTheDocument();
     expect(api.checkResidentRumor).toHaveBeenCalledWith(
       expect.objectContaining({
         claim: 'Orchard Road basement links are unsafe',
