@@ -39,6 +39,7 @@ const schema = z.object({
   ONEMAP_EMAIL: optionalString,
   ONEMAP_PASSWORD: optionalString,
   ONEMAP_TOKEN_CACHE_PATH: z.string().min(1).default(".cache/onemap-token.json"),
+  SCDF_SHELTER_GEOCACHE_PATH: z.string().min(1).default(".cache/scdf-shelter-coords.json"),
   LLM_API_KEY: optionalString,
   LLM_API_BASE_URL: z.string().url().default("https://api.vectorengine.ai/v1"),
   LLM_MODEL: z.string().min(1).default("gpt-5.5:stable"),

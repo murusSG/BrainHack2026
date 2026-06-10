@@ -28,6 +28,17 @@ export class OneMapClient {
     });
   }
 
+  // Authenticated variant of search. OneMap applies a much higher rate limit to
+  // token-bearing requests than to anonymous ones, which matters when batch-geocoding.
+  async searchAuthenticated(query: string): Promise<unknown> {
+    return this.get("/api/common/elastic/search", {
+      searchVal: query,
+      returnGeom: "Y",
+      getAddrDetails: "Y",
+      pageNum: 1,
+    });
+  }
+
   async reverseGeocode(lat: number, lng: number): Promise<unknown> {
     return this.get("/api/public/revgeocode", {
       location: `${lat},${lng}`,
