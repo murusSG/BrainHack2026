@@ -69,6 +69,7 @@ const QUICK_QUESTIONS = [
   'Should I check family?',
   'Can I still take the MRT?',
   'Is it safe to go home?',
+  'Where should I evacuate to?',
   'What if I am with an elderly person?',
   'Where should I avoid?',
 ];
@@ -87,6 +88,14 @@ const MOBILITY_NEEDS = [
   { id: 'child', label: 'With young child' },
 ];
 
+const DEFAULT_RESIDENT_DETAILS = {
+  displayName: 'Resident',
+  homeAddress: 'Tampines St 21',
+  currentLocationNote: 'Near Orchard Gateway, waiting at street level',
+  plannedDestination: 'Home at Tampines St 21',
+  supportNotes: 'Prefers sheltered routes and avoids crowded basement links',
+};
+
 const SEVERITY_RANK = {
   info: 0,
   low: 1,
@@ -101,6 +110,17 @@ const SEVERITY_RANK = {
 function statusTone(severity) {
   if (!severity) return 'clear';
   return (SEVERITY_RANK[severity] ?? 0) >= 3 ? 'critical' : 'warning';
+}
+
+function optionLabel(options, id) {
+  return options.find((option) => option.id === id)?.label ?? id;
+}
+
+function formatGpsPoint(lat, lng, accuracyMeters) {
+  const accuracy = Number.isFinite(accuracyMeters)
+    ? `, accuracy about ${Math.round(accuracyMeters)}m`
+    : '';
+  return `GPS ${lat.toFixed(5)}, ${lng.toFixed(5)}${accuracy}`;
 }
 
 export function ResidentPage() {
@@ -125,6 +145,9 @@ export function ResidentPage() {
   const [simpleMode, setSimpleMode] = useState(false);
   const [preparedItemIds, setPreparedItemIds] = useState(() => new Set());
   const [statusMessageCopied, setStatusMessageCopied] = useState(false);
+  const [residentDetails, setResidentDetails] = useState(DEFAULT_RESIDENT_DETAILS);
+  const [liveLocation, setLiveLocation] = useState(null);
+  const [liveLocationStatus, setLiveLocationStatus] = useState('idle');
   const isLoading = status === 'loading';
   const demoEventCount = events.filter((event) => event.isDemo).length;
   const liveEventCount = events.length - demoEventCount;
@@ -134,6 +157,14 @@ export function ResidentPage() {
       : status === 'error'
         ? 'Demo fallback'
         : `${liveEventCount} live / ${demoEventCount} demo`;
+  const watchPoints = useMemo(() => {
+    if (!liveLocation) return WATCH_POINTS;
+    return [liveLocation.point, ...WATCH_POINTS];
+  }, [liveLocation]);
+  const impactPoints = useMemo(() => {
+    if (!liveLocation) return IMPACT_POINTS;
+    return [liveLocation.point, ...IMPACT_POINTS.filter((point) => point.id !== 'current')];
+  }, [liveLocation]);
 
   useEffect(() => {
     let cancelled = false;
@@ -162,7 +193,7 @@ export function ResidentPage() {
   }, []);
 
   const statusByPoint = useMemo(() => {
-    return WATCH_POINTS.map((point) => {
+    return watchPoints.map((point) => {
       const affecting = events.filter((event) => {
         if (event.lat == null || event.lng == null) return false;
         const distance = distanceMeters(point, event);
@@ -173,7 +204,7 @@ export function ResidentPage() {
       );
       return { point, affecting };
     });
-  }, [events]);
+  }, [events, watchPoints]);
 
   const active = statusByPoint.find((statusItem) => statusItem.point.id === activePoint);
   const officialAlerts = useMemo(
@@ -182,14 +213,14 @@ export function ResidentPage() {
   );
 
   const alertsByPoint = useMemo(() => {
-    return WATCH_POINTS.map((point) => {
+    return watchPoints.map((point) => {
       const affecting = officialAlerts.filter((alert) => alertAffectsPoint(alert, point));
       affecting.sort(
         (a, b) => (SEVERITY_RANK[b.severity] ?? 0) - (SEVERITY_RANK[a.severity] ?? 0)
       );
       return { point, affecting };
     });
-  }, [officialAlerts]);
+  }, [officialAlerts, watchPoints]);
 
   const activeAlerts = alertsByPoint.find((statusItem) => statusItem.point.id === activePoint);
   const activeSeverity = activeAlerts?.affecting[0]?.severity ?? active?.affecting[0]?.severity;
@@ -199,23 +230,23 @@ export function ResidentPage() {
     RESIDENT_PROFILES.find((profile) => profile.id === activeProfile) ?? RESIDENT_PROFILES[0];
   const affectedWatchPoints = alertsByPoint.filter((item) => item.affecting.length > 0);
   const savedPlacesImpact = useMemo(
-    () => buildSavedPlacesImpact(IMPACT_POINTS, officialAlerts),
-    [officialAlerts]
+    () => buildSavedPlacesImpact(impactPoints, officialAlerts),
+    [impactPoints, officialAlerts]
   );
   const emergencyPack = useMemo(
     () =>
       buildPreparednessChecklist({
         profile: activeProfile,
-        point: activeAlerts?.point ?? active?.point ?? WATCH_POINTS[0],
+        point: activeAlerts?.point ?? active?.point ?? watchPoints[0],
         alert: activeAlerts?.affecting[0],
         transportMode: impactTransport,
         mobilityNeed: impactMobility,
       }),
-    [active?.point, activeAlerts?.affecting, activeAlerts?.point, activeProfile, impactMobility, impactTransport]
+    [active?.point, activeAlerts?.affecting, activeAlerts?.point, activeProfile, impactMobility, impactTransport, watchPoints]
   );
   const preparedCount = emergencyPack.items.filter((item) => preparedItemIds.has(item.id)).length;
   const shareStatusMessage = buildResidentStatusMessage({
-    point: activeAlerts?.point ?? active?.point ?? WATCH_POINTS[0],
+    point: activeAlerts?.point ?? active?.point ?? watchPoints[0],
     alert: activeAlerts?.affecting[0],
     transportMode: impactTransport,
     mobilityNeed: impactMobility,
@@ -252,21 +283,106 @@ export function ResidentPage() {
     }
   }
 
-  function handleAskCopilot(alert, point, question) {
+  async function handleAskCopilot(alert, point, question) {
     const trimmedQuestion = question.trim();
     if (!trimmedQuestion) return;
+    const nearestShelter = await findNearestShelterForQuestion(trimmedQuestion, point);
+    const fallbackAnswer = answerResidentQuestion(trimmedQuestion, alert, point, activeProfile, {
+      residentDetails,
+      impactPoints,
+      transportMode: impactTransport,
+      mobilityNeed: impactMobility,
+      nearestShelter,
+    });
 
     setCopilotAnswers((current) => ({
       ...current,
       [alert.id]: {
         question: trimmedQuestion,
-        answer: answerResidentQuestion(trimmedQuestion, alert, point, activeProfile),
+        answer: fallbackAnswer,
+        mode: 'fallback',
+        status: 'thinking',
       },
     }));
     setCopilotDrafts((current) => ({
       ...current,
       [alert.id]: '',
     }));
+
+    try {
+      const llmAnswer = await api.askMurus({
+        question: trimmedQuestion,
+        deterministicAnswer: fallbackAnswer,
+        alert: {
+          title: alert.title,
+          body: alert.body,
+          publicAction: alert.publicAction,
+          severity: alert.severity,
+          status: alert.status,
+          locationLabel: alert.locationLabel,
+          radiusMeters: alert.radiusMeters,
+        },
+        residentContext: {
+          profile: activeProfile,
+          profileLabel: activeProfileMeta.label,
+          residentDetails,
+          pointLabel: point.label,
+          pointSublabel: point.sublabel,
+          liveLocation: {
+            label: point.label,
+            address: point.sublabel,
+            lat: point.lat,
+            lng: point.lng,
+            accuracyMeters: liveLocation?.point.id === point.id ? liveLocation.accuracyMeters : undefined,
+            capturedAt: liveLocation?.point.id === point.id ? liveLocation.capturedAt : undefined,
+            isInsideAlertRadius: alertAffectsPoint(alert, point),
+            distanceMeters:
+              alert.lat != null && alert.lng != null
+                ? Math.round(distanceMeters(point, { lat: alert.lat, lng: alert.lng }))
+                : null,
+          },
+          nearestShelter,
+          savedPlaces: buildResidentContextPlaces(impactPoints, officialAlerts),
+          emergencyPack: {
+            readyCount: preparedCount,
+            totalCount: emergencyPack.items.length,
+            readyItems: emergencyPack.items
+              .filter((item) => preparedItemIds.has(item.id))
+              .map((item) => item.label),
+            missingItems: emergencyPack.items
+              .filter((item) => !preparedItemIds.has(item.id))
+              .slice(0, 4)
+              .map((item) => item.label),
+          },
+          currentCheckIn:
+            checkInStatuses[alert.id] != null
+              ? CHECK_IN_OPTIONS.find((option) => option.id === checkInStatuses[alert.id])?.label
+              : null,
+          shareStatusMessage,
+          transportMode: optionLabel(TRANSPORT_MODES, impactTransport),
+          mobilityNeed: optionLabel(MOBILITY_NEEDS, impactMobility),
+        },
+      });
+      setCopilotAnswers((current) => ({
+        ...current,
+        [alert.id]: {
+          question: trimmedQuestion,
+          answer: llmAnswer.answer || fallbackAnswer,
+          mode: llmAnswer.mode ?? 'llm',
+          status: llmAnswer.mode === 'fallback' ? 'fallback' : 'ready',
+        },
+      }));
+    } catch {
+      setCopilotAnswers((current) => ({
+        ...current,
+        [alert.id]: {
+          question: trimmedQuestion,
+          answer: fallbackAnswer,
+          mode: 'fallback',
+          status: 'fallback',
+        },
+      }));
+    }
   }
 
   function handleResidentCheckIn(alert, point, option) {
@@ -290,6 +406,72 @@ export function ResidentPage() {
       ...current,
       [alert.id]: option.id,
     }));
+  }
+
+  function handleResidentDetailChange(key, value) {
+    setResidentDetails((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  }
+
+  async function findNearestShelterForQuestion(question, point) {
+    if (detectResidentQuestionIntent(question) !== 'evacuate') return null;
+    try {
+      const nearest = await api.scdfNearest(point.lat, point.lng, 'SHELTER');
+      const shelter = Array.isArray(nearest) ? nearest[0] : null;
+      if (!shelter) return null;
+      return {
+        name: shelter.name,
+        address: shelter.address,
+        distanceMeters: shelter.distance_meters,
+        source: 'SCDF public shelter lookup',
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function handleUseLiveLocation() {
+    if (!navigator.geolocation) {
+      setLiveLocationStatus('unsupported');
+      return;
+    }
+
+    setLiveLocationStatus('loading');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const point = {
+          id: 'live',
+          label: 'Live location',
+          sublabel: formatGpsPoint(lat, lng, position.coords.accuracy),
+          lat,
+          lng,
+        };
+        setLiveLocation({
+          point,
+          accuracyMeters: position.coords.accuracy,
+          capturedAt: new Date().toISOString(),
+        });
+        setActivePoint('live');
+        setImpactPointId('live');
+        setResidentDetails((current) => ({
+          ...current,
+          currentLocationNote: `Live GPS captured near ${point.sublabel}`,
+        }));
+        setLiveLocationStatus('ready');
+      },
+      () => {
+        setLiveLocationStatus('error');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      }
+    );
   }
 
   return (
@@ -316,7 +498,7 @@ export function ResidentPage() {
       </header>
 
       <div className="resident-watch-grid" aria-label="Saved locations">
-        {WATCH_POINTS.map((point) => {
+        {watchPoints.map((point) => {
           const pointStatus = statusByPoint.find((item) => item.point.id === point.id);
           const worstSeverity = pointStatus?.affecting[0]?.severity;
           const pointTone = isLoading ? 'loading' : statusTone(worstSeverity);
@@ -345,6 +527,20 @@ export function ResidentPage() {
           <p className="resident-persona-copy">
             MURUS turns the same official alert into safer next steps for your situation.
           </p>
+          <button type="button" className="resident-location-button" onClick={handleUseLiveLocation}>
+            {liveLocationStatus === 'loading' ? 'Getting live location...' : 'Use my live location'}
+          </button>
+          {liveLocationStatus !== 'idle' && (
+            <p className={`resident-location-status is-${liveLocationStatus}`}>
+              {liveLocationStatus === 'ready'
+                ? `Live location active: ${liveLocation.point.sublabel}`
+                : liveLocationStatus === 'unsupported'
+                  ? 'Live location is not available in this browser.'
+                  : liveLocationStatus === 'error'
+                    ? 'Location permission was denied or timed out.'
+                    : 'Requesting permission from your browser.'}
+            </p>
+          )}
         </div>
         <div className="resident-persona-list">
           {RESIDENT_PROFILES.map((profile) => (
@@ -360,6 +556,43 @@ export function ResidentPage() {
             </button>
           ))}
         </div>
+        <div className="resident-situation-form">
+          <label>
+            <span>Name or role</span>
+            <input
+              value={residentDetails.displayName}
+              onChange={(event) => handleResidentDetailChange('displayName', event.target.value)}
+            />
+          </label>
+          <label>
+            <span>Home address</span>
+            <input
+              value={residentDetails.homeAddress}
+              onChange={(event) => handleResidentDetailChange('homeAddress', event.target.value)}
+            />
+          </label>
+          <label>
+            <span>Current situation</span>
+            <input
+              value={residentDetails.currentLocationNote}
+              onChange={(event) => handleResidentDetailChange('currentLocationNote', event.target.value)}
+            />
+          </label>
+          <label>
+            <span>Where you plan to go</span>
+            <input
+              value={residentDetails.plannedDestination}
+              onChange={(event) => handleResidentDetailChange('plannedDestination', event.target.value)}
+            />
+          </label>
+          <label className="resident-situation-wide">
+            <span>Support notes</span>
+            <input
+              value={residentDetails.supportNotes}
+              onChange={(event) => handleResidentDetailChange('supportNotes', event.target.value)}
+            />
+          </label>
+        </div>
       </section>
 
       <section className="resident-impact-panel" aria-label="Does this affect me check">
@@ -373,7 +606,7 @@ export function ResidentPage() {
           <label>
             <span>Area to check</span>
             <select value={impactPointId} onChange={(event) => setImpactPointId(event.target.value)}>
-              {IMPACT_POINTS.map((point) => (
+              {impactPoints.map((point) => (
                 <option key={point.id} value={point.id}>
                   {point.label} - {point.sublabel}
                 </option>
@@ -407,7 +640,7 @@ export function ResidentPage() {
           onClick={() =>
             setImpactResult(
               buildImpactResult({
-                point: IMPACT_POINTS.find((point) => point.id === impactPointId) ?? IMPACT_POINTS[0],
+                point: impactPoints.find((point) => point.id === impactPointId) ?? impactPoints[0],
                 transportMode: impactTransport,
                 mobilityNeed: impactMobility,
                 alerts: officialAlerts,
@@ -688,7 +921,14 @@ export function ResidentPage() {
                     </form>
                     {copilotAnswer && (
                       <div className="resident-copilot-answer" role="status">
-                        <span>You asked: {copilotAnswer.question}</span>
+                        <span>
+                          You asked: {copilotAnswer.question}
+                          {copilotAnswer.status === 'thinking'
+                            ? ' · Thinking'
+                            : copilotAnswer.mode === 'llm'
+                              ? ' · Ask MURUS AI'
+                              : ' · Safe fallback'}
+                        </span>
                         <p>{copilotAnswer.answer}</p>
                       </div>
                     )}
@@ -864,12 +1104,26 @@ function buildSimpleAlert(alert, point, profile) {
   };
 }
 
-function answerResidentQuestion(question, alert, point, profile) {
+function answerResidentQuestion(question, alert, point, profile, context = {}) {
   const profileLabel =
     RESIDENT_PROFILES.find((residentProfile) => residentProfile.id === profile)?.label ?? 'General';
   const action = stripTrailingPunctuation(alert.publicAction);
   const location = alert.locationLabel ?? point.sublabel;
   const intent = detectResidentQuestionIntent(question);
+  const homeAddress = context.residentDetails?.homeAddress || 'your saved home';
+  const destination = context.residentDetails?.plannedDestination || homeAddress;
+  const support = context.residentDetails?.supportNotes
+    ? ` Support note: ${context.residentDetails.supportNotes}.`
+    : '';
+  const shelter = context.nearestShelter;
+  const shelterText = shelter?.name
+    ? ` Nearest SCDF shelter lookup: ${shelter.name}${shelter.address ? `, ${shelter.address}` : ''}${
+        shelter.distanceMeters ? ` (${Math.round(shelter.distanceMeters)}m away)` : ''
+      }. Confirm it is usable for this incident before moving.`
+    : ' MURUS has not confirmed a shelter for this alert yet.';
+  const homePoint = context.impactPoints?.find((candidate) => candidate.id === 'home');
+  const homeFlagged = homePoint ? alertAffectsPoint(alert, homePoint) : false;
+  const currentFlagged = alertAffectsPoint(alert, point);
 
   if (intent === 'affected') {
     return `Yes. ${point.label} is within the advisory area for ${location}. Follow the ${profileLabel.toLowerCase()} guidance above until the alert is updated.`;
@@ -881,7 +1135,10 @@ function answerResidentQuestion(question, alert, point, profile) {
     return `Use the MRT only if MURUS and station staff say the route is clear. Avoid basement links and sheltered walkways near ${location} until the alert changes.`;
   }
   if (intent === 'home') {
-    return `Only go home if your route avoids ${location} and you are not heading into the affected radius. If unsure, stay put in a staffed safe place and wait for the next official update.`;
+    return `${point.label} is ${currentFlagged ? 'inside' : 'not currently inside'} the alert area. ${homeAddress} is ${homeFlagged ? 'inside' : 'not currently inside'} this alert radius. Only go to ${destination} if your route avoids ${location}; MURUS has not confirmed that your route is clear. If unsure, stay at a staffed place and wait for the next official update.${support}`;
+  }
+  if (intent === 'evacuate') {
+    return `Move away from ${location} using street-level routes and follow official staff or emergency-service directions.${shelterText} If you cannot move safely from ${point.label}, check in as needing help.${support}`;
   }
   if (intent === 'elderly') {
     return `Move slowly, use lifts or sheltered street-level paths, and keep the elderly person away from crowded shortcuts near ${location}. If needed, ask staff or family for help before moving.`;
@@ -900,6 +1157,9 @@ function detectResidentQuestionIntent(question) {
   }
   if (normalized.includes('mrt') || normalized.includes('train') || normalized.includes('bus')) return 'mrt';
   if (normalized.includes('home') || normalized.includes('house')) return 'home';
+  if (normalized.includes('evacuat') || normalized.includes('shelter') || normalized.includes('assembly')) {
+    return 'evacuate';
+  }
   if (normalized.includes('elderly') || normalized.includes('senior') || normalized.includes('old')) {
     return 'elderly';
   }
@@ -935,6 +1195,25 @@ function buildSavedPlacesImpact(points, alerts) {
         ? `Check ${affectedItems.map((item) => item.point.label).join(', ')} first and share the official action with anyone nearby.`
         : 'Your saved places are not currently flagged. Keep monitoring MURUS before travelling.',
   };
+}
+
+function buildResidentContextPlaces(points, alerts) {
+  return points.map((point) => {
+    const matchingAlert = alerts
+      .filter((alert) => alertAffectsPoint(alert, point))
+      .sort((left, right) => (SEVERITY_RANK[right.severity] ?? 0) - (SEVERITY_RANK[left.severity] ?? 0))[0];
+
+    return {
+      id: point.id,
+      label: point.label,
+      address: point.sublabel,
+      lat: point.lat,
+      lng: point.lng,
+      isAffected: Boolean(matchingAlert),
+      affectedBy: matchingAlert?.title ?? null,
+      affectedLocation: matchingAlert?.locationLabel ?? null,
+    };
+  });
 }
 
 function buildImpactResult({ point, transportMode, mobilityNeed, alerts }) {

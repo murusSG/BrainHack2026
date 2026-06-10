@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { BadRequestError } from "../../utils/apiError";
+import { answerAskMurus } from "./residentAskMurus.service";
 import { createResidentAlert, listResidentAlerts, updateResidentAlert } from "./residentAlerts.service";
 import type { ResidentAlertFilter } from "./residentAlerts.types";
 
@@ -35,6 +36,19 @@ export async function patchResidentAlert(req: Request, res: Response, next: Next
     res.json({
       data,
       source: "MURUS resident alert system",
+      fetchedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function postAskMurus(req: Request, res: Response, next: NextFunction) {
+  try {
+    const data = await answerAskMurus(req.body ?? {});
+    res.json({
+      data,
+      source: "Ask MURUS resident copilot",
       fetchedAt: new Date().toISOString(),
     });
   } catch (err) {

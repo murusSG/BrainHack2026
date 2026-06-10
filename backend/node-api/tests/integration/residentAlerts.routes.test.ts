@@ -41,6 +41,15 @@ jest.mock("../../src/modules/residentAlerts/residentAlertSms.service", () => ({
   sendResidentAlertTelegram: jest.fn().mockResolvedValue([]),
 }));
 
+jest.mock("../../src/modules/residentAlerts/residentAskMurus.service", () => ({
+  answerAskMurus: jest.fn().mockResolvedValue({
+    answer: "Use the MRT only if station staff confirm the route is clear.",
+    mode: "llm",
+    model: "deepseek-v4-pro:stable",
+    guardrail: "Grounded in official alert fields and approved fallback rules.",
+  }),
+}));
+
 jest.mock("../../src/modules/crisis/crisis.service", () => ({
   aggregateEvents: jest.fn().mockResolvedValue([
     {
@@ -68,6 +77,7 @@ import {
   sendResidentAlertTelegram,
   sendResidentAlertWhatsapp,
 } from "../../src/modules/residentAlerts/residentAlertSms.service";
+import { answerAskMurus } from "../../src/modules/residentAlerts/residentAskMurus.service";
 
 const app = createApp();
 const getUserMock = supabase?.auth.getUser as jest.Mock;
@@ -75,6 +85,7 @@ const getProfileMock = authRepo.getProfile as jest.Mock;
 const sendResidentAlertSmsMock = sendResidentAlertSms as jest.Mock;
 const sendResidentAlertWhatsappMock = sendResidentAlertWhatsapp as jest.Mock;
 const sendResidentAlertTelegramMock = sendResidentAlertTelegram as jest.Mock;
+const answerAskMurusMock = answerAskMurus as jest.Mock;
 
 describe("resident alert routes", () => {
   beforeEach(() => {
@@ -85,6 +96,7 @@ describe("resident alert routes", () => {
     sendResidentAlertSmsMock.mockClear();
     sendResidentAlertWhatsappMock.mockClear();
     sendResidentAlertTelegramMock.mockClear();
+    answerAskMurusMock.mockClear();
     getUserMock.mockResolvedValue({
       data: {
         user: {
@@ -238,6 +250,42 @@ describe("resident alert routes", () => {
       detail: "Orchard Road resident alert marked resolved.",
       severity: "normal",
     });
+  });
+
+  it("answers Ask MURUS resident questions through the copilot endpoint", async () => {
+    const payload = {
+      question: "Can I still take the MRT?",
+      deterministicAnswer: "Use the MRT only if MURUS and station staff say the route is clear.",
+      alert: {
+        title: "Avoid Orchard Road",
+        body: "Flash flooding has been reported near Orchard Road.",
+        publicAction: "Use Somerset MRT exits and avoid basement links.",
+        severity: "danger",
+        status: "updated",
+        locationLabel: "Orchard Road",
+        radiusMeters: 1200,
+      },
+      residentContext: {
+        profile: "elderly",
+        pointLabel: "Work",
+        pointSublabel: "Orchard Road",
+        transportMode: "mrt",
+        mobilityNeed: "elderly",
+      },
+    };
+
+    const response = await request(app)
+      .post("/api/v1/resident-alerts/ask-murus")
+      .send(payload)
+      .expect(200);
+
+    expect(response.body.source).toContain("Ask MURUS");
+    expect(response.body.data).toMatchObject({
+      answer: expect.stringContaining("MRT"),
+      mode: "llm",
+      model: "deepseek-v4-pro:stable",
+    });
+    expect(answerAskMurusMock).toHaveBeenCalledWith(payload);
   });
 
   it("rejects missing or non-leader publish attempts", async () => {

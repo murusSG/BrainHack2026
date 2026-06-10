@@ -122,6 +122,7 @@ export const api = {
 
   // Resident-facing citizen alert channel
   residentAlerts: (params = {}) => get(withQuery('/resident-alerts', params)),
+  askMurus: (payload) => post('/resident-alerts/ask-murus', payload),
   publishResidentAlert: (payload, token) => post('/resident-alerts', payload, token),
   updateResidentAlert: (id, payload, token) =>
     authedPatch(`/resident-alerts/${encodeURIComponent(id)}`, token, payload),

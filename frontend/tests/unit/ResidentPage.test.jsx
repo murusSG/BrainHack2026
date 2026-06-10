@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -21,12 +21,14 @@ vi.mock('../../src/services/api', () => ({
   api: {
     residentAlerts: vi.fn(),
     scdfNearest: vi.fn(),
+    askMurus: vi.fn(),
   },
 }));
 
 afterEach(() => {
   vi.clearAllMocks();
   window.localStorage.clear();
+  delete navigator.geolocation;
 });
 
 describe('ResidentPage alert inbox', () => {
@@ -47,6 +49,36 @@ describe('ResidentPage alert inbox', () => {
         audience: { type: 'nearby', radiusMeters: 1200 },
       },
     ]);
+    api.askMurus
+      .mockRejectedValueOnce(new Error('LLM unavailable'))
+      .mockResolvedValueOnce({
+        answer: 'AI-grounded: use the MRT only if station staff confirm the route is clear.',
+        mode: 'llm',
+      })
+      .mockRejectedValueOnce(new Error('LLM unavailable'))
+      .mockRejectedValueOnce(new Error('LLM unavailable'))
+      .mockRejectedValueOnce(new Error('LLM unavailable'));
+    api.scdfNearest.mockResolvedValue([
+      {
+        name: 'Somerset shelter',
+        address: 'Somerset Road',
+        distance_meters: 320,
+      },
+    ]);
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition: vi.fn((success) =>
+          success({
+            coords: {
+              latitude: 1.3008,
+              longitude: 103.8391,
+              accuracy: 18,
+            },
+          })
+        ),
+      },
+    });
     const user = userEvent.setup();
 
     render(
@@ -105,28 +137,129 @@ describe('ResidentPage alert inbox', () => {
     expect(screen.getByText('Medication packed')).toBeInTheDocument();
     expect(screen.getByText('2 / 10 ready')).toBeInTheDocument();
 
+    fireEvent.change(screen.getByLabelText('Current situation'), {
+      target: { value: 'Waiting with mum near Orchard Gateway' },
+    });
+    fireEvent.change(screen.getByLabelText('Where you plan to go'), {
+      target: { value: 'Home at Tampines by MRT' },
+    });
+    fireEvent.change(screen.getByLabelText('Support notes'), {
+      target: { value: 'Mum walks slowly and needs lift access' },
+    });
+    await user.click(screen.getByRole('button', { name: 'Use my live location' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Live location active: GPS 1.30080, 103.83910/i)).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /Live locationGPS 1.30080, 103.83910/i })).toBeInTheDocument();
+
     await user.click(screen.getByRole('button', { name: 'Am I affected?' }));
 
-    expect(screen.getByText(/Yes. Work is within the advisory area for Orchard Road/i)).toBeInTheDocument();
-    expect(screen.getByText('You asked: Am I affected?')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Yes. Live location is within the advisory area for Orchard Road/i)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/You asked: Am I affected?/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Can I still take the MRT?' }));
 
-    expect(screen.getByText('You asked: Can I still take the MRT?')).toBeInTheDocument();
-    expect(screen.getByText(/Use the MRT only if MURUS and station staff say the route is clear/i)).toBeInTheDocument();
+    expect(screen.getByText(/You asked: Can I still take the MRT?/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/AI-grounded: use the MRT only if station staff confirm/i)).toBeInTheDocument();
+    });
+    expect(api.askMurus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        question: 'Can I still take the MRT?',
+        deterministicAnswer: expect.stringContaining('Use the MRT only if MURUS'),
+        alert: expect.objectContaining({ locationLabel: 'Orchard Road' }),
+        residentContext: expect.objectContaining({
+          profile: 'elderly',
+          profileLabel: 'Elderly',
+          residentDetails: expect.objectContaining({
+            homeAddress: 'Tampines St 21',
+            currentLocationNote: expect.stringContaining('Live GPS captured near GPS 1.30080, 103.83910'),
+            plannedDestination: 'Home at Tampines by MRT',
+            supportNotes: 'Mum walks slowly and needs lift access',
+          }),
+          pointLabel: 'Live location',
+          liveLocation: expect.objectContaining({
+            address: expect.stringContaining('GPS 1.30080, 103.83910'),
+            accuracyMeters: 18,
+            isInsideAlertRadius: true,
+          }),
+          savedPlaces: expect.arrayContaining([
+            expect.objectContaining({ label: 'Home', address: 'Tampines St 21' }),
+            expect.objectContaining({ label: 'Live location', isAffected: true }),
+            expect.objectContaining({ label: 'Work', isAffected: true }),
+          ]),
+          emergencyPack: expect.objectContaining({
+            readyCount: 2,
+            totalCount: 10,
+            readyItems: expect.arrayContaining(['Phone charged', 'Tell family your status']),
+          }),
+          transportMode: 'Driving',
+          mobilityNeed: 'Wheelchair / mobility aid',
+        }),
+      })
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Is it safe to go home?' }));
+
+    expect(screen.getByText(/You asked: Is it safe to go home?/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Tampines St 21 is not currently inside this alert radius/i)).toBeInTheDocument();
+    });
+    expect(api.askMurus).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        question: 'Is it safe to go home?',
+        deterministicAnswer: expect.stringContaining('MURUS has not confirmed that your route is clear'),
+        residentContext: expect.objectContaining({
+          pointLabel: 'Live location',
+          residentDetails: expect.objectContaining({
+            homeAddress: 'Tampines St 21',
+          }),
+          liveLocation: expect.objectContaining({
+            lat: 1.3008,
+            lng: 103.8391,
+            accuracyMeters: 18,
+          }),
+        }),
+      })
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Where should I evacuate to?' }));
+
+    expect(screen.getByText(/You asked: Where should I evacuate to?/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Nearest SCDF shelter lookup: Somerset shelter/i)).toBeInTheDocument();
+    });
+    expect(api.scdfNearest).toHaveBeenCalledWith(1.3008, 103.8391, 'SHELTER');
+    expect(api.askMurus).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        question: 'Where should I evacuate to?',
+        residentContext: expect.objectContaining({
+          nearestShelter: expect.objectContaining({
+            name: 'Somerset shelter',
+            address: 'Somerset Road',
+            distanceMeters: 320,
+          }),
+        }),
+      })
+    );
 
     await user.type(screen.getByLabelText('Ask your own question'), 'Where should I avoid with my family?');
     await user.click(screen.getByRole('button', { name: 'Ask' }));
 
-    expect(screen.getByText('You asked: Where should I avoid with my family?')).toBeInTheDocument();
-    expect(screen.getByText(/Check saved places first/i)).toBeInTheDocument();
+    expect(screen.getByText(/You asked: Where should I avoid with my family?/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Check saved places first/i)).toBeInTheDocument();
+    });
 
     await user.click(screen.getByRole('button', { name: /I need accessible assistance/i }));
 
     expect(screen.getByText('Status sent to command: I need accessible assistance')).toBeInTheDocument();
     expect(JSON.parse(window.localStorage.getItem('murusResidentCheckins'))[0]).toMatchObject({
       alertId: 'resident-alert:1',
-      pointLabel: 'Work',
+      pointLabel: 'Live location',
       status: 'accessible',
       priority: 'high',
     });

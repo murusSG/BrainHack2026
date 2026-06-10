@@ -5542,6 +5542,77 @@ h1 {
   box-shadow: inset 0 0 0 1px rgba(180, 35, 47, 0.1);
 }
 
+.resident-situation-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  border: 1px solid rgba(180, 35, 47, 0.16);
+  border-radius: 8px;
+  background: #fffafa;
+  padding: 12px;
+}
+
+.resident-situation-form label {
+  display: grid;
+  gap: 5px;
+}
+
+.resident-situation-form span {
+  color: var(--resident-red-dark);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.resident-situation-form input {
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid rgba(180, 35, 47, 0.18);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--resident-ink);
+  padding: 0 10px;
+  font: inherit;
+  font-size: 0.86rem;
+}
+
+.resident-situation-form input:focus {
+  outline: 2px solid rgba(180, 35, 47, 0.18);
+  border-color: rgba(180, 35, 47, 0.42);
+}
+
+.resident-situation-wide {
+  grid-column: 1 / -1;
+}
+
+.resident-location-button {
+  width: fit-content;
+  min-height: 36px;
+  margin-top: 10px;
+  border: 1px solid rgba(180, 35, 47, 0.24);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--resident-red-dark);
+  padding: 0 12px;
+  font-weight: 850;
+}
+
+.resident-location-status {
+  margin-top: 7px;
+  color: var(--resident-muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.resident-location-status.is-ready {
+  color: #08754e;
+}
+
+.resident-location-status.is-error,
+.resident-location-status.is-unsupported {
+  color: var(--resident-red-dark);
+}
+
 .resident-affects-card {
   display: grid;
   gap: 6px;
@@ -6227,6 +6298,10 @@ h1 {
   font-weight: 850;
 }
 
+.resident-copilot-answer p {
+  white-space: pre-line;
+}
+
 .resident-checkin-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6372,6 +6447,10 @@ h1 {
   }
 
   .resident-persona-list {
+    grid-template-columns: 1fr;
+  }
+
+  .resident-situation-form {
     grid-template-columns: 1fr;
   }
 
