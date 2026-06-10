@@ -1,21 +1,39 @@
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { getSession, signOut } from './services/auth';
 import { resolvePostLoginPath } from './lib/authRouting';
-import { AlertsPage } from './pages/AlertsPage';
-import { DashboardLayout } from './layouts/DashboardLayout';
 import { HomePage } from './pages/HomePage';
-import { HospitalsPage } from './pages/HospitalsPage';
-import { IncidentMapPage } from './pages/IncidentMapPage';
-import { LoginPage } from './pages/LoginPage';
-import { SignUpPage } from './pages/SignUpPage';
-import { OverviewPage } from './pages/OverviewPage';
-import { PublicDashboardPage } from './pages/PublicDashboardPage';
-import { DispatcherPage } from './pages/DispatcherPage';
-import { ResourcesPage } from './pages/ResourcesPage';
-import { ResidentPage } from './pages/ResidentPage';
-import { ResponderPage } from './pages/ResponderPage';
-import { SystemFlowPage } from './pages/SystemFlowPage';
+
+function lazyNamed(loader, exportName) {
+  return lazy(() => loader().then((module) => ({ default: module[exportName] })));
+}
+
+const AlertsPage = lazyNamed(() => import('./pages/AlertsPage'), 'AlertsPage');
+const DashboardLayout = lazyNamed(() => import('./layouts/DashboardLayout'), 'DashboardLayout');
+const HospitalsPage = lazyNamed(() => import('./pages/HospitalsPage'), 'HospitalsPage');
+const IncidentMapPage = lazyNamed(() => import('./pages/IncidentMapPage'), 'IncidentMapPage');
+const LoginPage = lazyNamed(() => import('./pages/LoginPage'), 'LoginPage');
+const SignUpPage = lazyNamed(() => import('./pages/SignUpPage'), 'SignUpPage');
+const OverviewPage = lazyNamed(() => import('./pages/OverviewPage'), 'OverviewPage');
+const PublicDashboardPage = lazyNamed(
+  () => import('./pages/PublicDashboardPage'),
+  'PublicDashboardPage'
+);
+const DispatcherPage = lazyNamed(() => import('./pages/DispatcherPage'), 'DispatcherPage');
+const ResourcesPage = lazyNamed(() => import('./pages/ResourcesPage'), 'ResourcesPage');
+const ResidentPage = lazyNamed(() => import('./pages/ResidentPage'), 'ResidentPage');
+const ResponderPage = lazyNamed(() => import('./pages/ResponderPage'), 'ResponderPage');
+const SystemFlowPage = lazyNamed(() => import('./pages/SystemFlowPage'), 'SystemFlowPage');
+
+function RouteLoadingFallback() {
+  return (
+    <div className="route-loading-shell">
+      <div className="route-loading-card">
+        <p className="eyebrow">Loading workspace</p>
+        <h1>Preparing the latest operational view</h1>
+      </div>
+    </div>
+  );
+}
 
 function CommandShell({ page, session, onSignOut }) {
   const pages = {
@@ -136,25 +154,27 @@ function ProtectedDispatcherRoute({ session, restoring }) {
 
 export function AppRoutes({ session, restoring, onAuthenticate, onSignOut }) {
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/login" element={<LoginRoute onAuthenticate={onAuthenticate} />} />
-      <Route path="/signup" element={<SignUpRoute onAuthenticate={onAuthenticate} />} />
-      <Route path="/auth/callback" element={<AuthCallbackRoute session={session} restoring={restoring} />} />
-      <Route path="/public-dashboard" element={<ProtectedPublicDashboard session={session} restoring={restoring} />} />
-      <Route path="/resident" element={<ResidentPage />} />
-      <Route path="/responder" element={<ResponderPage />} />
-      <Route path="/dispatcher" element={<ProtectedDispatcherRoute session={session} restoring={restoring} />} />
+    <Suspense fallback={<RouteLoadingFallback />}>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginRoute onAuthenticate={onAuthenticate} />} />
+        <Route path="/signup" element={<SignUpRoute onAuthenticate={onAuthenticate} />} />
+        <Route path="/auth/callback" element={<AuthCallbackRoute session={session} restoring={restoring} />} />
+        <Route path="/public-dashboard" element={<ProtectedPublicDashboard session={session} restoring={restoring} />} />
+        <Route path="/resident" element={<ResidentPage />} />
+        <Route path="/responder" element={<ResponderPage />} />
+        <Route path="/dispatcher" element={<ProtectedDispatcherRoute session={session} restoring={restoring} />} />
 
-      <Route path="/overview" element={<ProtectedCommandShell page="overview" session={session} onSignOut={onSignOut} restoring={restoring} />} />
-      <Route path="/incident-map" element={<ProtectedCommandShell page="incident-map" session={session} onSignOut={onSignOut} restoring={restoring} />} />
-      <Route path="/resources" element={<ProtectedCommandShell page="resources" session={session} onSignOut={onSignOut} restoring={restoring} />} />
-      <Route path="/hospitals" element={<ProtectedCommandShell page="hospitals" session={session} onSignOut={onSignOut} restoring={restoring} />} />
-      <Route path="/alerts" element={<ProtectedCommandShell page="alerts" session={session} onSignOut={onSignOut} restoring={restoring} />} />
-      <Route path="/system-flow" element={<ProtectedCommandShell page="system-flow" session={session} onSignOut={onSignOut} restoring={restoring} />} />
+        <Route path="/overview" element={<ProtectedCommandShell page="overview" session={session} onSignOut={onSignOut} restoring={restoring} />} />
+        <Route path="/incident-map" element={<ProtectedCommandShell page="incident-map" session={session} onSignOut={onSignOut} restoring={restoring} />} />
+        <Route path="/resources" element={<ProtectedCommandShell page="resources" session={session} onSignOut={onSignOut} restoring={restoring} />} />
+        <Route path="/hospitals" element={<ProtectedCommandShell page="hospitals" session={session} onSignOut={onSignOut} restoring={restoring} />} />
+        <Route path="/alerts" element={<ProtectedCommandShell page="alerts" session={session} onSignOut={onSignOut} restoring={restoring} />} />
+        <Route path="/system-flow" element={<ProtectedCommandShell page="system-flow" session={session} onSignOut={onSignOut} restoring={restoring} />} />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
 
@@ -163,25 +183,48 @@ export default function App() {
   const [restoring, setRestoring] = useState(true);
 
   useEffect(() => {
+    const sessionRoutes = [
+      '/auth/callback',
+      '/public-dashboard',
+      '/dispatcher',
+      '/overview',
+      '/incident-map',
+      '/resources',
+      '/hospitals',
+      '/alerts',
+      '/system-flow',
+    ];
+    const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+    if (!sessionRoutes.includes(currentPath)) {
+      setRestoring(false);
+      return undefined;
+    }
+
+    let cancelled = false;
     const restoreTimeout = window.setTimeout(() => {
       setRestoring(false);
     }, 2500);
 
-    getSession()
+    import('./services/auth')
+      .then(({ getSession }) => getSession())
       .then((restored) => {
-        if (restored) setSession(restored);
+        if (!cancelled && restored) setSession(restored);
       })
       .catch((error) => {
         console.error('[auth] Session restore failed:', error);
       })
-      .finally(() => setRestoring(false));
+      .finally(() => {
+        if (!cancelled) setRestoring(false);
+      });
 
     return () => {
+      cancelled = true;
       window.clearTimeout(restoreTimeout);
     };
   }, []);
 
   async function handleSignOut() {
+    const { signOut } = await import('./services/auth');
     await signOut();
     setSession(null);
   }

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef } from 'react';
+import { Fragment, memo, useEffect, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Circle, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -92,7 +92,7 @@ function FitBounds({ events }) {
   return null;
 }
 
-export function CrisisMap({ events = [], onSelect, selectedId, height = '100%' }) {
+export const CrisisMap = memo(function CrisisMap({ events = [], onSelect, selectedId, height = '100%' }) {
   return (
     <div style={{ height, width: '100%', borderRadius: 16, overflow: 'hidden' }}>
       <MapContainer
@@ -151,7 +151,7 @@ export function CrisisMap({ events = [], onSelect, selectedId, height = '100%' }
       </MapContainer>
     </div>
   );
-}
+});
 
 function coordinatesForEvent(event) {
   const lat = parseCoordinate(event?.lat, 'lat');

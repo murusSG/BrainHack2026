@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../services/api';
 
 const DEFAULT_CENTER = { latitude: 1.3521, longitude: 103.8198 };
@@ -87,8 +87,6 @@ export function OneMapPreviewMap({ className = '', points = [], zoom = 12 }) {
   const overlayLayerRef = useRef(null);
   const [loadState, setLoadState] = useState('loading');
 
-  const stablePoints = useMemo(() => points.map((point) => ({ ...point })), [points]);
-
   useEffect(() => {
     let isCancelled = false;
 
@@ -144,7 +142,7 @@ export function OneMapPreviewMap({ className = '', points = [], zoom = 12 }) {
       if (!leafletMapRef.current || !overlayLayerRef.current || !window.L) return;
 
       const L = window.L;
-      const resolved = (await Promise.all(stablePoints.map(resolvePoint))).filter(Boolean);
+      const resolved = (await Promise.all(points.map(resolvePoint))).filter(Boolean);
       if (isCancelled || !overlayLayerRef.current || !leafletMapRef.current) return;
 
       overlayLayerRef.current.clearLayers();
@@ -191,7 +189,7 @@ export function OneMapPreviewMap({ className = '', points = [], zoom = 12 }) {
     return () => {
       isCancelled = true;
     };
-  }, [stablePoints, zoom]);
+  }, [points, zoom]);
 
   return (
     <div className={`one-map-preview ${className}`}>

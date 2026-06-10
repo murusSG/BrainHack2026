@@ -2,7 +2,9 @@
 
 This folder is reserved for the React client application.
 
-Current state: directory scaffold only (no generated boilerplate code yet).
+Current state: implemented Vite/React application with Mantine, Supabase auth,
+Leaflet maps, role-specific dashboards, and Vitest coverage. Use Node.js 20.19
+or newer for the current Vite/Vitest/jsdom toolchain.
 
 ## Folder guide
 
@@ -121,3 +123,29 @@ Purpose:
 Expected files:
 - Utility scripts for codegen/checks/migration tasks.
 - Usage documentation when scripts are added.
+
+## Performance Safeguards
+
+The June 10, 2026 audit found a single 820.61 kB minified JavaScript bundle,
+hidden-tab polling every five seconds, and a production WebSocket fallback that
+could retry `ws://localhost:3000/ws` indefinitely.
+
+The frontend now:
+
+- lazy-loads route, Supabase, and map code;
+- shares duplicate in-flight public GET requests;
+- times out stalled API requests after `VITE_API_TIMEOUT_MS`;
+- pauses dispatcher, responder, and incident polling while the tab is hidden;
+- retains unchanged incident and log arrays to avoid avoidable rerenders;
+- requires an explicit non-local `VITE_WS_URL` in production;
+- sends long-lived immutable cache headers for hashed Vite assets on Vercel.
+
+For Vercel, `VITE_API_BASE_URL` must point to the deployed Node API. The Python
+function in this repository is the Flask AI service and does not replace the
+Node `/api/v1` gateway. Set `VITE_WS_URL` only when that Node host supports
+`/ws`; leaving it unset keeps the REST snapshot available without retrying a
+nonexistent local socket.
+
+After deployment, confirm route chunking, hidden-tab network silence, configured
+API/WebSocket reachability, and stable Leaflet viewports in Chrome Performance
+and Network panels.

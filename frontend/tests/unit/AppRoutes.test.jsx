@@ -14,6 +14,12 @@ vi.mock('../../src/layouts/DashboardLayout', () => ({
   DashboardLayout: ({ children }) => <div>ops shell{children}</div>,
 }));
 vi.mock('../../src/pages/OverviewPage', () => ({ OverviewPage: () => <div>overview body</div> }));
+vi.mock('../../src/pages/LoginPage', () => ({
+  LoginPage: () => <div>Log in to continue</div>,
+}));
+vi.mock('../../src/pages/SignUpPage', () => ({
+  SignUpPage: () => <div>Create your account</div>,
+}));
 
 function renderAt(route, props = {}) {
   const base = { session: null, restoring: false, onAuthenticate: vi.fn(), onSignOut: vi.fn() };
@@ -32,23 +38,23 @@ describe('AppRoutes', () => {
     expect(screen.getByText(/One picture of the crisis/i)).toBeInTheDocument();
   });
 
-  it('renders the SignUpPage at /signup', () => {
+  it('renders the SignUpPage at /signup', async () => {
     renderAt('/signup');
-    expect(screen.getByText('Create your account')).toBeInTheDocument();
+    expect(await screen.findByText('Create your account')).toBeInTheDocument();
   });
 
-  it('redirects /public-dashboard to /login when unauthenticated', () => {
+  it('redirects /public-dashboard to /login when unauthenticated', async () => {
     renderAt('/public-dashboard');
-    expect(screen.getByText('Log in to continue')).toBeInTheDocument();
+    expect(await screen.findByText('Log in to continue')).toBeInTheDocument();
   });
 
-  it('shows the public dashboard when a session exists', () => {
+  it('shows the public dashboard when a session exists', async () => {
     renderAt('/public-dashboard', { session: { identity: 'a@b.com', role: 'public', token: 't' } });
-    expect(screen.getByText('public dashboard body')).toBeInTheDocument();
+    expect(await screen.findByText('public dashboard body')).toBeInTheDocument();
   });
 
-  it('renders the ops overview at /overview for a leader', () => {
+  it('renders the ops overview at /overview for a leader', async () => {
     renderAt('/overview', { session: { identity: 'l@b.com', role: 'leader', token: 't' } });
-    expect(screen.getByText('overview body')).toBeInTheDocument();
+    expect(await screen.findByText('overview body')).toBeInTheDocument();
   });
 });

@@ -12,19 +12,29 @@ const configuredApiBase = (
 const API_BASE = configuredApiBase.endsWith('/api/v1')
   ? configuredApiBase
   : `${configuredApiBase}/api/v1`;
+const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS) || 15000;
+const inFlightGets = new Map();
 
 async function request(path, { unwrap = true, method = 'GET', body, headers: extraHeaders } = {}) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let res;
   try {
     res = await fetch(`${API_BASE}${path}`, {
       method,
       headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...extraHeaders },
       body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
     });
   } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error(`API ${path} timed out after ${REQUEST_TIMEOUT_MS}ms.`);
+    }
     const message = error instanceof Error ? error.message : 'Network request failed.';
     console.error('[api] request failed before response', { apiBase: API_BASE, path, method, message });
     throw new Error(`Could not reach the Node API at ${API_BASE}. ${message}`);
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 
   if (!res.ok) {
@@ -43,7 +53,7 @@ async function request(path, { unwrap = true, method = 'GET', body, headers: ext
 }
 
 async function get(path) {
-  return request(path);
+  return deduplicatedGet(path, true);
 }
 
 async function post(path, body, token) {
@@ -59,7 +69,23 @@ async function patch(path, body) {
 }
 
 async function getRaw(path) {
-  return request(path, { unwrap: false });
+  return deduplicatedGet(path, false);
+}
+
+function deduplicatedGet(path, unwrap) {
+  const key = `${unwrap ? 'data' : 'raw'}:${path}`;
+  const existing = inFlightGets.get(key);
+  if (existing) return existing;
+
+  const pending = request(path, { unwrap }).finally(() => {
+    if (inFlightGets.get(key) === pending) inFlightGets.delete(key);
+  });
+  inFlightGets.set(key, pending);
+  return pending;
+}
+
+export function clearApiRequestCacheForTests() {
+  inFlightGets.clear();
 }
 
 async function authedGet(path, token) {

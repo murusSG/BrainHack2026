@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
+import { usePageAwarePolling } from '../hooks/usePageAwarePolling';
 import { api } from '../services/api';
 import { incidentTitle } from '../services/incidentClusterAdapter';
 
@@ -25,6 +26,14 @@ function formatTimestamp(value) {
 
 function categoryLabel(value) {
   return LOG_CATEGORY_OPTIONS.find((option) => option.value === value)?.label ?? 'General';
+}
+
+function sameIncidents(current, next) {
+  return current.length === next.length && JSON.stringify(current) === JSON.stringify(next);
+}
+
+function sameLogs(current, next) {
+  return current.length === next.length && JSON.stringify(current) === JSON.stringify(next);
 }
 
 export function ResponderPage() {
@@ -57,10 +66,11 @@ export function ResponderPage() {
     try {
       const next = await api.responderIncidents();
       if (incidentRequestIdRef.current !== requestId) return;
-      setIncidents(next ?? []);
+      const incidentItems = next ?? [];
+      setIncidents((current) => (sameIncidents(current, incidentItems) ? current : incidentItems));
       setSelectedId((current) => {
-        if ((next ?? []).some((incident) => incident.incident_id === current)) return current;
-        return next?.[0]?.incident_id ?? null;
+        if (incidentItems.some((incident) => incident.incident_id === current)) return current;
+        return incidentItems[0]?.incident_id ?? null;
       });
       setIncidentStatus('done');
       setIncidentError('');
@@ -86,8 +96,12 @@ export function ResponderPage() {
     try {
       const next = await api.responderLogs(incidentId);
       if (logRequestIdRef.current !== requestId) return;
-      setLogs(next ?? []);
-      logsRef.current = next ?? [];
+      const logItems = next ?? [];
+      setLogs((current) => {
+        const stableLogs = sameLogs(current, logItems) ? current : logItems;
+        logsRef.current = stableLogs;
+        return stableLogs;
+      });
       setLogStatus('idle');
       setLogError('');
     } catch (error) {
@@ -101,19 +115,18 @@ export function ResponderPage() {
     logsRef.current = logs;
   }, [logs]);
 
-  useEffect(() => {
-    refreshIncidents();
-    const id = window.setInterval(refreshIncidents, 5000);
-    return () => window.clearInterval(id);
-  }, [refreshIncidents]);
+  usePageAwarePolling(refreshIncidents, 5000);
+
+  const refreshSelectedLogs = useCallback(() => {
+    const incidentId = selectedIncident?.incident_id;
+    return refreshLogs(incidentId);
+  }, [selectedIncident?.incident_id, refreshLogs]);
 
   useEffect(() => {
-    const incidentId = selectedIncident?.incident_id;
-    refreshLogs(incidentId);
-    if (!incidentId) return undefined;
-    const id = window.setInterval(() => refreshLogs(incidentId), 5000);
-    return () => window.clearInterval(id);
-  }, [selectedIncident?.incident_id, refreshLogs]);
+    refreshSelectedLogs();
+  }, [refreshSelectedLogs]);
+
+  usePageAwarePolling(refreshSelectedLogs, 5000, { immediate: false });
 
   useEffect(() => {
     const nextAgency = selectedIncident?.approved_agencies?.includes(form.agency)

@@ -13,6 +13,34 @@ import { OneMapPreviewMap } from '../components/OneMapPreviewMap';
 import { useState } from 'react';
 import { api } from '../services/api';
 
+const PUBLIC_MAP_POINTS = [
+  {
+    query: 'Kallang Basin, Singapore',
+    title: 'Active Hazard Zone',
+    description: 'Flood impact area under active advisory.',
+    tone: 'hazard',
+    radiusMeters: 900,
+    fallbackLatitude: 1.3072,
+    fallbackLongitude: 103.8691,
+  },
+  {
+    query: 'Central Sports Complex, Singapore',
+    title: 'Central Sports Complex',
+    description: 'Nearby shelter / safe zone.',
+    tone: 'safe',
+    fallbackLatitude: 1.3028,
+    fallbackLongitude: 103.8835,
+  },
+  {
+    query: 'Grand Civic Plaza, Singapore',
+    title: 'Grand Civic Plaza',
+    description: 'Nearby shelter / safe zone.',
+    tone: 'safe',
+    fallbackLatitude: 1.2951,
+    fallbackLongitude: 103.8553,
+  },
+];
+
 function AdvisoryCard({ advisory }) {
   return (
     <article className={`public-advisory-card tone-${advisory.tone} ${advisory.expanded ? 'expanded' : ''}`}>
@@ -40,37 +68,9 @@ function AdvisoryCard({ advisory }) {
 }
 
 function PublicMapPreview() {
-  const points = [
-    {
-      query: 'Kallang Basin, Singapore',
-      title: 'Active Hazard Zone',
-      description: 'Flood impact area under active advisory.',
-      tone: 'hazard',
-      radiusMeters: 900,
-      fallbackLatitude: 1.3072,
-      fallbackLongitude: 103.8691,
-    },
-    {
-      query: 'Central Sports Complex, Singapore',
-      title: 'Central Sports Complex',
-      description: 'Nearby shelter / safe zone.',
-      tone: 'safe',
-      fallbackLatitude: 1.3028,
-      fallbackLongitude: 103.8835,
-    },
-    {
-      query: 'Grand Civic Plaza, Singapore',
-      title: 'Grand Civic Plaza',
-      description: 'Nearby shelter / safe zone.',
-      tone: 'safe',
-      fallbackLatitude: 1.2951,
-      fallbackLongitude: 103.8553,
-    },
-  ];
-
   return (
     <div className="public-map-preview">
-      <OneMapPreviewMap className="public-onemap-preview" points={points} />
+      <OneMapPreviewMap className="public-onemap-preview" points={PUBLIC_MAP_POINTS} />
     </div>
   );
 }
