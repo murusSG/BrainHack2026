@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AgencyFeedPanel } from '../components/AgencyFeedPanel';
 import { AllocationApprovalPanel } from '../components/AllocationApprovalPanel';
 import { ForesightEngine } from '../components/ForesightEngine';
@@ -32,26 +32,34 @@ export function OverviewPage() {
   const [activeQuickAction, setActiveQuickAction] = useState(null);
   const [guidelinesVisible, setGuidelinesVisible] = useState(false);
   const [residentCheckins, setResidentCheckins] = useState(() => readResidentCheckins());
-  const demoEventCount = events.filter((event) => event.isDemo).length;
-  const liveEventCount = events.length - demoEventCount;
-  const activeIncidentDelta =
-    status === 'loading'
-      ? 'Syncing live feeds'
-      : status === 'error'
-        ? 'Demo fallback active'
-        : `${liveEventCount} live + ${demoEventCount} demo`;
-  const overviewStats = topStats.map((stat) =>
-    stat.label === 'Active incidents'
-      ? {
-          ...stat,
-          value: String(events.length),
-          delta: activeIncidentDelta,
-          loading: status === 'loading',
-        }
-      : stat
+  const { demoEventCount, liveEventCount } = useMemo(() => {
+    const demoCount = events.filter((event) => event.isDemo).length;
+    return {
+      demoEventCount: demoCount,
+      liveEventCount: events.length - demoCount,
+    };
+  }, [events]);
+  const activeIncidentDelta = useMemo(() => {
+    if (status === 'loading') return 'Syncing live feeds';
+    if (status === 'error') return 'Demo fallback active';
+    return `${liveEventCount} live + ${demoEventCount} demo`;
+  }, [demoEventCount, liveEventCount, status]);
+  const overviewStats = useMemo(
+    () =>
+      topStats.map((stat) =>
+        stat.label === 'Active incidents'
+          ? {
+              ...stat,
+              value: String(events.length),
+              delta: activeIncidentDelta,
+              loading: status === 'loading',
+            }
+          : stat
+      ),
+    [activeIncidentDelta, events.length, status]
   );
 
-  async function refreshCommandState() {
+  const refreshCommandState = useCallback(async () => {
     try {
       const [allocations, timeline] = await Promise.all([
         api.commandAllocations(),
@@ -63,7 +71,7 @@ export function OverviewPage() {
     } catch {
       setCommandStateStatus('error');
     }
-  }
+  }, []);
 
   useEffect(() => {
     refreshCommandState();
@@ -83,9 +91,12 @@ export function OverviewPage() {
     };
   }, []);
 
-  const residentCheckinSummary = summarizeResidentCheckins(residentCheckins);
+  const residentCheckinSummary = useMemo(
+    () => summarizeResidentCheckins(residentCheckins),
+    [residentCheckins]
+  );
 
-  async function handleStageAction(action) {
+  const handleStageAction = useCallback(async (action) => {
     const recommendation = buildForesightRecommendation(action);
     setForesightRecommendation(recommendation);
     requestAnimationFrame(() => {
@@ -103,9 +114,9 @@ export function OverviewPage() {
     } catch {
       setCommandStateStatus('error');
     }
-  }
+  }, []);
 
-  async function handleAgencyStatusChange(recommendationId, agencyIds, status) {
+  const handleAgencyStatusChange = useCallback(async (recommendationId, agencyIds, status) => {
     try {
       const saved = await api.updateCommandAllocationAgencies(recommendationId, {
         agencyIds,
@@ -120,9 +131,9 @@ export function OverviewPage() {
       setCommandStateStatus('error');
       return null;
     }
-  }
+  }, []);
 
-  function handleQuickAction(action) {
+  const handleQuickAction = useCallback((action) => {
     setActiveQuickAction(action.label);
     if (action.label === 'Create New Incident') {
       navigate('/dispatcher', {
@@ -167,7 +178,7 @@ export function OverviewPage() {
         },
       });
     }
-  }
+  }, [navigate]);
 
   return (
     <div className="overview-page">
