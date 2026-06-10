@@ -1,4 +1,4 @@
-import logo from '../assets/logo.jpg';
+import logo from '../assets/logo.png';
 
 export function AppLogo({ className = '', variant = 'default' }) {
   return (
