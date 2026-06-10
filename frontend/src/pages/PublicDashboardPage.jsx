@@ -11,8 +11,6 @@ import {
 } from '../data/dashboardData';
 import { OneMapPreviewMap } from '../components/OneMapPreviewMap';
 import { AppLogo } from '../components/AppLogo';
-import { useState } from 'react';
-import { api } from '../services/api';
 
 const PUBLIC_MAP_POINTS = [
   {
@@ -76,11 +74,22 @@ function PublicMapPreview() {
   );
 }
 
-export function PublicDashboardPage({ onReturnToOps }) {
-  const [reportFormOpen, setReportFormOpen] = useState(false);
-
+export function PublicDashboardPage({
+  onReturnToOps,
+  embedded = false,
+  mobileView = false,
+  showBackButton = true,
+}) {
   return (
-    <div className="public-shell">
+    <div
+      className={[
+        'public-shell',
+        embedded ? 'public-shell--embedded' : '',
+        mobileView ? 'public-shell--mobile' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
       <aside className="public-sidebar">
         <div className="public-brand">
           <AppLogo variant="public" />
@@ -113,36 +122,15 @@ export function PublicDashboardPage({ onReturnToOps }) {
           </button>
         </section>
 
-        <div className="public-sidebar-actions">
-          <button
-            type="button"
-            className="public-primary-button full"
-            onClick={() => setReportFormOpen((current) => !current)}
-          >
-            {publicDashboardMeta.reportLabel}
-            <span>{publicDashboardMeta.reportCopy}</span>
-          </button>
-          {reportFormOpen && <PublicIncidentReportForm />}
-          <button type="button" className="public-outline-button full">
-            {publicDashboardMeta.tipsLabel}
-            <span>{publicDashboardMeta.tipsCopy}</span>
-          </button>
-        </div>
-
-        <button type="button" className="public-return-link" onClick={() => onReturnToOps?.()}>
-          Return to Operations Relay
-        </button>
       </aside>
 
       <div className="public-main-shell">
         <header className="public-topbar">
-          <div className="public-breadcrumbs">
+          {showBackButton && onReturnToOps ? (
             <button type="button" className="public-topbar-back" onClick={() => onReturnToOps?.()}>
               Back to Overview
             </button>
-            <span>{publicDashboardMeta.breadcrumb}</span>
-            <span>{publicDashboardMeta.breadcrumbCurrent}</span>
-          </div>
+          ) : null}
           <div className="public-signal-pill">{publicDashboardMeta.signal}</div>
         </header>
 
@@ -158,6 +146,13 @@ export function PublicDashboardPage({ onReturnToOps }) {
               <span>{publicDashboardMeta.incidentBannerNote}</span>
             </div>
           </section>
+
+          <div className="public-report-cta-row">
+            <button type="button" className="public-primary-button public-report-cta">
+              {publicDashboardMeta.reportLabel}
+              <span>{publicDashboardMeta.reportCopy}</span>
+            </button>
+          </div>
 
           <section className="public-overview-grid">
             <div className="public-left-column">
@@ -268,95 +263,6 @@ export function PublicDashboardPage({ onReturnToOps }) {
             </aside>
           </section>
         </main>
-      </div>
-    </div>
-  );
-}
-
-function PublicIncidentReportForm() {
-  const [reportText, setReportText] = useState('');
-  const [status, setStatus] = useState('idle');
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState('');
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-    const trimmed = reportText.trim();
-    if (!trimmed) {
-      setError('Describe what you saw before submitting.');
-      return;
-    }
-
-    setStatus('submitting');
-    setError('');
-    try {
-      const response = await api.reportIncident({
-        report_text: trimmed,
-        source: 'public',
-        media_urls: [],
-      });
-      setResult(response);
-      setStatus('done');
-    } catch (err) {
-      setError(err.message);
-      setStatus('error');
-    }
-  }
-
-  return (
-    <form className="public-report-form" onSubmit={handleSubmit}>
-      <label>
-        <span>Incident details</span>
-        <textarea
-          rows="5"
-          value={reportText}
-          onChange={(event) => setReportText(event.target.value)}
-          placeholder="Describe the incident, visible hazards, and nearby landmarks"
-        />
-      </label>
-      <button type="submit" className="public-primary-button full" disabled={status === 'submitting'}>
-        {status === 'submitting' ? 'Submitting report' : 'Submit to command'}
-      </button>
-      {error && <p className="public-report-error">{error}</p>}
-      {result && <PublicIncidentReportResult result={result} />}
-    </form>
-  );
-}
-
-function PublicIncidentReportResult({ result }) {
-  if (result.status === 'grouped_with_existing_incident') {
-    return (
-      <div className="public-report-result">
-        <strong>Grouped with {result.incident_id}</strong>
-        <p>{result.message}</p>
-        <span>Similarity: {Math.round((result.similarity?.confidence ?? 0) * 100)}%</span>
-      </div>
-    );
-  }
-
-  if (result.status === 'needs_manual_review') {
-    return (
-      <div className="public-report-result warning">
-        <strong>Manual review required</strong>
-        <p>{result.reason}</p>
-      </div>
-    );
-  }
-
-  const extracted = result.extracted_incident ?? {};
-  const recommendations = result.recommendations ?? {};
-  return (
-    <div className="public-report-result">
-      <strong>Created {result.incident_id}</strong>
-      <p>{extracted.incident_type ?? 'Incident'} / {extracted.severity ?? 'severity pending'}</p>
-      {extracted.location_text && <span>{extracted.location_text}</span>}
-      <span>{result.resource_allocation_status?.replaceAll('_', ' ')}</span>
-      <div className="public-report-agencies">
-        {[...(recommendations.mandatory_agencies ?? []), ...(recommendations.suggested_agencies ?? [])].map(
-          (agency) => (
-            <span key={`${agency.agency}-${agency.reason}`}>{agency.agency}</span>
-          )
-        )}
       </div>
     </div>
   );

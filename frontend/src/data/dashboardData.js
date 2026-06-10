@@ -393,53 +393,7 @@ export const resourceLedgerTabs = [
   { id: 'shelters', label: 'Shelter Network' }
 ];
 
-export const resourceLedgerEntries = [
-  {
-    unitId: 'AMB-201',
-    type: 'ALS (Advanced)',
-    baseStation: 'Central Fire Stn',
-    crew: 'Lee/Siva',
-    capacity: 92,
-    status: 'Available',
-    statusTone: 'available'
-  },
-  {
-    unitId: 'AMB-154',
-    type: 'BLS (Basic)',
-    baseStation: 'Jurong West Hub',
-    crew: 'Wong/Tan',
-    capacity: 45,
-    status: 'Dispatched',
-    statusTone: 'dispatched'
-  },
-  {
-    unitId: 'AMB-098',
-    type: 'Critical Care',
-    baseStation: 'Changi Depot',
-    crew: 'Kumar/Aziz',
-    capacity: 88,
-    status: 'Available',
-    statusTone: 'available'
-  },
-  {
-    unitId: 'AMB-312',
-    type: 'ALS (Advanced)',
-    baseStation: 'Sengkang Stn',
-    crew: 'N.A.',
-    capacity: 12,
-    status: 'Maintenance',
-    statusTone: 'maintenance'
-  },
-  {
-    unitId: 'AMB-112',
-    type: 'BLS (Basic)',
-    baseStation: 'Woodlands Depot',
-    crew: 'Singh/Lim',
-    capacity: 98,
-    status: 'Available',
-    statusTone: 'available'
-  }
-];
+export const resourceLedgerEntries = [];
 
 export const resourceLedgerMeta = {
   title: 'Inventory & Capacity Ledger',
@@ -452,7 +406,13 @@ export const resourceLedgerMeta = {
 export const resourceShortageAlert = {
   title: 'Critical Resource Shortage Alert',
   message:
-    'Blood Type O- and surgical grade oxygen levels are below 25% at Changi General Hospital. Immediate reallocation from Sengkang General is recommended.'
+    'Blood Type O- and surgical grade oxygen levels are below 25% at Changi General Hospital. Immediate reallocation from Sengkang General is recommended.',
+  transferFrom: 'Sengkang General',
+  transferTo: 'Changi General Hospital',
+  items: [
+    { quantity: 1, label: 'Blood Type O-' },
+    { quantity: 1, label: 'Surgical grade oxygen' },
+  ],
 };
 
 export const hospitalSummaryCards = [
