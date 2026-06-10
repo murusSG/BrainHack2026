@@ -45,6 +45,7 @@ const schema = z.object({
   ASK_MURUS_LLM_API_KEY: optionalString,
   ASK_MURUS_LLM_API_BASE_URL: z.string().url().default("https://vectorengine.ai/v1"),
   ASK_MURUS_LLM_MODEL: z.string().min(1).default("deepseek-v4-pro:stable"),
+  LLM_TIMEOUT_MS: z.coerce.number().positive().default(90000),
   ASK_MURUS_TIMEOUT_MS: z.coerce.number().positive().default(90000),
   FLASK_AI_URL: z.string().url().default("http://localhost:5001"),
   INCIDENT_SIMILARITY_TIME_WINDOW_MINUTES: z.coerce.number().positive().default(60),

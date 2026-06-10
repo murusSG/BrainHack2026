@@ -513,7 +513,7 @@ async function generateNarrative(prediction: ForesightPrediction): Promise<Fores
         stream: false,
       },
       {
-        timeout: env.EXTERNAL_API_TIMEOUT_SECONDS * 1000,
+        timeout: env.LLM_TIMEOUT_MS,
         headers: {
           Authorization: `Bearer ${env.LLM_API_KEY}`,
           "Content-Type": "application/json",
@@ -653,7 +653,7 @@ async function generateLeaderBrief(
         stream: false,
       },
       {
-        timeout: env.EXTERNAL_API_TIMEOUT_SECONDS * 1000,
+        timeout: env.LLM_TIMEOUT_MS,
         headers: {
           Authorization: `Bearer ${env.LLM_API_KEY}`,
           "Content-Type": "application/json",
