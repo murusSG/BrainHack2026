@@ -47,7 +47,7 @@ export function AlertsPage({ session }) {
   const location = useLocation();
   const routedDraft = location.state?.residentAlertDraft;
   const initialAlertId = alertsFeed.find((item) => item.active)?.id ?? alertsFeed[0]?.id;
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => new URLSearchParams(location.search).get('q') ?? '');
   const [activeTab, setActiveTab] = useState(alertsPageMeta.tabs[0]);
   const [selectedAlertId, setSelectedAlertId] = useState(initialAlertId);
   const [statusOverrides, setStatusOverrides] = useState({});

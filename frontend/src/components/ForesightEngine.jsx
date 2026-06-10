@@ -265,9 +265,9 @@ export function ForesightEngine({ onStageAction }) {
           </span>
         </div>
         <div className="foresight-alert-grid">
-          {predictions.map((prediction) => (
+          {predictions.map((prediction, index) => (
             <article
-              key={prediction.id}
+              key={`${prediction.id}-${index}`}
               className={`foresight-alert foresight-${severityTone(prediction.severity)}`}
             >
               <div className="foresight-alert-top">

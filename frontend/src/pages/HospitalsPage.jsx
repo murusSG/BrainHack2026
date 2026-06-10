@@ -3,6 +3,7 @@ import {
 } from '../data/dashboardData';
 import { useHospitalData } from '../hooks/useHospitalData';
 import { useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
 function hospitalSymbol(icon) {
   if (icon === 'alert') {
@@ -40,6 +41,7 @@ function FacilityMetric({ label, data }) {
 }
 
 export function HospitalsPage() {
+  const location = useLocation();
   const {
     status,
     error,
@@ -49,9 +51,10 @@ export function HospitalsPage() {
     liveOccupancyCount,
     liveReferenceCount,
   } = useHospitalData();
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => new URLSearchParams(location.search).get('q') ?? '');
   const [activeFilter, setActiveFilter] = useState('all');
-  const [selectedFacility, setSelectedFacility] = useState(null);
+  const [detailFacility, setDetailFacility] = useState(null);
+  const [transferFacility, setTransferFacility] = useState(null);
   const [hospitalNotice, setHospitalNotice] = useState('Hospital desk ready for capacity review.');
   const filterOptions = ['all', 'critical', 'warning', 'central', 'west', 'north', 'east'];
   const hasLiveData = liveOccupancyCount > 0 || liveReferenceCount > 0;
@@ -82,7 +85,7 @@ export function HospitalsPage() {
     });
   }, [activeFilter, facilityCards, query]);
 
-  const selectedFacilityName = selectedFacility?.name ?? filteredFacilityCards[0]?.name;
+  const selectedFacilityName = (detailFacility ?? transferFacility)?.name ?? filteredFacilityCards[0]?.name;
 
   return (
     <div className="hospitals-page">
@@ -121,6 +124,9 @@ export function HospitalsPage() {
             {hospitalTrackerMeta.broadcastLabel}
           </button>
         </div>
+        {hospitalNotice !== 'Hospital desk ready for capacity review.' && (
+          <p className="hospital-notice">{hospitalNotice}</p>
+        )}
       </section>
 
       {status === 'error' && (
@@ -211,7 +217,8 @@ export function HospitalsPage() {
                 type="button"
                 className="ghost-button hospital-card-button"
                 onClick={() => {
-                  setSelectedFacility(facility);
+                  setDetailFacility(facility);
+                  setTransferFacility(null);
                   setHospitalNotice(`${facility.name} details loaded for capacity review.`);
                 }}
               >
@@ -221,7 +228,8 @@ export function HospitalsPage() {
                 type="button"
                 className="primary-button hospital-card-button"
                 onClick={() => {
-                  setSelectedFacility(facility);
+                  setTransferFacility(facility);
+                  setDetailFacility(null);
                   setHospitalNotice(`Transfer request staged for ${facility.name}.`);
                 }}
               >
@@ -281,6 +289,69 @@ export function HospitalsPage() {
           ))}
         </div>
       </section>
+
+      {detailFacility && (
+        <div className="hospital-panel-overlay" role="dialog" aria-modal="true" aria-label={`${detailFacility.name} details`}>
+          <section className="hospital-detail-panel panel">
+            <div className="hospital-panel-header">
+              <div>
+                <h2>{detailFacility.name}</h2>
+                <p className="hospital-region">{detailFacility.region}</p>
+              </div>
+              <button type="button" className="ghost-button" onClick={() => setDetailFacility(null)}>Close</button>
+            </div>
+            <div className="hospital-panel-body">
+              <FacilityMetric label="General Beds" data={detailFacility.generalBeds} />
+              <FacilityMetric label="ICU Units" data={detailFacility.icuUnits} />
+              <div className="hospital-info-row">
+                <div className="hospital-info-box"><p>Ventilators</p><strong>{detailFacility.ventilators}</strong></div>
+                <div className="hospital-info-box"><p>Direct Line</p><strong>{detailFacility.directLine}</strong></div>
+                <div className="hospital-info-box"><p>Status</p><strong>{detailFacility.status}</strong></div>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {transferFacility && (
+        <div className="hospital-panel-overlay" role="dialog" aria-modal="true" aria-label={`Transfer from ${transferFacility.name}`}>
+          <section className="hospital-detail-panel panel">
+            <div className="hospital-panel-header">
+              <div>
+                <h2>Transfer from {transferFacility.name}</h2>
+                <p className="hospital-region">{transferFacility.region}</p>
+              </div>
+              <button type="button" className="ghost-button" onClick={() => setTransferFacility(null)}>Close</button>
+            </div>
+            <div className="hospital-panel-body">
+              <p className="hospital-panel-notice">General Beds: {transferFacility.generalBeds.used} / {transferFacility.generalBeds.total} occupied</p>
+              <form className="hospital-transfer-form" onSubmit={(e) => {
+                e.preventDefault();
+                setHospitalNotice(`Transfer from ${transferFacility.name} staged for dispatcher review.`);
+                setTransferFacility(null);
+              }}>
+                <label className="resource-field full">
+                  <span>Patient Count</span>
+                  <input type="number" min="1" defaultValue="1" />
+                </label>
+                <label className="resource-field full">
+                  <span>Priority</span>
+                  <select defaultValue="High">
+                    <option>Critical</option>
+                    <option>High</option>
+                    <option>Medium</option>
+                  </select>
+                </label>
+                <label className="resource-field full">
+                  <span>Reason</span>
+                  <textarea rows="3" placeholder="Describe the transfer reason..." />
+                </label>
+                <button type="submit" className="primary-button">Stage Transfer</button>
+              </form>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
