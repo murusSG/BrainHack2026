@@ -1024,6 +1024,30 @@ export function ResidentPage({ session }) {
         )}
       </section>
 
+      <section className="resident-evacuation-panel" aria-label="Personalized evacuation route">
+        <div className="resident-evacuation-head">
+          <div>
+            <p className="resident-persona-title">Your evacuation route</p>
+            <p className="resident-persona-copy">
+              Route from {(activeAlerts?.point ?? active?.point ?? watchPoints[0])?.label} to the nearest safe
+              shelter, personalized for the {activeProfileMeta.label.toLowerCase()} profile and your transport and
+              mobility needs.
+            </p>
+          </div>
+          <span className={`resident-evacuation-pill is-${activeTone}`}>
+            {activeAlerts?.affecting.length > 0 ? 'Danger nearby' : 'No active alert'}
+          </span>
+        </div>
+        <ResidentAlertVisualGuide
+          alert={activeAlerts?.affecting[0] ?? null}
+          point={activeAlerts?.point ?? active?.point ?? watchPoints[0]}
+          homePoint={impactPoints.find((candidate) => candidate.id === 'home')}
+          transportMode={impactTransport}
+          mobilityNeed={impactMobility}
+          profileLabel={activeProfileMeta.label}
+        />
+      </section>
+
       <section className="resident-impact-panel" aria-label="Does this affect me check">
         <div>
           <p className="resident-persona-title">Does this affect me?</p>
@@ -1331,14 +1355,6 @@ export function ResidentPage({ session }) {
                     </ol>
                     <p>{guidance.reassurance}</p>
                   </section>
-                  <ResidentAlertVisualGuide
-                    alert={alert}
-                    point={activeAlerts.point}
-                    homePoint={impactPoints.find((candidate) => candidate.id === 'home')}
-                    transportMode={impactTransport}
-                    mobilityNeed={impactMobility}
-                    profileLabel={activeProfileMeta.label}
-                  />
                   <section className="resident-copilot-card" aria-label={`Ask MURUS about ${alert.title}`}>
                     <div>
                       <p className="resident-guidance-label">Ask MURUS</p>

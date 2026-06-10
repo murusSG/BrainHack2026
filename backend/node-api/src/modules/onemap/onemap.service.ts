@@ -13,6 +13,22 @@ interface ReversePayload {
 
 export async function search(query: string): Promise<OneMapLocation[]> {
   const payload = (await oneMapClient.search(query)) as SearchPayload;
+  return parseSearchPayload(query, payload);
+}
+
+// Geocoding-oriented search that uses the authenticated endpoint for its higher rate
+// limit, falling back to the public endpoint when credentials are unavailable.
+export async function searchForGeocode(query: string): Promise<OneMapLocation[]> {
+  try {
+    const payload = (await oneMapClient.searchAuthenticated(query)) as SearchPayload;
+    return parseSearchPayload(query, payload);
+  } catch {
+    const payload = (await oneMapClient.search(query)) as SearchPayload;
+    return parseSearchPayload(query, payload);
+  }
+}
+
+function parseSearchPayload(query: string, payload: SearchPayload): OneMapLocation[] {
   return (payload.results ?? []).flatMap((item) => {
     const latitude = toNumber(item.LATITUDE);
     const longitude = toNumber(item.LONGITUDE);
