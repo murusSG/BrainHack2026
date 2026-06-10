@@ -12,33 +12,12 @@ vi.mock('../../src/hooks/useEvents', () => ({
   }),
 }));
 
-vi.mock('../../src/services/api', () => ({
-  api: {
-    commandAllocations: vi.fn().mockResolvedValue([]),
-    commandTimeline: vi.fn().mockResolvedValue([]),
-    createCommandAllocation: vi.fn(),
-    updateCommandAllocationAgencies: vi.fn(),
-  },
-}));
-
-vi.mock('../../src/components/AgencyFeedPanel', () => ({
-  AgencyFeedPanel: () => <section aria-label="Agency feed" />,
-}));
-
-vi.mock('../../src/components/AllocationApprovalPanel', () => ({
-  AllocationApprovalPanel: () => <section aria-label="Allocation approvals" />,
-}));
-
 vi.mock('../../src/components/ForesightEngine', () => ({
   ForesightEngine: () => <section aria-label="Foresight engine" />,
 }));
 
 vi.mock('../../src/components/MetricCard', () => ({
   MetricCard: ({ label }) => <article>{label}</article>,
-}));
-
-vi.mock('../../src/components/RecommendationPanel', () => ({
-  RecommendationPanel: () => <section aria-label="Recommendations" />,
 }));
 
 vi.mock('../../src/components/TimelinePanel', () => ({

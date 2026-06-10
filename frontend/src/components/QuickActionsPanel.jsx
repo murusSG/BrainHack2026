@@ -1,6 +1,6 @@
 export function QuickActionsPanel({ actions, onAction, activeAction }) {
   return (
-    <section className="quick-actions-panel">
+    <section className="quick-actions-panel ui-surface">
       <div className="section-heading quick-actions-heading">
         <div>
           <h2>Quick Actions</h2>

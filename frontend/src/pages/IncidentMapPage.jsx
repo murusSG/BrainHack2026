@@ -103,11 +103,6 @@ export function IncidentMapPage() {
         <div className="incident-map-main">
           <section className="panel map-panel">
             <div className="incident-map-shell">
-              <div className="map-context-card">
-                <p className="eyebrow">Unified geospatial view</p>
-                <strong>Singapore incident picture</strong>
-                <span>{feedLabel} / {activeHazardCount} active hazard types</span>
-              </div>
               <div className="map-floating-toolbar">
                 <label className="map-toolbar-search">
                   <span className="searchbar-icon" aria-hidden="true">+</span>

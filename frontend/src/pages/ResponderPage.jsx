@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AppLogo } from '../components/AppLogo';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
+import { ScreenHeader, ScreenPage, ScreenPanel } from '../components/ui';
 import { usePageAwarePolling } from '../hooks/usePageAwarePolling';
 import { api } from '../services/api';
 import { incidentTitle } from '../services/incidentClusterAdapter';
@@ -184,9 +186,14 @@ export function ResponderPage() {
   }
 
   return (
-    <div className="responder-page responder-operations-page">
-      <header className="responder-header">
+    <ScreenPage className="responder-page responder-operations-page">
+      <ScreenHeader
+        className="responder-header"
+        visual="flyer"
+        visualVariant="panel"
+      >
         <div>
+          <AppLogo variant="header" />
           <p className="eyebrow">Shared inter-agency operations</p>
           <h1>Responder View</h1>
           <p className="responder-header-copy">
@@ -196,7 +203,7 @@ export function ResponderPage() {
         <Link to="/dispatcher" className="responder-command-link">
           Dispatcher View
         </Link>
-      </header>
+      </ScreenHeader>
 
       {incidentStatus === 'error' && (
         <p className="responder-feed-warning">
@@ -204,7 +211,7 @@ export function ResponderPage() {
         </p>
       )}
 
-      <section className="responder-incident-panel panel">
+      <ScreenPanel className="responder-incident-panel panel">
         <div className="responder-section-heading">
           <div>
             <p className="eyebrow">Active assignments</p>
@@ -240,9 +247,9 @@ export function ResponderPage() {
             ))}
           </div>
         )}
-      </section>
+      </ScreenPanel>
 
-      <section className="panel responder-shared-log">
+      <ScreenPanel className="panel responder-shared-log">
         <div className="responder-section-heading">
           <div>
             <p className="eyebrow">Shared incident log</p>
@@ -348,7 +355,7 @@ export function ResponderPage() {
             )}
           </div>
         )}
-      </section>
-    </div>
+      </ScreenPanel>
+    </ScreenPage>
   );
 }

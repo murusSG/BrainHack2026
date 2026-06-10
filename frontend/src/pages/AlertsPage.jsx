@@ -1,12 +1,12 @@
 import {
   alertDetail,
-  alertResponders,
   alertsFeed,
   alertsPageMeta,
   broadcastSteps
 } from '../data/dashboardData';
 import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { ScreenHeader, ScreenPage, ScreenPanel } from '../components/ui';
 import { api } from '../services/api';
 
 function AlertFeedCard({ item, selected, onSelect }) {
@@ -18,7 +18,8 @@ function AlertFeedCard({ item, selected, onSelect }) {
   }
 
   return (
-    <article
+    <ScreenPanel
+      as="article"
       className={`alert-feed-card ${selected ? 'active' : ''}`}
       onClick={() => onSelect(item.id)}
       onKeyDown={handleKeyDown}
@@ -32,26 +33,13 @@ function AlertFeedCard({ item, selected, onSelect }) {
       </div>
       <h3>{item.title}</h3>
       <p className="alert-feed-meta">
-        {item.region} <span>•</span> {item.timeAgo}
+        {item.region} <span>|</span> {item.timeAgo}
       </p>
       <div className="alert-feed-bottom">
         <p>Source: {item.source}</p>
         <span className={`alert-status-pill ${alertStatusTone(item.status)}`}>{item.status}</span>
       </div>
-    </article>
-  );
-}
-
-function SpatialMapCard() {
-  return (
-    <div className="spatial-map-card">
-      <div className="spatial-grid" />
-      <div className="spatial-sg-shape" />
-      <div className="spatial-alert-zone outer" />
-      <div className="spatial-alert-zone middle" />
-      <div className="spatial-alert-zone core" />
-      <div className="spatial-map-label">{alertDetail.mapLabel}</div>
-    </div>
+    </ScreenPanel>
   );
 }
 
@@ -129,8 +117,14 @@ export function AlertsPage({ session }) {
   }
 
   return (
-    <div className="alerts-page">
-      <section className="alerts-topbar">
+    <ScreenPage className="alerts-page">
+      <ScreenHeader
+        as="section"
+        className="alerts-topbar"
+        visual="routeGrid"
+        visualVariant="subtleBackground"
+        visualPosition="center"
+      >
         <div className="alerts-title-group">
           <h1>{alertsPageMeta.title}</h1>
           <span className="alerts-critical-pill">{alertsPageMeta.criticalActive}</span>
@@ -164,10 +158,10 @@ export function AlertsPage({ session }) {
             {alertsPageMeta.advisoryLabel}
           </button>
         </div>
-      </section>
+      </ScreenHeader>
 
       {composerOpen && (
-        <section className="alerts-composer-panel">
+        <ScreenPanel className="alerts-composer-panel">
           <div className="alerts-composer-head">
             <h2>Publish resident alert</h2>
             <span>Citizen-safe wording only</span>
@@ -210,16 +204,24 @@ export function AlertsPage({ session }) {
           <div className="alerts-composer-row">
             <label>
               <span>Severity</span>
-              <input
+              <select
                 value={publishForm.severity}
                 onChange={(event) =>
                   setPublishForm((current) => ({ ...current, severity: event.target.value }))
                 }
-              />
+              >
+                <option value="critical">Critical</option>
+                <option value="danger">High</option>
+                <option value="warning">Warning</option>
+                <option value="info">Information</option>
+              </select>
             </label>
             <label>
               <span>Radius</span>
               <input
+                type="number"
+                min="100"
+                step="100"
                 value={publishForm.radiusMeters}
                 onChange={(event) =>
                   setPublishForm((current) => ({ ...current, radiusMeters: event.target.value }))
@@ -229,6 +231,8 @@ export function AlertsPage({ session }) {
             <label>
               <span>Latitude</span>
               <input
+                type="number"
+                step="0.0001"
                 value={publishForm.lat}
                 onChange={(event) => setPublishForm((current) => ({ ...current, lat: event.target.value }))}
               />
@@ -236,6 +240,8 @@ export function AlertsPage({ session }) {
             <label>
               <span>Longitude</span>
               <input
+                type="number"
+                step="0.0001"
                 value={publishForm.lng}
                 onChange={(event) => setPublishForm((current) => ({ ...current, lng: event.target.value }))}
               />
@@ -381,10 +387,10 @@ export function AlertsPage({ session }) {
               </button>
             </div>
           )}
-        </section>
+        </ScreenPanel>
       )}
 
-      <section className="alerts-layout">
+      <ScreenPanel className="alerts-layout">
         <aside className="alerts-feed-panel">
           <div className="alerts-tabs">
             {alertsPageMeta.tabs.map((tab) => (
@@ -455,39 +461,14 @@ export function AlertsPage({ session }) {
 
           <div className="alert-facts-grid">
             {selectedDetail.facts.map((fact) => (
-              <article key={fact.label} className="alert-fact-card">
+              <ScreenPanel as="article" key={fact.label} className="alert-fact-card">
                 <p>{fact.label}</p>
                 <strong>{fact.value}</strong>
-              </article>
+              </ScreenPanel>
             ))}
           </div>
 
-          <div className="alert-context-grid">
-            <div className="alert-context-left">
-              <div className="alert-section-title">Spatial Context & Proximity</div>
-              <SpatialMapCard />
-            </div>
-
-            <aside className="alert-responders-panel">
-              <div className="alert-section-title">Responders En Route</div>
-              <div className="alert-responders-list">
-                {alertResponders.map((responder) => (
-                  <article key={responder.team} className="responder-card">
-                    <div>
-                      <h3>{responder.team}</h3>
-                      <p>{responder.role}</p>
-                    </div>
-                    <span className="responder-eta">{responder.eta}</span>
-                  </article>
-                ))}
-              </div>
-              <button type="button" className="inline-link responders-link">
-                View All Resources
-              </button>
-            </aside>
-          </div>
-
-          <section className="broadcast-center-panel">
+          <ScreenPanel className="broadcast-center-panel">
             <div className="broadcast-center-head">
               <h3>{alertsPageMeta.registryTitle}</h3>
               <button
@@ -503,18 +484,18 @@ export function AlertsPage({ session }) {
 
             <div className="broadcast-steps">
               {broadcastSteps.map((step) => (
-                <article key={step} className="broadcast-step-card">
+                <ScreenPanel as="article" key={step} className="broadcast-step-card">
                   <span className="broadcast-step-index" aria-hidden="true">
                     {step.split('.')[0]}
                   </span>
                   <p>{step}</p>
-                </article>
+                </ScreenPanel>
               ))}
             </div>
-          </section>
+          </ScreenPanel>
         </section>
-      </section>
-    </div>
+      </ScreenPanel>
+    </ScreenPage>
   );
 }
 
@@ -568,6 +549,5 @@ function buildAlertDetail(item) {
       { label: 'Current status', value: item.status },
       { label: 'Data source', value: item.source },
     ],
-    mapLabel: alertDetail.mapLabel,
   };
 }

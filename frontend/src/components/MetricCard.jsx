@@ -2,7 +2,7 @@ export function MetricCard({ label, value, delta, tone, loading = false }) {
   const iconClass = metricIconClass(label);
 
   return (
-    <article className={`metric-card tone-${tone}`}>
+    <article className={`metric-card ui-surface tone-${tone}`}>
       <p className="metric-label">{label}</p>
       <div className="metric-row">
         {loading ? (

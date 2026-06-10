@@ -1,12 +1,12 @@
 import {
   interAgencyRequestForm,
   resourceLedgerTabs,
-  resourceShortageAlert,
-  resourceTrend
+  resourceShortageAlert
 } from '../data/dashboardData';
 import { useScdfResources } from '../hooks/useScdfResources';
 import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { ScreenHeader, ScreenPage, ScreenPanel } from '../components/ui';
 
 function resourceSymbol(icon) {
   if (icon === 'fleet') {
@@ -22,31 +22,6 @@ function resourceSymbol(icon) {
   }
 
   return 'beds';
-}
-
-function buildTrendPath(values, max, height) {
-  const width = 100;
-
-  return values
-    .map((value, index) => {
-      const x = (index / (values.length - 1)) * width;
-      const y = height - (value / max) * height;
-      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-    })
-    .join(' ');
-}
-
-function buildTrendArea(values, max, height) {
-  const width = 100;
-  const line = values
-    .map((value, index) => {
-      const x = (index / (values.length - 1)) * width;
-      const y = height - (value / max) * height;
-      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-    })
-    .join(' ');
-
-  return `${line} L ${width} ${height} L 0 ${height} Z`;
 }
 
 export function ResourcesPage() {
@@ -66,10 +41,6 @@ export function ResourcesPage() {
     reason: routedRequestForm?.reason ?? '',
   });
   const [stagedRequests, setStagedRequests] = useState([]);
-  const chartHeight = 100;
-  const stockPath = buildTrendPath(resourceTrend.currentStock, resourceTrend.yMax, chartHeight);
-  const stockArea = buildTrendArea(resourceTrend.currentStock, resourceTrend.yMax, chartHeight);
-  const demandPath = buildTrendPath(resourceTrend.projectedDemand, resourceTrend.yMax, chartHeight);
   const syncLabel =
     status === 'loading'
       ? 'Syncing SCDF'
@@ -130,8 +101,15 @@ export function ResourcesPage() {
   }
 
   return (
-    <div className="resources-page">
-      <section className="hero-panel resource-hero">
+    <ScreenPage className="resources-page">
+      <ScreenHeader
+        as="section"
+        className="hero-panel resource-hero"
+        visual="flyer"
+        visualVariant="subtleBackground"
+        visualPosition="center"
+        visualIntensity="subtle"
+      >
         <div>
           <h1>Resource Availability</h1>
           <p className="hero-copy">
@@ -162,7 +140,7 @@ export function ResourcesPage() {
             Log View
           </button>
         </div>
-      </section>
+      </ScreenHeader>
 
       {status === 'error' && (
         <p className="feed-warning">
@@ -170,7 +148,10 @@ export function ResourcesPage() {
         </p>
       )}
 
-      <section className="resource-alert-banner resource-alert-banner-full">
+      <ScreenPanel
+        className="resource-alert-banner resource-alert-banner-full"
+        tone="danger"
+      >
         <div className="resource-alert-icon" aria-hidden="true">
           !
         </div>
@@ -201,11 +182,11 @@ export function ResourcesPage() {
             </button>
           </div>
         </div>
-      </section>
+      </ScreenPanel>
 
       <section className="resource-summary-grid">
         {summaryCards.map((card) => (
-          <article key={card.label} className="resource-summary-card">
+          <ScreenPanel as="article" key={card.label} className="resource-summary-card">
             <div className="resource-card-top">
               <span className={`resource-icon icon-${resourceSymbol(card.icon)}`} aria-hidden="true" />
               <span className={`resource-change tone-${card.tone}`}>{card.change}</span>
@@ -213,68 +194,13 @@ export function ResourcesPage() {
             <h3>{card.label}</h3>
             <p className="resource-card-value">{card.value}</p>
             <p className="resource-card-detail">{card.detail}</p>
-          </article>
+          </ScreenPanel>
         ))}
       </section>
 
       <section className="resource-main-grid">
         <div className="resource-left-column">
-          <section className="panel resource-chart-panel">
-            <div className="resource-chart-heading">
-              <div>
-                <h2>{resourceTrend.title}</h2>
-                <p>{resourceTrend.subtitle}</p>
-              </div>
-              <button
-                type="button"
-                className="ghost-button compact-button"
-                onClick={() => setResourceNotice(`${resourceTrend.timeframe} trend window selected.`)}
-              >
-                {resourceTrend.timeframe}
-              </button>
-            </div>
-
-            <div className="resource-chart-shell">
-              <div className="resource-axis-column">
-                {[6000, 4500, 3000, 1500, 0].map((tick) => (
-                  <span key={tick}>{tick}</span>
-                ))}
-              </div>
-
-              <div className="resource-chart-stage">
-                <div className="resource-grid-lines" aria-hidden="true">
-                  {[0, 1, 2, 3, 4].map((line) => (
-                    <span key={line} />
-                  ))}
-                </div>
-
-                <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="resource-chart-svg">
-                  <path d={stockArea} className="resource-area-fill" />
-                  <path d={stockPath} className="resource-line stock-line" />
-                  <path d={demandPath} className="resource-line demand-line" />
-                </svg>
-
-                <div className="resource-x-axis">
-                  {resourceTrend.labels.map((label) => (
-                    <span key={label}>{label}</span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="resource-chart-legend">
-              <span className="legend-inline">
-                <span className="legend-dot stock" aria-hidden="true" />
-                Current Stock
-              </span>
-              <span className="legend-inline">
-                <span className="legend-dot demand" aria-hidden="true" />
-                Projected Demand
-              </span>
-            </div>
-          </section>
-
-          <section className="panel resource-ledger-panel">
+          <ScreenPanel className="panel resource-ledger-panel">
             <div className="resource-ledger-head">
               <div>
                 <h2>{ledgerMeta.title}</h2>
@@ -363,12 +289,12 @@ export function ResourcesPage() {
                 {ledgerMeta.auditLabel}
               </button>
             </div>
-          </section>
+          </ScreenPanel>
 
         </div>
 
         <aside className="resource-right-column">
-          <section className="resource-request-panel">
+          <ScreenPanel className="resource-request-panel">
             <div className="section-heading light">
               <div>
                 <h2>{interAgencyRequestForm.title}</h2>
@@ -450,10 +376,10 @@ export function ResourcesPage() {
                 ))}
               </div>
             )}
-          </section>
+          </ScreenPanel>
         </aside>
       </section>
-    </div>
+    </ScreenPage>
   );
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AppLogo } from '../components/AppLogo';
 import { CrisisMap } from '../components/CrisisMap';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
@@ -740,8 +741,8 @@ export function ResidentPage({ session }) {
   return (
     <div className="resident-page">
       <header className="resident-header">
-        <div>
-          <p className="resident-kicker">MURUS SG</p>
+        <div className="resident-header-brand">
+          <AppLogo variant="resident" />
           <h1>Your safety brief</h1>
         </div>
         <div className="resident-header-actions">
