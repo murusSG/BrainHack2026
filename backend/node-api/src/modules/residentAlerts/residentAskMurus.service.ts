@@ -244,10 +244,10 @@ function buildPersonalizedFallbackAnswer(
       ? `${details.displayName}, `
       : "";
   const currentPlace = context.currentPlace ?? "your current area";
-  const currentAddress = context.currentAddress ? ` near ${context.currentAddress}` : "";
-  const currentNote = details?.currentLocationNote ? ` (${details.currentLocationNote})` : "";
-  const destination = details?.plannedDestination ? ` You planned to go to ${details.plannedDestination}.` : "";
-  const supportNotes = details?.supportNotes ? ` Support note: ${details.supportNotes}.` : "";
+  const currentAddress = context.currentAddress ? ` (${context.currentAddress})` : "";
+  const currentNote = details?.currentLocationNote ? ` Current note: ${details.currentLocationNote}.` : "";
+  const destination = details?.plannedDestination ? ` Destination: ${details.plannedDestination}.` : "";
+  const supportNotes = details?.supportNotes ? ` Support need: ${stripTrailingPunctuation(details.supportNotes)}.` : "";
   const shelter = context.nearestShelter;
   const shelterNote = shelter?.name
     ? ` Nearest shelter lookup: ${shelter.name}${shelter.address ? `, ${shelter.address}` : ""}${
@@ -277,19 +277,49 @@ function buildPersonalizedFallbackAnswer(
     ? ` You have checked in as "${context.currentCheckIn}".`
     : " If you need help, send a check-in to command.";
   const home = details?.homeAddress ? ` Home: ${details.homeAddress}.` : "";
+  const affectedSummary = affectedPlaces ? ` Affected saved places: ${affectedPlaces}.` : "";
+  const unaffectedSummary = unaffectedPlaces ? ` Not currently flagged: ${unaffectedPlaces}.` : "";
+  const fallbackGuidance = summarizeFallbackGuidance(fallback);
 
   return clampAnswer(
     [
-      `Situation: ${alert.title} at ${alert.locationLabel}. Official action: ${alert.publicAction}`,
-      `Your context: ${namePrefix}${currentPlace}${currentAddress}${currentNote}${
-        context.liveLocation?.isInsideAlertRadius ? " is inside the alert area" : " is not currently flagged"
-      }${affectedPlaces ? `; affected saved places: ${affectedPlaces}` : ""}${
-        unaffectedPlaces ? `; not flagged: ${unaffectedPlaces}` : ""
-      }.${home}${destination}`,
-      `What to do now: ${fallback}${mobility}${supportNotes}${shelterNote}`,
+      `Situation: ${alert.title}${alert.locationLabel ? ` near ${alert.locationLabel}` : ""}. Official action: ${stripTrailingPunctuation(alert.publicAction)}.`,
+      `Your context: ${namePrefix}${currentPlace}${currentAddress} is ${
+        context.liveLocation?.isInsideAlertRadius ? "inside the alert area" : "the place being checked"
+      }.${home}${destination}${currentNote}${affectedSummary}${unaffectedSummary}`,
+      `What to do now: ${fallbackGuidance}${mobility}${supportNotes}${shelterNote}`,
       `Check-in: ${checkIn}${pack}`,
     ].join("\n")
   );
+}
+
+function summarizeFallbackGuidance(fallback: string) {
+  const cleaned = stripTrailingPunctuation(
+    fallback
+      .replace(/\s+/g, " ")
+      .replace(/\bSupport note:\s*[^.]+\.?/gi, "")
+      .trim()
+  );
+
+  const homeMatch = cleaned.match(
+    /(.+? is (?:inside|not currently inside) this alert radius)\.?(?:\s*Only go to (.+?) if your route avoids (.+?); MURUS has not confirmed that your route is clear\.?)?/i
+  );
+
+  if (homeMatch) {
+    const status = homeMatch[1];
+    const destination = homeMatch[2];
+    const avoidArea = homeMatch[3];
+    if (destination && avoidArea) {
+      return `${status} MURUS has not confirmed your route is clear. If you go to ${destination}, avoid ${avoidArea}; otherwise wait at a staffed place for the next official update.`;
+    }
+    return `${status} MURUS has not confirmed your route is clear, so check official updates before moving.`;
+  }
+
+  return `${cleaned}.`;
+}
+
+function stripTrailingPunctuation(value = "") {
+  return value.replace(/[.!?]+$/g, "").trim();
 }
 
 function violatesResidentSafetyGuardrails(answer: string) {

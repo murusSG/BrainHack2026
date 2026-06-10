@@ -1,6 +1,7 @@
 export type ResidentTransportMode = "walking" | "mrt" | "driving" | "caregiver";
 export type ResidentMobilityNeed = "none" | "elderly" | "mobility" | "child";
 export type ResidentSavedPlaceType = "home" | "work" | "school" | "family" | "other";
+export type ResidentPersona = "general" | "elderly" | "parent" | "driver" | "tourist" | "mobility";
 
 export interface ResidentSavedPlace {
   id: string;
@@ -16,6 +17,7 @@ export interface ResidentProfile {
   userId: string;
   displayName?: string;
   homeAddress?: string;
+  residentPersona: ResidentPersona;
   preferredTransport: ResidentTransportMode;
   mobilityNeed: ResidentMobilityNeed;
   supportNotes?: string;
@@ -27,6 +29,7 @@ export interface ResidentProfile {
 export interface UpdateResidentProfileInput {
   displayName?: string;
   homeAddress?: string;
+  residentPersona?: ResidentPersona;
   preferredTransport?: ResidentTransportMode;
   mobilityNeed?: ResidentMobilityNeed;
   supportNotes?: string;

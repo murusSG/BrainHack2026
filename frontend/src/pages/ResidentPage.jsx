@@ -150,6 +150,10 @@ function applyResidentProfile(profile, setters) {
     ...current,
     displayName: profile?.displayName || current.displayName,
     homeAddress: profile?.homeAddress || homePlace?.sublabel || current.homeAddress,
+    currentLocationNote:
+      current.currentLocationNote === DEFAULT_RESIDENT_DETAILS.currentLocationNote
+        ? ''
+        : current.currentLocationNote,
     plannedDestination:
       profile?.homeAddress || homePlace?.sublabel
         ? `Home at ${profile?.homeAddress || homePlace?.sublabel}`
@@ -160,6 +164,7 @@ function applyResidentProfile(profile, setters) {
     name: profile?.emergencyContactName || '',
     phone: profile?.emergencyContactPhone || '',
   });
+  if (profile?.residentPersona) setters.setActiveProfile(profile.residentPersona);
   if (profile?.preferredTransport) setters.setImpactTransport(profile.preferredTransport);
   if (profile?.mobilityNeed) setters.setImpactMobility(profile.mobilityNeed);
   setters.setPersistedPlaces(savedPlaces);
@@ -269,6 +274,7 @@ export function ResidentPage({ session }) {
   const [residentProfileMessage, setResidentProfileMessage] = useState(
     session?.token ? 'Loading your saved resident profile...' : 'Demo profile active. Log in to save resident details.'
   );
+  const [isResidentProfileEditorOpen, setIsResidentProfileEditorOpen] = useState(!session?.token);
   const [persistedPlaces, setPersistedPlaces] = useState([]);
   const [liveLocation, setLiveLocation] = useState(null);
   const [liveLocationStatus, setLiveLocationStatus] = useState('idle');
@@ -312,27 +318,31 @@ export function ResidentPage({ session }) {
         setResidentProfileStatus('demo');
         setResidentProfileMessage('Demo profile active. Log in to save resident details.');
         setPersistedPlaces([]);
+        setIsResidentProfileEditorOpen(true);
         return;
       }
 
       setResidentProfileStatus('loading');
       setResidentProfileMessage('Loading your saved resident profile...');
+      setIsResidentProfileEditorOpen(false);
       try {
         const profile = await api.residentProfile(session.token);
         if (cancelled) return;
         applyResidentProfile(profile, {
           setResidentDetails,
           setEmergencyContact,
+          setActiveProfile,
           setImpactTransport,
           setImpactMobility,
           setPersistedPlaces,
         });
         setResidentProfileStatus('ready');
-        setResidentProfileMessage('Saved resident profile loaded for Ask MURUS.');
+        setResidentProfileMessage('Resident profile loaded from your account. Ask MURUS uses this automatically.');
       } catch (err) {
         if (cancelled) return;
         setResidentProfileStatus('error');
         setResidentProfileMessage(`Could not load saved profile: ${err.message}`);
+        setIsResidentProfileEditorOpen(true);
       }
     }
 
@@ -615,6 +625,11 @@ export function ResidentPage({ session }) {
     setResidentProfileStatus(session?.token ? 'dirty' : 'demo');
   }
 
+  function handleResidentPersonaChange(persona) {
+    setActiveProfile(persona);
+    markResidentProfileDirty();
+  }
+
   function handleSavedPlaceChange(placeId, key, value) {
     setPersistedPlaces((current) => {
       const base = current.length > 0 ? current : DEFAULT_SAVED_PLACES;
@@ -655,6 +670,7 @@ export function ResidentPage({ session }) {
         {
           displayName: residentDetails.displayName,
           homeAddress: residentDetails.homeAddress,
+          residentPersona: activeProfile,
           preferredTransport: impactTransport,
           mobilityNeed: impactMobility,
           supportNotes: residentDetails.supportNotes,
@@ -667,12 +683,14 @@ export function ResidentPage({ session }) {
       applyResidentProfile(profile, {
         setResidentDetails,
         setEmergencyContact,
+        setActiveProfile,
         setImpactTransport,
         setImpactMobility,
         setPersistedPlaces,
       });
       setResidentProfileStatus('ready');
-      setResidentProfileMessage('Resident profile saved. Ask MURUS will use this context.');
+      setResidentProfileMessage('Resident profile saved. Ask MURUS will use this context automatically.');
+      setIsResidentProfileEditorOpen(false);
     } catch (err) {
       setResidentProfileStatus('error');
       setResidentProfileMessage(`Could not save resident profile: ${err.message}`);
@@ -813,81 +831,116 @@ export function ResidentPage({ session }) {
               type="button"
               className={`resident-persona-chip ${activeProfile === profile.id ? 'is-active' : ''}`}
               aria-pressed={activeProfile === profile.id}
-              onClick={() => setActiveProfile(profile.id)}
+              onClick={() => handleResidentPersonaChange(profile.id)}
             >
               <span>{profile.label}</span>
               <small>{profile.note}</small>
             </button>
           ))}
         </div>
-        <div className="resident-situation-form">
-          <label>
-            <span>Name or role</span>
-            <input
-              value={residentDetails.displayName}
-              onChange={(event) => handleResidentDetailChange('displayName', event.target.value)}
-            />
-          </label>
-          <label>
-            <span>Home address</span>
-            <input
-              value={residentDetails.homeAddress}
-              onChange={(event) => handleResidentDetailChange('homeAddress', event.target.value)}
-            />
-          </label>
-          <label>
-            <span>Current situation</span>
-            <input
-              value={residentDetails.currentLocationNote}
-              onChange={(event) => handleResidentDetailChange('currentLocationNote', event.target.value)}
-            />
-          </label>
-          <label>
-            <span>Where you plan to go</span>
-            <input
-              value={residentDetails.plannedDestination}
-              onChange={(event) => handleResidentDetailChange('plannedDestination', event.target.value)}
-            />
-          </label>
-          <label className="resident-situation-wide">
-            <span>Support notes</span>
-            <input
-              value={residentDetails.supportNotes}
-              onChange={(event) => handleResidentDetailChange('supportNotes', event.target.value)}
-            />
-          </label>
-          <label>
-            <span>Emergency contact</span>
-            <input
-              value={emergencyContact.name}
-              onChange={(event) => handleEmergencyContactChange('name', event.target.value)}
-              placeholder="Name"
-            />
-          </label>
-          <label>
-            <span>Contact phone</span>
-            <input
-              value={emergencyContact.phone}
-              onChange={(event) => handleEmergencyContactChange('phone', event.target.value)}
-              placeholder="+65..."
-            />
-          </label>
-          <div className="resident-profile-save-row">
-            <p className={`resident-profile-status is-${residentProfileStatus}`}>
-              {residentProfileMessage}
+        <div className="resident-profile-summary" aria-label="Saved resident profile summary">
+          <div>
+            <p className="resident-guidance-label">
+              {session?.token ? 'Saved account context' : 'Demo resident context'}
             </p>
-            <button
-              type="button"
-              className="resident-profile-save-button"
-              onClick={handleSaveResidentProfile}
-              disabled={residentProfileStatus === 'saving'}
-            >
-              {residentProfileStatus === 'saving' ? 'Saving...' : 'Save profile'}
-            </button>
+            <p>{residentProfileMessage}</p>
           </div>
+          <dl>
+            <div>
+              <dt>Persona</dt>
+              <dd>{activeProfileMeta.label}</dd>
+            </div>
+            <div>
+              <dt>Home</dt>
+              <dd>{residentDetails.homeAddress || 'Not set'}</dd>
+            </div>
+            <div>
+              <dt>Transport</dt>
+              <dd>{optionLabel(TRANSPORT_MODES, impactTransport)}</dd>
+            </div>
+            <div>
+              <dt>Mobility</dt>
+              <dd>{optionLabel(MOBILITY_NEEDS, impactMobility)}</dd>
+            </div>
+          </dl>
+          <button
+            type="button"
+            className="resident-profile-edit-button"
+            onClick={() => setIsResidentProfileEditorOpen((current) => !current)}
+          >
+            {isResidentProfileEditorOpen ? 'Hide profile details' : 'Edit profile details'}
+          </button>
         </div>
-        <div className="resident-saved-places-editor" aria-label="Saved resident places editor">
-          <div className="resident-saved-places-head">
+        {isResidentProfileEditorOpen && (
+          <>
+            <div className="resident-situation-form">
+              <label>
+                <span>Name or role</span>
+                <input
+                  value={residentDetails.displayName}
+                  onChange={(event) => handleResidentDetailChange('displayName', event.target.value)}
+                />
+              </label>
+              <label>
+                <span>Home address</span>
+                <input
+                  value={residentDetails.homeAddress}
+                  onChange={(event) => handleResidentDetailChange('homeAddress', event.target.value)}
+                />
+              </label>
+              <label>
+                <span>Current situation</span>
+                <input
+                  value={residentDetails.currentLocationNote}
+                  onChange={(event) => handleResidentDetailChange('currentLocationNote', event.target.value)}
+                />
+              </label>
+              <label>
+                <span>Where you plan to go</span>
+                <input
+                  value={residentDetails.plannedDestination}
+                  onChange={(event) => handleResidentDetailChange('plannedDestination', event.target.value)}
+                />
+              </label>
+              <label className="resident-situation-wide">
+                <span>Support notes</span>
+                <input
+                  value={residentDetails.supportNotes}
+                  onChange={(event) => handleResidentDetailChange('supportNotes', event.target.value)}
+                />
+              </label>
+              <label>
+                <span>Emergency contact</span>
+                <input
+                  value={emergencyContact.name}
+                  onChange={(event) => handleEmergencyContactChange('name', event.target.value)}
+                  placeholder="Name"
+                />
+              </label>
+              <label>
+                <span>Contact phone</span>
+                <input
+                  value={emergencyContact.phone}
+                  onChange={(event) => handleEmergencyContactChange('phone', event.target.value)}
+                  placeholder="+65..."
+                />
+              </label>
+              <div className="resident-profile-save-row">
+                <p className={`resident-profile-status is-${residentProfileStatus}`}>
+                  {residentProfileMessage}
+                </p>
+                <button
+                  type="button"
+                  className="resident-profile-save-button"
+                  onClick={handleSaveResidentProfile}
+                  disabled={residentProfileStatus === 'saving'}
+                >
+                  {residentProfileStatus === 'saving' ? 'Saving...' : 'Save profile'}
+                </button>
+              </div>
+            </div>
+            <div className="resident-saved-places-editor" aria-label="Saved resident places editor">
+              <div className="resident-saved-places-head">
             <div>
               <p className="resident-guidance-label">Saved places</p>
               <p>Ask MURUS checks these places when you ask about home, family, work, or school.</p>
@@ -895,48 +948,50 @@ export function ResidentPage({ session }) {
             <button type="button" onClick={handleAddSavedPlace}>
               Add place
             </button>
-          </div>
-          <div className="resident-saved-places-list">
-            {(persistedPlaces.length > 0 ? persistedPlaces : DEFAULT_SAVED_PLACES).map((place) => (
-              <article key={place.id} className="resident-saved-place-row">
-                <label>
-                  <span>Label</span>
-                  <input
-                    value={place.label}
-                    onChange={(event) => handleSavedPlaceChange(place.id, 'label', event.target.value)}
-                  />
-                </label>
-                <label>
-                  <span>Address</span>
-                  <input
-                    value={place.persistedAddress ?? place.sublabel}
-                    onChange={(event) => handleSavedPlaceChange(place.id, 'persistedAddress', event.target.value)}
-                  />
-                </label>
-                <label>
-                  <span>Type</span>
-                  <select
-                    value={place.placeType ?? pointPlaceType(place.id)}
-                    onChange={(event) => handleSavedPlaceChange(place.id, 'placeType', event.target.value)}
-                  >
-                    <option value="home">Home</option>
-                    <option value="work">Work</option>
-                    <option value="school">School</option>
-                    <option value="family">Family</option>
-                    <option value="other">Other</option>
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveSavedPlace(place.id)}
-                  disabled={place.id === 'home'}
-                >
-                  Remove
-                </button>
-              </article>
-            ))}
-          </div>
-        </div>
+              </div>
+              <div className="resident-saved-places-list">
+                {(persistedPlaces.length > 0 ? persistedPlaces : DEFAULT_SAVED_PLACES).map((place) => (
+                  <article key={place.id} className="resident-saved-place-row">
+                    <label>
+                      <span>Label</span>
+                      <input
+                        value={place.label}
+                        onChange={(event) => handleSavedPlaceChange(place.id, 'label', event.target.value)}
+                      />
+                    </label>
+                    <label>
+                      <span>Address</span>
+                      <input
+                        value={place.persistedAddress ?? place.sublabel}
+                        onChange={(event) => handleSavedPlaceChange(place.id, 'persistedAddress', event.target.value)}
+                      />
+                    </label>
+                    <label>
+                      <span>Type</span>
+                      <select
+                        value={place.placeType ?? pointPlaceType(place.id)}
+                        onChange={(event) => handleSavedPlaceChange(place.id, 'placeType', event.target.value)}
+                      >
+                        <option value="home">Home</option>
+                        <option value="work">Work</option>
+                        <option value="school">School</option>
+                        <option value="family">Family</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSavedPlace(place.id)}
+                      disabled={place.id === 'home'}
+                    >
+                      Remove
+                    </button>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </section>
 
       <section className="resident-impact-panel" aria-label="Does this affect me check">

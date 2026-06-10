@@ -5227,6 +5227,67 @@ h1 {
   box-shadow: inset 0 0 0 1px rgba(180, 35, 47, 0.1);
 }
 
+.resident-profile-summary {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(180, 35, 47, 0.16);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #fff7f8 100%);
+  padding: 12px;
+}
+
+.resident-profile-summary p {
+  margin: 3px 0 0;
+  color: var(--resident-muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.resident-profile-summary dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.resident-profile-summary dl div {
+  min-width: 0;
+  border: 1px solid rgba(180, 35, 47, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 9px;
+}
+
+.resident-profile-summary dt,
+.resident-profile-summary dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.resident-profile-summary dt {
+  color: var(--resident-subtle);
+  font-size: 0.68rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.resident-profile-summary dd {
+  margin-top: 3px;
+  color: var(--resident-ink);
+  font-size: 0.85rem;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
+.resident-profile-edit-button {
+  min-height: 38px;
+  border: 1px solid rgba(180, 35, 47, 0.24);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--resident-red-dark);
+  font-weight: 850;
+}
+
 .resident-situation-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6378,6 +6439,7 @@ h1 {
     grid-template-columns: 1fr;
   }
 
+  .resident-profile-summary dl,
   .resident-situation-form {
     grid-template-columns: 1fr;
   }
