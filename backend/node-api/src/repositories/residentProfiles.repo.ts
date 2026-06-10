@@ -1,6 +1,7 @@
 import { supabase } from "../config/supabase";
 import type {
   ResidentMobilityNeed,
+  ResidentPersona,
   ResidentProfile,
   ResidentSavedPlace,
   ResidentSavedPlaceType,
@@ -12,6 +13,7 @@ type ResidentProfileRow = {
   user_id: string;
   display_name: string | null;
   home_address: string | null;
+  resident_persona: string | null;
   preferred_transport: string | null;
   mobility_need: string | null;
   support_notes: string | null;
@@ -32,6 +34,7 @@ type ResidentSavedPlaceRow = {
 const transportModes: ResidentTransportMode[] = ["walking", "mrt", "driving", "caregiver"];
 const mobilityNeeds: ResidentMobilityNeed[] = ["none", "elderly", "mobility", "child"];
 const placeTypes: ResidentSavedPlaceType[] = ["home", "work", "school", "family", "other"];
+const residentPersonas: ResidentPersona[] = ["general", "elderly", "parent", "driver", "tourist", "mobility"];
 
 export const residentProfilesRepo = {
   async getProfile(userId: string): Promise<ResidentProfile | null> {
@@ -42,7 +45,7 @@ export const residentProfilesRepo = {
         supabase
           .from("resident_profiles")
           .select(
-            "user_id, display_name, home_address, preferred_transport, mobility_need, support_notes, emergency_contact_name, emergency_contact_phone"
+            "user_id, display_name, home_address, resident_persona, preferred_transport, mobility_need, support_notes, emergency_contact_name, emergency_contact_phone"
           )
           .eq("user_id", userId)
           .maybeSingle(),
@@ -73,6 +76,7 @@ export const residentProfilesRepo = {
       user_id: userId,
       display_name: input.displayName ?? null,
       home_address: input.homeAddress ?? null,
+      resident_persona: input.residentPersona ?? "general",
       preferred_transport: input.preferredTransport ?? "walking",
       mobility_need: input.mobilityNeed ?? "none",
       support_notes: input.supportNotes ?? null,
@@ -128,6 +132,7 @@ function mapResidentProfile(row: ResidentProfileRow, places: ResidentSavedPlaceR
     userId: row.user_id,
     displayName: row.display_name ?? undefined,
     homeAddress: row.home_address ?? undefined,
+    residentPersona: parseResidentPersona(row.resident_persona),
     preferredTransport: parseTransport(row.preferred_transport),
     mobilityNeed: parseMobility(row.mobility_need),
     supportNotes: row.support_notes ?? undefined,
@@ -157,6 +162,10 @@ function parseTransport(value: string | null): ResidentTransportMode {
 
 function parseMobility(value: string | null): ResidentMobilityNeed {
   return mobilityNeeds.includes(value as ResidentMobilityNeed) ? (value as ResidentMobilityNeed) : "none";
+}
+
+function parseResidentPersona(value: string | null): ResidentPersona {
+  return residentPersonas.includes(value as ResidentPersona) ? (value as ResidentPersona) : "general";
 }
 
 function finiteOrNull(value: unknown): number | null {

@@ -171,9 +171,8 @@ export function DispatcherPage({ session }) {
       <section className="dispatcher-grid">
         <ScreenPanel
           className="panel dispatcher-detail-panel"
-          visual="routeGrid"
-          visualVariant="subtleBackground"
-          visualPosition="center"
+          visual="none"
+          visualIntensity="none"
         >
           <div className="responder-section-heading">
             <div>

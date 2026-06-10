@@ -63,6 +63,8 @@ async function buildAskMurusInput(req: Request) {
 
   const profile = await getResidentProfile(req.user);
   const profileContext = {
+    profile: profile.residentPersona,
+    profileLabel: residentPersonaLabel(profile.residentPersona),
     residentDetails: {
       displayName: profile.displayName,
       homeAddress: profile.homeAddress,
@@ -95,6 +97,18 @@ async function buildAskMurusInput(req: Request) {
       savedPlaces: clientContext.savedPlaces ?? profileContext.savedPlaces,
     },
   };
+}
+
+function residentPersonaLabel(persona: string) {
+  const labels: Record<string, string> = {
+    general: "General",
+    elderly: "Elderly",
+    parent: "Parent",
+    driver: "Driver",
+    tourist: "Tourist",
+    mobility: "Mobility support",
+  };
+  return labels[persona] ?? "General";
 }
 
 function parseFilter(req: Request): ResidentAlertFilter {

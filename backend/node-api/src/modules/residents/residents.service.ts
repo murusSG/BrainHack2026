@@ -7,6 +7,7 @@ import type { ResidentProfile, UpdateResidentProfileInput } from "./residents.ty
 const transportModes = ["walking", "mrt", "driving", "caregiver"] as const;
 const mobilityNeeds = ["none", "elderly", "mobility", "child"] as const;
 const placeTypes = ["home", "work", "school", "family", "other"] as const;
+const residentPersonas = ["general", "elderly", "parent", "driver", "tourist", "mobility"] as const;
 
 const savedPlaceSchema = z.object({
   id: z.string().optional(),
@@ -21,6 +22,7 @@ const savedPlaceSchema = z.object({
 const updateProfileSchema = z.object({
   displayName: z.string().trim().max(100).optional().or(z.literal("")),
   homeAddress: z.string().trim().max(200).optional().or(z.literal("")),
+  residentPersona: z.enum(residentPersonas).optional(),
   preferredTransport: z.enum(transportModes).optional(),
   mobilityNeed: z.enum(mobilityNeeds).optional(),
   supportNotes: z.string().trim().max(300).optional().or(z.literal("")),
@@ -61,6 +63,7 @@ function buildDefaultProfile(user: AuthUser): ResidentProfile {
     userId: user.id,
     displayName: user.fullName ?? user.email?.split("@")[0] ?? "Resident",
     homeAddress: "",
+    residentPersona: "general",
     preferredTransport: "walking",
     mobilityNeed: "none",
     supportNotes: "",
@@ -74,6 +77,7 @@ function normalizeInput(input: z.infer<typeof updateProfileSchema>): UpdateResid
   return {
     displayName: input.displayName?.trim() || undefined,
     homeAddress: input.homeAddress?.trim() || undefined,
+    residentPersona: input.residentPersona,
     preferredTransport: input.preferredTransport,
     mobilityNeed: input.mobilityNeed,
     supportNotes: input.supportNotes?.trim() || undefined,
