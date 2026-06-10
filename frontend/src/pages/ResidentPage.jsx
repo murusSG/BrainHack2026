@@ -5,6 +5,7 @@ import { CrisisMap } from '../components/CrisisMap';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
 import { ResidentAlertVisualGuide } from '../components/ResidentAlertVisualGuide';
+import { PublicDashboardPage } from './PublicDashboardPage';
 import { useEvents } from '../hooks/useEvents';
 import { api } from '../services/api';
 import { CHECK_IN_OPTIONS, saveResidentCheckin } from '../utils/residentCheckins';
@@ -248,6 +249,7 @@ function createSavedPlaceDraft() {
 
 export function ResidentPage({ session }) {
   const { events, status, error } = useEvents();
+  const [activeResidentTab, setActiveResidentTab] = useState('brief');
   const [activePoint, setActivePoint] = useState(DEFAULT_SAVED_PLACES[0].id);
   const [activeProfile, setActiveProfile] = useState(RESIDENT_PROFILES[0].id);
   const [shelterNote, setShelterNote] = useState(null);
@@ -778,6 +780,34 @@ export function ResidentPage({ session }) {
           </Link>
         </div>
       </header>
+
+      <div className="resident-view-tabs" role="tablist" aria-label="Resident view tabs">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeResidentTab === 'brief'}
+          className={`resident-view-tab ${activeResidentTab === 'brief' ? 'is-active' : ''}`}
+          onClick={() => setActiveResidentTab('brief')}
+        >
+          Safety Brief
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeResidentTab === 'public'}
+          className={`resident-view-tab ${activeResidentTab === 'public' ? 'is-active' : ''}`}
+          onClick={() => setActiveResidentTab('public')}
+        >
+          Public Dashboard
+        </button>
+      </div>
+
+      {activeResidentTab === 'public' ? (
+        <section className="resident-public-dashboard-tab" role="tabpanel" aria-label="Public dashboard">
+          <PublicDashboardPage embedded mobileView showBackButton={false} />
+        </section>
+      ) : (
+        <>
 
       <div className="resident-watch-grid" aria-label="Saved locations">
         {watchPoints.map((point) => {
@@ -1448,6 +1478,8 @@ export function ResidentPage({ session }) {
           </MapErrorBoundary>
         )}
       </section>
+        </>
+      )}
     </div>
   );
 }

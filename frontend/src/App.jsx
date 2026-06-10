@@ -148,6 +148,7 @@ function ProtectedPublicDashboard({ session, restoring }) {
   return (
     <StandalonePage page="public">
       <PublicDashboardPage
+        mobileView
         onReturnToOps={() => navigate(session.role === 'public' ? '/' : '/overview')}
       />
     </StandalonePage>

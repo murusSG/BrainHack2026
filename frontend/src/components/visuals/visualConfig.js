@@ -78,10 +78,8 @@ export const standalonePageVisuals = {
     visualIntensity: 'subtle',
   },
   public: {
-    visual: 'skyline',
-    visualVariant: 'sectionDivider',
-    visualPosition: 'topRight',
-    visualIntensity: 'subtle',
+    visual: 'none',
+    visualIntensity: 'none',
   },
   resident: {
     visual: 'merlion',

@@ -41,12 +41,6 @@ export function ResourcesPage() {
     reason: routedRequestForm?.reason ?? '',
   });
   const [stagedRequests, setStagedRequests] = useState([]);
-  const syncLabel =
-    status === 'loading'
-      ? 'Syncing SCDF'
-      : status === 'error'
-        ? 'Planning fallback'
-        : ledgerMeta.syncStatus;
   const activeTabLabel =
     resourceLedgerTabs.find((tab) => tab.id === activeLedgerTab)?.label ?? resourceLedgerTabs[0].label;
   const filteredLedgerEntries = useMemo(() => {
@@ -75,6 +69,10 @@ export function ResourcesPage() {
     }));
   }
 
+  function appendRequestLog(entry) {
+    setStagedRequests((current) => [entry, ...current].slice(0, 12));
+  }
+
   function handleSubmitRequest(event) {
     event.preventDefault();
     const quantity = Number(requestForm.quantity);
@@ -85,13 +83,16 @@ export function ResourcesPage() {
 
     const request = {
       id: `REQ-${Date.now().toString().slice(-5)}`,
+      source: 'Manual request',
       resourceType: requestForm.resourceType,
       quantity,
       priority: requestForm.priority,
       priorityTone: getPriorityTone(requestForm.priority),
       reason: requestForm.reason.trim() || 'No additional reason supplied.',
+      status: 'Submitted for review',
+      timestamp: formatLogTimestamp(),
     };
-    setStagedRequests((current) => [request, ...current].slice(0, 3));
+    appendRequestLog(request);
     setRequestForm((current) => ({
       ...current,
       quantity: '0',
@@ -115,30 +116,6 @@ export function ResourcesPage() {
           <p className="hero-copy">
             Real-time inventory and capacity monitoring across Singapore agencies.
           </p>
-        </div>
-        <div className="hero-actions">
-          <span className="pill">{syncLabel}</span>
-          <button
-            type="button"
-            className="ghost-button"
-            onClick={() => setResourceNotice('Resource export staged for this planning snapshot.')}
-          >
-            Export Report
-          </button>
-          <button
-            type="button"
-            className="ghost-button"
-            onClick={() => setResourceNotice(`Filter lens set to ${activeTabLabel}.`)}
-          >
-            Filters
-          </button>
-          <button
-            type="button"
-            className="primary-button"
-            onClick={() => setResourceNotice('Operational log view queued for the current desk.')}
-          >
-            Log View
-          </button>
         </div>
       </ScreenHeader>
 
@@ -165,6 +142,22 @@ export function ResourcesPage() {
               className="alert-primary"
               onClick={() => {
                 setShortageStatus('transfer staged');
+                appendRequestLog({
+                  id: `AI-${Date.now().toString().slice(-5)}`,
+                  source: 'Critical shortage transfer',
+                  resourceType: resourceShortageAlert.items
+                    .map((item) => `${item.quantity} x ${item.label}`)
+                    .join(', '),
+                  quantity: resourceShortageAlert.items.reduce((total, item) => total + item.quantity, 0),
+                  priority: 'Critical',
+                  priorityTone: 'critical',
+                  transferFrom: resourceShortageAlert.transferFrom,
+                  transferTo: resourceShortageAlert.transferTo,
+                  items: resourceShortageAlert.items,
+                  reason: resourceShortageAlert.message,
+                  status: 'Transfer initiated',
+                  timestamp: formatLogTimestamp(),
+                });
                 setResourceNotice('Shortage transfer staged for approval.');
               }}
             >
@@ -244,7 +237,6 @@ export function ResourcesPage() {
                 <span>Crew</span>
                 <span>Battery / Fuel</span>
                 <span>Status</span>
-                <span>Actions</span>
               </div>
 
               {filteredLedgerEntries.map((entry) => (
@@ -262,16 +254,6 @@ export function ResourcesPage() {
                   <span>
                     <span className={`ledger-status status-${entry.statusTone}`}>{entry.status}</span>
                   </span>
-                  <button
-                    type="button"
-                    className="ledger-menu-button"
-                    aria-label={`Actions for ${entry.unitId}`}
-                    onClick={() =>
-                      setResourceNotice(`${entry.unitId} selected for transfer review.`)
-                    }
-                  >
-                    ...
-                  </button>
                 </div>
               ))}
               {filteredLedgerEntries.length === 0 && (
@@ -281,13 +263,6 @@ export function ResourcesPage() {
 
             <div className="resource-ledger-footer">
               <span>{ledgerMeta.syncStatus}</span>
-              <button
-                type="button"
-                className="inline-link"
-                onClick={() => setResourceNotice('Audit log snapshot loaded for review.')}
-              >
-                {ledgerMeta.auditLabel}
-              </button>
             </div>
           </ScreenPanel>
 
@@ -360,22 +335,73 @@ export function ResourcesPage() {
             </form>
 
             {stagedRequests.length > 0 && (
-              <div className="staged-request-list">
+              <div className="staged-request-list staged-request-list-inline">
                 {stagedRequests.map((request) => (
                   <article key={request.id} className="staged-request-card">
-                    <div>
-                      <strong>{request.id}</strong>
-                      <p>
-                        {request.quantity} x {request.resourceType}
-                      </p>
+                    <div className="staged-request-copy">
+                      <div className="staged-request-top">
+                        <strong>{request.id}</strong>
+                        <span className={`request-priority-pill priority-${request.priorityTone}`}>
+                          {request.priority}
+                        </span>
+                      </div>
+                      <p>{request.quantity} x {request.resourceType}</p>
+                      <p>{request.status}</p>
                     </div>
-                    <span className={`request-priority-pill priority-${request.priorityTone}`}>
-                      {request.priority}
-                    </span>
                   </article>
                 ))}
               </div>
             )}
+          </ScreenPanel>
+
+          <ScreenPanel className="resource-log-panel">
+            <div className="resource-log-head">
+              <div>
+                <h2>Request Log</h2>
+                <p>Manual requests and shortage-triggered transfers appear here for shared reference.</p>
+              </div>
+              <span className="pill">{stagedRequests.length} logged</span>
+            </div>
+
+            <div className="resource-log-scroll" role="log" aria-live="polite">
+              {stagedRequests.length > 0 ? (
+                <div className="staged-request-list">
+                  {stagedRequests.map((request) => (
+                    <article key={request.id} className="staged-request-card">
+                      <div className="staged-request-copy">
+                        <div className="staged-request-top">
+                          <strong>{request.id}</strong>
+                          <span className={`request-priority-pill priority-${request.priorityTone}`}>
+                            {request.priority}
+                          </span>
+                        </div>
+                        <p>{request.source}</p>
+                        {request.transferFrom && request.transferTo ? (
+                          <>
+                            <p>
+                              {request.transferFrom} to {request.transferTo}
+                            </p>
+                            {request.items?.map((item) => (
+                              <p key={`${request.id}-${item.label}`}>
+                                {item.quantity} x {item.label}
+                              </p>
+                            ))}
+                          </>
+                        ) : (
+                          <>
+                            <p>{request.quantity} x {request.resourceType}</p>
+                            <p>{request.reason}</p>
+                          </>
+                        )}
+                        <p>{request.status} / {request.timestamp}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="resource-empty-state">No transfer or request logs yet.</p>
+              )}
+            </div>
           </ScreenPanel>
         </aside>
       </section>
@@ -407,4 +433,12 @@ function getPriorityTone(priority) {
   if (normalized.includes('critical')) return 'critical';
   if (normalized.includes('high')) return 'high';
   return 'medium';
+}
+
+function formatLogTimestamp() {
+  return new Intl.DateTimeFormat('en-SG', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(new Date());
 }

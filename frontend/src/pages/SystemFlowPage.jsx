@@ -50,14 +50,6 @@ const cloudNodes = [
   { label: 'Secrets Manager', detail: 'Credential storage target', state: 'planned' },
 ];
 
-const milestones = [
-  'Port crisis aggregator into /api/v1/crisis/events',
-  'Replace scattered frontend feed calls with one normalized event feed',
-  'Persist incidents, alert acknowledgements, and resource requests',
-  'Add role-based login for command, responder, and public modes',
-  'Connect notification delivery channels after demo workflows are stable',
-];
-
 export function SystemFlowPage() {
   return (
     <div className="system-flow-page">
@@ -102,18 +94,6 @@ export function SystemFlowPage() {
         <FlowPanel title="Data Layer" nodes={dataNodes} />
         <FlowPanel title="External Integrations" nodes={integrationNodes} />
         <FlowPanel title="Cloud Target" nodes={cloudNodes} />
-      </section>
-
-      <section className="panel implementation-panel">
-        <div>
-          <p className="eyebrow">Implementation Path</p>
-          <h2>What brings the prototype closest to the original design</h2>
-        </div>
-        <ol className="implementation-list">
-          {milestones.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ol>
       </section>
     </div>
   );
