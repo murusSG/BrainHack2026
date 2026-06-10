@@ -84,14 +84,21 @@ function markTableUnavailable(table: string, error: { code?: unknown; message?: 
       (normalizedMessage.includes("schema cache") ||
         normalizedMessage.includes("does not exist") ||
         normalizedMessage.includes("not found")));
+  const isAuthorizationError =
+    code === "42501" ||
+    normalizedMessage.includes("row-level security policy") ||
+    normalizedMessage.includes("permission denied");
 
-  if (!isMissingTableError) {
+  if (!isMissingTableError && !isAuthorizationError) {
     return false;
   }
 
   if (!unavailableSupabaseTables.has(table)) {
+    const guidance = isAuthorizationError
+      ? `Verify the Node API is using SUPABASE_SERVICE_ROLE_KEY and that the incident-state RLS policies from backend/node-api/supabase/migration_incident_state.sql are applied.`
+      : `Apply backend/node-api/supabase/migration_incident_state.sql to restore durable persistence.`;
     console.warn(
-      `[incidentStateRepo] Supabase table "${table}" is unavailable; falling back to in-memory incident state. Apply backend/node-api/supabase/migration_incident_state.sql to restore durable persistence.`,
+      `[incidentStateRepo] Supabase table "${table}" is unavailable; falling back to in-memory incident state. ${guidance}`,
       message
     );
   }

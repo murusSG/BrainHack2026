@@ -71,4 +71,51 @@ describe("incidentState.repo", () => {
     });
     expect(fromMock).toHaveBeenCalledTimes(1);
   });
+
+  it("falls back to memory when Supabase rejects public_incident_reports writes with RLS", async () => {
+    fromMock.mockReturnValue({
+      insert: () => ({
+        select: () => ({
+          single: () =>
+            Promise.resolve({
+              data: null,
+              error: {
+                code: "42501",
+                message:
+                  'new row violates row-level security policy for table "public_incident_reports"',
+              },
+            }),
+        }),
+      }),
+    });
+
+    const created = await insertPublicIncidentReport({
+      report_id: "RPT-002",
+      report_text: "Residents report smoke near the loading bay.",
+      reported_at: "2026-06-09T10:45:00+08:00",
+      source: "public",
+      reporter_location: { lat: 1.3012, lng: 103.8421 },
+      media_urls: [],
+    });
+
+    expect(created).toMatchObject({
+      id: "public-report-0001",
+      report_id: "RPT-002",
+      status: "received",
+      source: "public",
+    });
+    expect(consoleWarn).toHaveBeenCalledWith(
+      expect.stringContaining('Supabase table "public_incident_reports" is unavailable'),
+      expect.stringContaining("row-level security policy")
+    );
+
+    const reports = await listPublicIncidentReports();
+
+    expect(reports).toHaveLength(1);
+    expect(reports[0]).toMatchObject({
+      id: "public-report-0001",
+      report_id: "RPT-002",
+    });
+    expect(fromMock).toHaveBeenCalledTimes(1);
+  });
 });
