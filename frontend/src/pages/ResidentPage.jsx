@@ -18,7 +18,6 @@ import {
   buildResidentEvacuationGuideContext,
   ResidentAlertVisualGuide,
 } from '../components/ResidentAlertVisualGuide';
-import { ResidentAlertVisualGuide } from '../components/ResidentAlertVisualGuide';
 import { PublicDashboardPage } from './PublicDashboardPage';
 import { useEvents } from '../hooks/useEvents';
 import { api } from '../services/api';
@@ -306,7 +305,7 @@ function createSavedPlaceDraft() {
 
 export function ResidentPage({ session }) {
   const { events, status, error } = useEvents();
-  const [activeResidentTab, setActiveResidentTab] = useState('brief');
+  const [activeResidentView, setActiveResidentView] = useState('brief');
   const [activePoint, setActivePoint] = useState(DEFAULT_SAVED_PLACES[0].id);
   const [activeProfile, setActiveProfile] = useState(RESIDENT_PROFILES[0].id);
   const [shelterNote, setShelterNote] = useState(null);
@@ -1038,24 +1037,24 @@ export function ResidentPage({ session }) {
         <button
           type="button"
           role="tab"
-          aria-selected={activeResidentTab === 'brief'}
-          className={`resident-view-tab ${activeResidentTab === 'brief' ? 'is-active' : ''}`}
-          onClick={() => setActiveResidentTab('brief')}
+          aria-selected={activeResidentView === 'brief'}
+          className={`resident-view-tab ${activeResidentView === 'brief' ? 'is-active' : ''}`}
+          onClick={() => setActiveResidentView('brief')}
         >
           Safety Brief
         </button>
         <button
           type="button"
           role="tab"
-          aria-selected={activeResidentTab === 'public'}
-          className={`resident-view-tab ${activeResidentTab === 'public' ? 'is-active' : ''}`}
-          onClick={() => setActiveResidentTab('public')}
+          aria-selected={activeResidentView === 'public'}
+          className={`resident-view-tab ${activeResidentView === 'public' ? 'is-active' : ''}`}
+          onClick={() => setActiveResidentView('public')}
         >
           Public Dashboard
         </button>
       </div>
 
-      {activeResidentTab === 'public' ? (
+      {activeResidentView === 'public' ? (
         <section className="resident-public-dashboard-tab" role="tabpanel" aria-label="Public dashboard">
           <PublicDashboardPage embedded mobileView showBackButton={false} />
         </section>
@@ -1940,6 +1939,7 @@ export function ResidentPage({ session }) {
           </MapErrorBoundary>
         )}
       </section>
+      )}
         </>
       )}
     </div>
