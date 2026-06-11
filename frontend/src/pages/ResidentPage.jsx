@@ -18,6 +18,8 @@ import {
   buildResidentEvacuationGuideContext,
   ResidentAlertVisualGuide,
 } from '../components/ResidentAlertVisualGuide';
+import { ResidentAlertVisualGuide } from '../components/ResidentAlertVisualGuide';
+import { PublicDashboardPage } from './PublicDashboardPage';
 import { useEvents } from '../hooks/useEvents';
 import { api } from '../services/api';
 import { CHECK_IN_OPTIONS, saveResidentCheckin } from '../utils/residentCheckins';
@@ -304,6 +306,7 @@ function createSavedPlaceDraft() {
 
 export function ResidentPage({ session }) {
   const { events, status, error } = useEvents();
+  const [activeResidentTab, setActiveResidentTab] = useState('brief');
   const [activePoint, setActivePoint] = useState(DEFAULT_SAVED_PLACES[0].id);
   const [activeProfile, setActiveProfile] = useState(RESIDENT_PROFILES[0].id);
   const [shelterNote, setShelterNote] = useState(null);
@@ -1031,6 +1034,34 @@ export function ResidentPage({ session }) {
         </div>
       </header>
 
+      <div className="resident-view-tabs" role="tablist" aria-label="Resident view tabs">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeResidentTab === 'brief'}
+          className={`resident-view-tab ${activeResidentTab === 'brief' ? 'is-active' : ''}`}
+          onClick={() => setActiveResidentTab('brief')}
+        >
+          Safety Brief
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeResidentTab === 'public'}
+          className={`resident-view-tab ${activeResidentTab === 'public' ? 'is-active' : ''}`}
+          onClick={() => setActiveResidentTab('public')}
+        >
+          Public Dashboard
+        </button>
+      </div>
+
+      {activeResidentTab === 'public' ? (
+        <section className="resident-public-dashboard-tab" role="tabpanel" aria-label="Public dashboard">
+          <PublicDashboardPage embedded mobileView showBackButton={false} />
+        </section>
+      ) : (
+        <>
+
       <div className="resident-watch-grid" aria-label="Saved locations">
         {watchPoints.map((point) => {
           const pointStatus = statusByPoint.find((item) => item.point.id === point.id);
@@ -1333,6 +1364,30 @@ export function ResidentPage({ session }) {
         id="resident-panel-impact"
         aria-labelledby="resident-tab-impact"
       >
+      <section className="resident-evacuation-panel" aria-label="Personalized evacuation route">
+        <div className="resident-evacuation-head">
+          <div>
+            <p className="resident-persona-title">Your evacuation route</p>
+            <p className="resident-persona-copy">
+              Route from {(activeAlerts?.point ?? active?.point ?? watchPoints[0])?.label} to the nearest safe
+              shelter, personalized for the {activeProfileMeta.label.toLowerCase()} profile and your transport and
+              mobility needs.
+            </p>
+          </div>
+          <span className={`resident-evacuation-pill is-${activeTone}`}>
+            {activeAlerts?.affecting.length > 0 ? 'Danger nearby' : 'No active alert'}
+          </span>
+        </div>
+        <ResidentAlertVisualGuide
+          alert={activeAlerts?.affecting[0] ?? null}
+          point={activeAlerts?.point ?? active?.point ?? watchPoints[0]}
+          homePoint={impactPoints.find((candidate) => candidate.id === 'home')}
+          transportMode={impactTransport}
+          mobilityNeed={impactMobility}
+          profileLabel={activeProfileMeta.label}
+        />
+      </section>
+
       <section className="resident-impact-panel" aria-label="Does this affect me check">
         <div>
           <p className="resident-persona-title">Does this affect me?</p>
@@ -1885,6 +1940,7 @@ export function ResidentPage({ session }) {
           </MapErrorBoundary>
         )}
       </section>
+        </>
       )}
     </div>
   );

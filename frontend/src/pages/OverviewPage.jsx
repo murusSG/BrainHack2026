@@ -124,7 +124,7 @@ export function OverviewPage() {
         className="hero-panel"
         visual="mbs"
         visualVariant="subtleBackground"
-        visualPosition="center"
+        visualPosition="centerRight"
         visualIntensity="subtle"
       >
         <div>

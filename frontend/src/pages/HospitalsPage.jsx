@@ -53,7 +53,6 @@ export function HospitalsPage() {
   } = useHospitalData();
   const [query, setQuery] = useState(() => new URLSearchParams(location.search).get('q') ?? '');
   const [activeFilter, setActiveFilter] = useState('all');
-  const [detailFacility, setDetailFacility] = useState(null);
   const [transferFacility, setTransferFacility] = useState(null);
   const [hospitalNotice, setHospitalNotice] = useState('Hospital desk ready for capacity review.');
   const filterOptions = ['all', 'critical', 'warning', 'central', 'west', 'north', 'east'];
@@ -85,7 +84,7 @@ export function HospitalsPage() {
     });
   }, [activeFilter, facilityCards, query]);
 
-  const selectedFacilityName = (detailFacility ?? transferFacility)?.name ?? filteredFacilityCards[0]?.name;
+  const selectedFacilityName = transferFacility?.name ?? filteredFacilityCards[0]?.name;
 
   return (
     <div className="hospitals-page">
@@ -212,24 +211,12 @@ export function HospitalsPage() {
               </div>
             </div>
 
-            <div className="hospital-card-actions">
-              <button
-                type="button"
-                className="ghost-button hospital-card-button"
-                onClick={() => {
-                  setDetailFacility(facility);
-                  setTransferFacility(null);
-                  setHospitalNotice(`${facility.name} details loaded for capacity review.`);
-                }}
-              >
-                Details
-              </button>
+            <div className="hospital-card-actions hospital-card-actions--centered">
               <button
                 type="button"
                 className="primary-button hospital-card-button"
                 onClick={() => {
                   setTransferFacility(facility);
-                  setDetailFacility(null);
                   setHospitalNotice(`Transfer request staged for ${facility.name}.`);
                 }}
               >
@@ -289,29 +276,6 @@ export function HospitalsPage() {
           ))}
         </div>
       </section>
-
-      {detailFacility && (
-        <div className="hospital-panel-overlay" role="dialog" aria-modal="true" aria-label={`${detailFacility.name} details`}>
-          <section className="hospital-detail-panel panel">
-            <div className="hospital-panel-header">
-              <div>
-                <h2>{detailFacility.name}</h2>
-                <p className="hospital-region">{detailFacility.region}</p>
-              </div>
-              <button type="button" className="ghost-button" onClick={() => setDetailFacility(null)}>Close</button>
-            </div>
-            <div className="hospital-panel-body">
-              <FacilityMetric label="General Beds" data={detailFacility.generalBeds} />
-              <FacilityMetric label="ICU Units" data={detailFacility.icuUnits} />
-              <div className="hospital-info-row">
-                <div className="hospital-info-box"><p>Ventilators</p><strong>{detailFacility.ventilators}</strong></div>
-                <div className="hospital-info-box"><p>Direct Line</p><strong>{detailFacility.directLine}</strong></div>
-                <div className="hospital-info-box"><p>Status</p><strong>{detailFacility.status}</strong></div>
-              </div>
-            </div>
-          </section>
-        </div>
-      )}
 
       {transferFacility && (
         <div className="hospital-panel-overlay" role="dialog" aria-modal="true" aria-label={`Transfer from ${transferFacility.name}`}>

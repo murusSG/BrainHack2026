@@ -1,6 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap');
+
 :root {
   color-scheme: dark;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Open Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.5;
   font-weight: 400;
   background: #030303;
@@ -516,6 +518,84 @@ form.searchbar {
   border-color: var(--border-strong);
 }
 
+/* Notifications panel */
+.notif-anchor {
+  position: relative;
+}
+
+.notif-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #e05252;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.notif-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 600;
+  width: 340px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+
+.notif-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid #f0e8ec;
+  font-size: 0.9rem;
+}
+
+.notif-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.notif-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f5f0f2;
+  border-left: 3px solid transparent;
+}
+
+.notif-item--critical { border-left-color: #e05252; background: #fff8f8; }
+.notif-item--warning  { border-left-color: #e09c2a; background: #fffaf3; }
+.notif-item--info     { border-left-color: #4a9ee0; background: #f5faff; }
+
+.notif-item-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #2a1a20;
+  margin-bottom: 3px;
+}
+
+.notif-item-detail {
+  font-size: 0.8rem;
+  color: #5a3a42;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.notif-item-time {
+  font-size: 0.75rem;
+  color: #9a7a84;
+}
+
 button:disabled,
 input:disabled,
 textarea:disabled {
@@ -912,15 +992,38 @@ h1 {
 }
 
 .system-flow-hero {
-  align-items: flex-start;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 18px;
+  padding-block: 24px;
+}
+
+.system-flow-hero > div:first-child {
+  max-width: 980px;
+}
+
+.system-flow-hero h1 {
+  margin-bottom: 6px;
+  font-size: clamp(2rem, 3.6vw, 2.95rem);
+  line-height: 1.04;
+}
+
+.system-flow-hero .hero-copy {
+  max-width: 980px;
+  margin-top: 0;
+  line-height: 1.45;
+  white-space: normal;
 }
 
 .system-flow-legend {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: 8px;
-  min-width: 280px;
+  min-width: max-content;
+  align-self: start;
 }
 
 .system-flow-board {
@@ -2105,6 +2208,10 @@ h1 {
   margin-top: 26px;
 }
 
+.hospital-card-actions--centered {
+  justify-content: center;
+}
+
 .hospital-card-button {
   flex: 1;
 }
@@ -2135,6 +2242,70 @@ h1 {
   border-top: 0;
   color: #3f282e;
   font-weight: 700;
+}
+
+/* Hospital detail / transfer panels */
+.hospital-panel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 12, 16, 0.55);
+  backdrop-filter: blur(4px);
+  padding: 24px;
+}
+
+.hospital-detail-panel {
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px;
+  width: 100%;
+  max-width: 560px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+}
+
+.hospital-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+
+.hospital-panel-header h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.hospital-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hospital-panel-notice {
+  font-size: 0.875rem;
+  color: #5a3a42;
+  background: rgba(232, 196, 212, 0.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 4px;
+}
+
+.hospital-transfer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hospital-notice {
+  font-size: 0.85rem;
+  color: #4a3036;
+  padding: 8px 0 0;
+  font-weight: 500;
 }
 
 .registry-type-pill,
@@ -2518,15 +2689,20 @@ h1 {
 }
 
 .staged-request-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: block;
   gap: 12px;
   padding: 14px;
   border: 1px solid rgba(211, 109, 117, 0.18);
   border-radius: 14px;
   background: linear-gradient(180deg, rgba(255, 244, 247, 0.98), rgba(255, 235, 240, 0.94));
   box-shadow: 0 14px 32px rgba(170, 48, 78, 0.08);
+}
+
+.staged-request-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .staged-request-card p {
@@ -3894,6 +4070,12 @@ h1 {
   .system-flow-legend {
     justify-content: flex-start;
     min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .system-flow-hero {
+    grid-template-columns: 1fr;
+    gap: 14px;
   }
 
   .hospital-cards-grid,
@@ -4504,9 +4686,10 @@ h1 {
 }
 
 .responder-header-copy {
-  max-width: 620px;
+  max-width: none;
   margin: 8px 0 0;
   color: var(--muted);
+  white-space: nowrap;
 }
 
 .responder-command-link,
@@ -5032,6 +5215,34 @@ h1 {
   gap: 8px;
 }
 
+.resident-view-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.resident-view-tab {
+  min-height: 42px;
+  border: 1px solid var(--resident-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--resident-red-dark);
+  font: inherit;
+  font-weight: 800;
+  padding: 0 14px;
+}
+
+.resident-view-tab.is-active {
+  border-color: rgba(180, 35, 47, 0.34);
+  background: linear-gradient(180deg, #fff4f5, #ffe9ec);
+  color: var(--resident-red);
+  box-shadow: 0 10px 24px rgba(180, 35, 47, 0.08);
+}
+
+.resident-public-dashboard-tab {
+  min-width: 0;
+}
+
 .resident-simple-toggle {
   min-height: 34px;
   border: 1px solid rgba(180, 35, 47, 0.2);
@@ -5254,6 +5465,7 @@ h1 {
 .resident-affects-card,
 .resident-rumor-panel,
 .resident-impact-panel,
+.resident-evacuation-panel,
 .resident-family-panel,
 .resident-preparedness-panel {
   border: 1px solid var(--resident-border);
@@ -5265,11 +5477,37 @@ h1 {
 .resident-persona-panel,
 .resident-rumor-panel,
 .resident-impact-panel,
+.resident-evacuation-panel,
 .resident-family-panel,
 .resident-preparedness-panel {
   display: grid;
   gap: 12px;
   padding: 14px;
+}
+
+.resident-evacuation-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.resident-evacuation-pill {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 0.72rem;
+  font-weight: 850;
+  border: 1px solid rgba(12, 130, 88, 0.24);
+  background: #ecfff8;
+  color: #08754e;
+}
+
+.resident-evacuation-pill.is-warning,
+.resident-evacuation-pill.is-critical {
+  border-color: rgba(180, 35, 47, 0.24);
+  background: var(--resident-red-soft);
+  color: var(--resident-red-dark);
 }
 
 .resident-persona-title,
@@ -7350,7 +7588,7 @@ h1 {
 /* Singapore-inspired bright theme */
 :root {
   color-scheme: light;
-  font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", Inter, sans-serif;
+  font-family: "Open Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: #fff8fa;
   color: #2f1417;
   --bg: #fff8fa;
@@ -9079,6 +9317,82 @@ body {
   display: grid;
   grid-template-columns: 320px 1fr;
   color: var(--text);
+  background: #fff7fa;
+}
+
+.public-shell--embedded {
+  min-height: 0;
+}
+
+.public-shell--mobile {
+  grid-template-columns: 1fr;
+  min-height: 0;
+}
+
+.public-shell--mobile .public-sidebar {
+  border-right: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.public-shell--mobile .public-overview-grid,
+.public-shell--mobile .public-lower-grid {
+  grid-template-columns: 1fr;
+}
+
+.public-shell--mobile .public-topbar,
+.public-shell--mobile .public-section-heading,
+.public-shell--mobile .public-card-head,
+.public-shell--mobile .public-shelter-head,
+.public-shell--mobile .public-shelter-meta {
+  display: grid;
+  justify-items: start;
+}
+
+.public-shell--mobile .public-incident-banner {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+  padding: 22px 18px;
+}
+
+.public-shell--mobile .public-banner-icon {
+  width: 56px;
+  height: 56px;
+  font-size: 1.7rem;
+}
+
+.public-shell--mobile .public-banner-copy {
+  min-width: 0;
+}
+
+.public-shell--mobile .public-banner-copy p {
+  font-size: 0.88rem;
+  letter-spacing: 0.11em;
+}
+
+.public-shell--mobile .public-banner-copy h1 {
+  margin-top: 8px;
+  font-size: clamp(1.7rem, 6vw, 2.5rem);
+  line-height: 1.04;
+  overflow-wrap: anywhere;
+}
+
+.public-shell--mobile .public-banner-meta {
+  grid-column: 1 / -1;
+  gap: 6px;
+  justify-items: start;
+  text-align: left;
+  font-size: 0.98rem;
+  line-height: 1.35;
+}
+
+.public-shell--mobile .public-main-content {
+  padding: 20px 16px 32px;
+}
+
+.public-shell--mobile .public-sidebar {
+  padding: 20px 16px 24px;
 }
 
 .public-sidebar {
@@ -9241,7 +9555,7 @@ body {
   border-radius: 8px;
   background:
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.16), transparent 22%),
-    linear-gradient(135deg, #ef3344 0%, #cf1d31 100%);
+    linear-gradient(135deg, #f6c29d 0%, #ef9a61 52%, #e5772d 100%);
   color: #fff8f8;
   padding: 30px 28px;
   display: grid;
@@ -9279,6 +9593,28 @@ body {
   gap: 12px;
   justify-items: end;
   text-align: right;
+  font-weight: 700;
+}
+
+.public-report-cta-row {
+  display: flex;
+  width: 100%;
+  margin-top: -8px;
+}
+
+.public-report-cta {
+  width: 100%;
+  min-height: 72px;
+  padding: 14px 24px;
+  border-color: rgba(171, 16, 37, 0.2);
+  background: linear-gradient(180deg, #ef3344 0%, #cf1d31 100%);
+  color: #fff8f8;
+  box-shadow: 0 18px 38px rgba(197, 22, 43, 0.18);
+}
+
+.public-report-cta span {
+  color: rgba(255, 248, 248, 0.92);
+  font-size: 0.9rem;
   font-weight: 700;
 }
 
@@ -10080,13 +10416,52 @@ body {
 
   .login-brand-row,
   .public-topbar,
-  .public-incident-banner,
   .public-section-heading,
   .public-card-head,
   .public-shelter-head,
   .public-shelter-meta {
     display: grid;
     justify-items: start;
+  }
+
+  .public-incident-banner,
+  .public-shell--mobile .public-incident-banner {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    align-items: start;
+    gap: 16px;
+    padding: 22px 18px;
+  }
+
+  .public-banner-icon {
+    width: 56px;
+    height: 56px;
+    font-size: 1.7rem;
+  }
+
+  .public-banner-copy {
+    min-width: 0;
+  }
+
+  .public-banner-copy h1 {
+    font-size: clamp(1.5rem, 8vw, 2.4rem);
+    line-height: 1.06;
+    overflow-wrap: anywhere;
+  }
+
+  .public-banner-copy p {
+    font-size: 0.84rem;
+    letter-spacing: 0.1em;
+  }
+
+  .public-banner-meta,
+  .public-shell--mobile .public-banner-meta {
+    grid-column: 1 / -1;
+    gap: 6px;
+    justify-items: start;
+    text-align: left;
+    font-size: 0.95rem;
+    line-height: 1.32;
   }
 
   .login-brand-mark {
@@ -10105,10 +10480,5 @@ body {
 
   .public-sidebar {
     padding: 20px 16px 24px;
-  }
-
-  .public-banner-meta {
-    justify-items: start;
-    text-align: left;
   }
 }

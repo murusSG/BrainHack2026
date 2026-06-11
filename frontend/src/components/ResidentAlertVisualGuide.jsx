@@ -61,15 +61,15 @@ export function ResidentAlertVisualGuide({
     () =>
       [
         [point.lat, point.lng],
-        alert.lat != null && alert.lng != null ? [Number(alert.lat), Number(alert.lng)] : null,
+        alert?.lat != null && alert?.lng != null ? [Number(alert.lat), Number(alert.lng)] : null,
         guide.target ? [guide.target.lat, guide.target.lng] : null,
         ...(guide.routePoints ?? []),
       ].filter(isValidMapPoint),
-    [alert.lat, alert.lng, guide.routePoints, guide.target, point.lat, point.lng]
+    [alert?.lat, alert?.lng, guide.routePoints, guide.target, point.lat, point.lng]
   );
 
   return (
-    <section className="resident-visual-guide-card" aria-label={`Visual guidance for ${alert.title}`}>
+    <section className="resident-visual-guide-card" aria-label={`Visual guidance for ${alert?.title ?? point.label}`}>
       <div className="resident-visual-guide-head">
         <div>
           <p className="resident-guidance-label">Visual next steps</p>
@@ -81,6 +81,79 @@ export function ResidentAlertVisualGuide({
         <ResidentSourceBadge tone="generated">Generated route preview</ResidentSourceBadge>
         <ResidentSourceBadge tone="current">From current location</ResidentSourceBadge>
         <ResidentSourceBadge tone="visual">Visual aid, not clearance</ResidentSourceBadge>
+
+      <div className="resident-route-map" aria-label="Emergency route map preview">
+        <MapContainer
+          center={mapPoints[0] ?? SG_CENTER}
+          zoom={13}
+          style={{ height: '100%', width: '100%' }}
+          scrollWheelZoom={false}
+          dragging
+        >
+          <TileLayer
+            url="https://www.onemap.gov.sg/maps/tiles/Default/{z}/{x}/{y}.png"
+            attribution='OneMap | Map data &copy; <a href="https://www.sla.gov.sg">Singapore Land Authority</a>'
+            minZoom={11}
+            maxZoom={18}
+          />
+          <FitRouteBounds points={mapPoints} />
+          {alert?.lat != null && alert?.lng != null && (
+            <>
+              <Circle
+                center={[Number(alert.lat), Number(alert.lng)]}
+                radius={alert.radiusMeters ?? 500}
+                pathOptions={{
+                  color: '#d62f43',
+                  fillColor: '#d62f43',
+                  fillOpacity: 0.12,
+                  weight: 1.5,
+                }}
+              />
+              <CircleMarker
+                center={[Number(alert.lat), Number(alert.lng)]}
+                radius={7}
+                pathOptions={{ color: '#ffffff', fillColor: '#d62f43', fillOpacity: 0.95, weight: 2 }}
+              >
+                <Popup>{alert.locationLabel ?? 'Affected area'}</Popup>
+              </CircleMarker>
+            </>
+          )}
+          <CircleMarker
+            center={[point.lat, point.lng]}
+            radius={8}
+            pathOptions={{ color: '#ffffff', fillColor: '#2f6f9f', fillOpacity: 0.95, weight: 2 }}
+          >
+            <Popup>{point.label}</Popup>
+          </CircleMarker>
+          {guide.target && (
+            <CircleMarker
+              center={[guide.target.lat, guide.target.lng]}
+              radius={8}
+              pathOptions={{ color: '#ffffff', fillColor: '#287a58', fillOpacity: 0.95, weight: 2 }}
+            >
+              <Popup>{guide.target.label}</Popup>
+            </CircleMarker>
+          )}
+          {homePoint && guide.target?.id !== homePoint.id && (
+            <CircleMarker
+              center={[homePoint.lat, homePoint.lng]}
+              radius={6}
+              pathOptions={{ color: '#ffffff', fillColor: '#b87516', fillOpacity: 0.9, weight: 2 }}
+            >
+              <Popup>{homePoint.label}</Popup>
+            </CircleMarker>
+          )}
+          {guide.routePoints?.length >= 2 && (
+            <Polyline
+              positions={guide.routePoints}
+              pathOptions={{
+                color: guide.routeTone === 'warning' ? '#b87516' : '#0c6b67',
+                weight: 4,
+                opacity: 0.86,
+              }}
+            />
+          )}
+        </MapContainer>
       </div>
 
       <RouteMapPreview
@@ -576,6 +649,9 @@ function useResidentVisualGuide({ alert, point, homePoint, transportMode, mobili
       setGuide((current) => ({ ...current, routeStatus: 'loading' }));
       const destination = await selectRouteDestination({ alert, point, homePoint });
       const target = destination.target;
+      const shelters = await fetchNearbyShelters(point);
+      const shelter = pickSafeShelter(shelters, alert);
+      const target = shelter ?? homePoint ?? null;
       const route = target
         ? await findRoute({
             start: point,
@@ -686,6 +762,7 @@ async function selectRouteDestination({ alert, point, homePoint }) {
 }
 
 async function findNearestShelters(point) {
+async function fetchNearbyShelters(point) {
   try {
     const nearest = await api.scdfNearest(point.lat, point.lng, 'SHELTER');
     if (!Array.isArray(nearest)) return [];
@@ -702,9 +779,25 @@ async function findNearestShelters(point) {
         kind: 'shelter',
       }))
       .filter((shelter) => Number.isFinite(shelter.lat) && Number.isFinite(shelter.lng));
+        distanceMeters: shelter.distance_meters,
+      }));
   } catch {
     return [];
   }
+}
+
+// Prefer the nearest shelter that sits OUTSIDE the active danger radius so the
+// evacuation target moves people away from the hazard. Fall back to the closest
+// shelter when none are clear (the route preview then flags the crossing).
+function pickSafeShelter(shelters, alert) {
+  if (!shelters.length) return null;
+  if (alert?.lat == null || alert?.lng == null) return shelters[0];
+  const alertPoint = { lat: Number(alert.lat), lng: Number(alert.lng) };
+  const radius = alert.radiusMeters ?? 500;
+  const outside = shelters.find(
+    (shelter) => distanceMeters({ lat: shelter.lat, lng: shelter.lng }, alertPoint) > radius
+  );
+  return outside ?? shelters[0];
 }
 
 async function findRoute({ start, target, transportMode }) {
@@ -922,6 +1015,8 @@ function buildGuide({ alert, point, homePoint, transportMode, mobilityNeed, prof
     destinationType: resolvedDestination.type,
   });
 
+  const hasAlert = alert?.lat != null && alert?.lng != null;
+
   return {
     heading: target ? `Route preview to ${target.label}` : `Move away from ${alert.locationLabel ?? 'the alert area'}`,
     routeTone,
@@ -932,6 +1027,13 @@ function buildGuide({ alert, point, homePoint, transportMode, mobilityNeed, prof
         ? 'Inside alert radius: move away carefully'
         : 'Outside alert radius: keep away from the alert',
     visualLabel: route?.routePoints?.length >= 2 ? 'Generated route schematic' : 'Blueprint-style fallback',
+    heading: shelter
+      ? `Route preview to ${shelter.label}`
+      : hasAlert
+        ? `Move away from ${alert.locationLabel ?? 'the alert area'}`
+        : `Know your route from ${point.label}`,
+    routeTone: routeCrossesAlert ? 'warning' : shelter ? 'ready' : 'caution',
+    routeLabel: routeCrossesAlert ? 'Check route' : shelter ? 'Shelter lookup' : 'Guidance preview',
     target,
     destination: resolvedDestination,
     routeConfidence: {
@@ -943,6 +1045,13 @@ function buildGuide({ alert, point, homePoint, transportMode, mobilityNeed, prof
     routePoints,
     summary: routeSummary({ routeIssues, destination: resolvedDestination }),
     routeBasis,
+    summary: routeCrossesAlert
+      ? 'This preview may cross the affected radius.'
+      : shelter
+        ? hasAlert
+          ? 'Nearest shelter clear of the alert area found as a possible destination.'
+          : 'Nearest shelter found — know this route before an emergency.'
+        : 'No confirmed shelter route is available yet.',
     detail: travelMeta
       ? `${travelMeta}. Confirm with MURUS or staff before moving.`
       : 'Confirm with MURUS, staff, or emergency services before moving.',
@@ -1123,15 +1232,18 @@ function buildRouteManeuverSteps({ alert, targetLabel, routePoints, routeDistanc
 }
 
 function buildVisualSteps({ alert, targetLabel, transportMode, mobilityNeed, profileLabel, routeCrossesAlert, hasShelter }) {
-  const location = alert.locationLabel ?? 'the affected area';
-  const action = alert.publicAction ?? 'Follow official MURUS instructions.';
+  const hasAlert = alert?.lat != null && alert?.lng != null;
+  const location = alert?.locationLabel ?? 'the affected area';
+  const action = alert?.publicAction ?? 'Follow official MURUS instructions.';
   const mobility = mobilityNeed !== 'none' || profileLabel === 'Elderly' || profileLabel === 'Mobility support';
 
   return [
     {
       icon: '1',
-      title: 'Leave the hazard edge',
-      body: `Move away from ${location}; ${action}`,
+      title: hasAlert ? 'Leave the hazard edge' : 'No active alert here',
+      body: hasAlert
+        ? `Move away from ${location}; ${action}`
+        : 'This location has no active alert right now. Use this preview to learn your route to the nearest shelter before an emergency.',
     },
     {
       icon: '2',
@@ -1190,7 +1302,7 @@ function viewpointFromPair(pair, heading) {
 }
 
 function routeTouchesAlert(routePoints, alert) {
-  if (alert.lat == null || alert.lng == null || !routePoints.length) return false;
+  if (alert?.lat == null || alert?.lng == null || !routePoints.length) return false;
   const alertPoint = { lat: Number(alert.lat), lng: Number(alert.lng) };
   const radius = alertRadius(alert);
   return routePoints.some(([lat, lng]) => distanceMeters({ lat, lng }, alertPoint) <= radius);

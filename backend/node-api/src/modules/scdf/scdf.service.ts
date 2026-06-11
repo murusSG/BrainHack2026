@@ -4,6 +4,7 @@ import { UpstreamApiError, BadRequestError } from "../../utils/apiError";
 import { TtlCache } from "../../utils/cache";
 import { haversineDistanceMeters } from "../../utils/geo";
 import { firstPresent, slug, toNumber } from "../../utils/records";
+import { getCachedCoord, warmShelterCoords } from "./shelterGeocache";
 import type { NearestResourceLocation, ResourceLocation, ScdfResourceType } from "../../../../shared/types/resourceLocation";
 
 const cache = new TtlCache<ResourceLocation[]>(env.CACHE_TTL_SECONDS * 1000);
@@ -56,7 +57,7 @@ export async function getResources(resourceType?: ScdfResourceType): Promise<Res
 }
 
 export async function getNearestResources(lat: number, lng: number, resourceType?: ScdfResourceType): Promise<NearestResourceLocation[]> {
-  const resources = await getResources(resourceType);
+  const resources = applyShelterGeocache(await getResources(resourceType));
   return resources
     .filter((resource) => resource.latitude !== undefined && resource.longitude !== undefined)
     .map((resource) => ({
@@ -64,6 +65,48 @@ export async function getNearestResources(lat: number, lng: number, resourceType
       distance_meters: Math.round(haversineDistanceMeters(lat, lng, resource.latitude as number, resource.longitude as number) * 100) / 100,
     }))
     .sort((left, right) => left.distance_meters - right.distance_meters);
+}
+
+// SCDF shelters arrive without coordinates. Fill them from the geocode cache at read
+// time (so freshly geocoded entries appear without waiting for the resource TTL to
+// expire) and kick off a background warm for any still-missing addresses.
+function applyShelterGeocache(resources: ResourceLocation[]): ResourceLocation[] {
+  const missingAddresses: string[] = [];
+  const enriched = resources.map((resource) => {
+    if (resource.resource_type !== "SHELTER") return resource;
+    if (resource.latitude !== undefined && resource.longitude !== undefined) return resource;
+    const coord = getCachedCoord(resource.address);
+    if (coord) return { ...resource, latitude: coord.lat, longitude: coord.lng };
+    if (resource.address) missingAddresses.push(resource.address);
+    return resource;
+  });
+
+  if (missingAddresses.length > 0) {
+    void warmShelterCoords(missingAddresses).catch(() => {});
+  }
+  return enriched;
+}
+
+// Pre-geocode every shelter address on startup so the cache is warm (and persisted)
+// before the first resident request arrives. Safe to call fire-and-forget.
+export async function warmShelterGeocache(): Promise<void> {
+  try {
+    const shelters = await getResources("SHELTER");
+    const addresses = shelters
+      .filter(
+        (resource) =>
+          resource.resource_type === "SHELTER" &&
+          (resource.latitude === undefined || resource.longitude === undefined) &&
+          Boolean(resource.address)
+      )
+      .map((resource) => resource.address as string);
+    await warmShelterCoords(addresses);
+  } catch (err) {
+    console.warn(
+      "[scdf] shelter geocache warm skipped:",
+      err instanceof Error ? err.message : String(err)
+    );
+  }
 }
 
 function resourceIdFor(resourceType: ScdfResourceType): string | undefined {

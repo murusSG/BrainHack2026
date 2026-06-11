@@ -29,7 +29,7 @@ const commandTeal = [
 ];
 
 export const theme = createTheme({
-  fontFamily: '"Segoe UI Variable", "Aptos", Inter, ui-sans-serif, system-ui, sans-serif',
+  fontFamily: '"Open Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   primaryColor: 'commandTeal',
   primaryShade: 6,
   colors: { brandRed, commandTeal },
@@ -42,7 +42,7 @@ export const theme = createTheme({
     xl: '24px',
   },
   headings: {
-    fontFamily: '"Segoe UI Variable Display", "Aptos Display", Inter, ui-sans-serif, sans-serif',
+    fontFamily: '"Open Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     fontWeight: '750',
   },
   shadows: {
