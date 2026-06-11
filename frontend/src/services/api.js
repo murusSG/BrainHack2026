@@ -119,6 +119,12 @@ function withQuery(path, params = {}) {
   return suffix ? `${path}?${suffix}` : path;
 }
 
+function apiAssetUrl(path) {
+  if (!path) return path;
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${API_BASE}${path.startsWith('/') ? path.replace(/^\/api\/v1/, '') : `/${path}`}`;
+}
+
 export const api = {
   authedGet,
   authedPost,
@@ -149,6 +155,7 @@ export const api = {
   // Resident-facing citizen alert channel
   residentAlerts: (params = {}) => get(withQuery('/resident-alerts', params)),
   askMurus: (payload, token) => post('/resident-alerts/ask-murus', payload, token),
+  checkResidentRumor: (payload, token) => post('/resident-alerts/rumor-check', payload, token),
   publishResidentAlert: (payload, token) => post('/resident-alerts', payload, token),
   updateResidentAlert: (id, payload, token) =>
     authedPatch(`/resident-alerts/${encodeURIComponent(id)}`, token, payload),
@@ -239,6 +246,10 @@ export const api = {
   oneMapReverseGeocode: (lat, lng) => get(withQuery('/onemap/reverse-geocode', { lat, lng })),
   oneMapRoute: ({ startLat, startLng, endLat, endLng, mode = 'drive' }) =>
     get(withQuery('/onemap/route', { startLat, startLng, endLat, endLng, mode })),
+  streetViewPreview: async ({ lat, lng, heading, pitch = 0, fov = 80, radius = 50 }) => {
+    const preview = await get(withQuery('/street-view/metadata', { lat, lng, heading, pitch, fov, radius }));
+    return preview?.imageUrl ? { ...preview, imageUrl: apiAssetUrl(preview.imageUrl) } : preview;
+  },
   hdbBuildings: () => get('/hdb/buildings'),
   populationNearbyContext: (lat, lng) => get(withQuery('/population/nearby-context', { lat, lng })),
 

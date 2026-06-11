@@ -39,6 +39,44 @@ export interface ResidentAskMurusInput {
       distanceMeters?: number | null;
       source?: string;
     } | null;
+    evacuationGuide?: {
+      heading?: string;
+      summary?: string;
+      detail?: string;
+      routeBasis?: string;
+      riskLabel?: string;
+      routeLabel?: string;
+      routeTone?: string;
+      destination?: {
+        label?: string;
+        address?: string;
+        type?: string;
+        confidenceLabel?: string;
+        kind?: string;
+        distanceMeters?: number | null;
+      } | null;
+      route?: {
+        source?: string;
+        distanceMeters?: number | null;
+        durationSeconds?: number | null;
+        pointCount?: number;
+      };
+      routeConfidence?: {
+        label?: string;
+        tone?: string;
+        reasons?: string[];
+      };
+      skippedCandidates?: Array<{
+        label?: string;
+        reasons?: string[];
+      }>;
+      steps?: Array<{
+        title?: string;
+        instruction?: string;
+        distanceLabel?: string;
+        tone?: string;
+      }>;
+    } | null;
     savedPlaces?: Array<{
       id?: string;
       label?: string;
@@ -66,6 +104,40 @@ export interface ResidentAskMurusAnswer {
   guardrail: string;
 }
 
+export interface ResidentRumorCheckInput {
+  claim?: string;
+  officialAlerts?: Array<Partial<ResidentAlert>>;
+  residentContext?: {
+    profile?: string;
+    profileLabel?: string;
+    pointLabel?: string;
+    pointSublabel?: string;
+    transportMode?: string;
+    mobilityNeed?: string;
+  };
+  deterministicResult?: {
+    status?: string;
+    label?: string;
+    message?: string;
+    matchedAlert?: Partial<ResidentAlert> | null;
+  };
+}
+
+export interface ResidentRumorCheckAnswer {
+  status: "verified" | "partial" | "unverified";
+  label: string;
+  message: string;
+  matchedAlert?: {
+    id?: string;
+    title?: string;
+    locationLabel?: string;
+  } | null;
+  confidence: "high" | "medium" | "low";
+  mode: "llm" | "fallback";
+  model?: string;
+  guardrail: string;
+}
+
 const chatCompletionSchema = z.object({
   choices: z.array(
     z.object({
@@ -81,6 +153,15 @@ const chatCompletionSchema = z.object({
         .optional(),
     })
   ),
+});
+
+const rumorCheckPayloadSchema = z.object({
+  status: z.string().optional(),
+  label: z.string().optional(),
+  message: z.string().optional(),
+  matchedAlertId: z.string().nullable().optional(),
+  matchedAlertTitle: z.string().nullable().optional(),
+  confidence: z.string().optional(),
 });
 
 export async function answerAskMurus(input: ResidentAskMurusInput): Promise<ResidentAskMurusAnswer> {
@@ -161,6 +242,78 @@ export async function answerAskMurus(input: ResidentAskMurusInput): Promise<Resi
   }
 }
 
+export async function checkResidentRumorWithLlm(
+  input: ResidentRumorCheckInput
+): Promise<ResidentRumorCheckAnswer> {
+  const claim = input.claim?.trim();
+  if (!claim) {
+    throw new BadRequestError("Rumor claim is required.");
+  }
+
+  const officialAlerts = normalizeRumorAlerts(input.officialAlerts);
+  const fallback = buildRumorFallback(input.deterministicResult, officialAlerts);
+  const apiKey = env.ASK_MURUS_LLM_API_KEY ?? env.LLM_API_KEY;
+
+  if (!apiKey) {
+    throw new ConfigurationError("Ask MURUS LLM key is not configured.");
+  }
+
+  try {
+    const response = await axios.post(
+      `${env.ASK_MURUS_LLM_API_BASE_URL.replace(/\/$/, "")}/chat/completions`,
+      {
+        model: env.ASK_MURUS_LLM_MODEL,
+        stream: true,
+        temperature: 0.1,
+        max_tokens: 600,
+        messages: [
+          { role: "system", content: buildRumorCheckSystemPrompt() },
+          {
+            role: "user",
+            content: JSON.stringify({
+              claim,
+              official_alerts: officialAlerts,
+              resident_context: {
+                profile: input.residentContext?.profile,
+                profileLabel: input.residentContext?.profileLabel,
+                currentPlace: input.residentContext?.pointLabel,
+                currentAddress: input.residentContext?.pointSublabel,
+                transportMode: input.residentContext?.transportMode,
+                mobilityNeed: input.residentContext?.mobilityNeed,
+              },
+              deterministic_fallback_result: fallback,
+            }),
+          },
+        ],
+      },
+      {
+        timeout: env.ASK_MURUS_TIMEOUT_MS,
+        responseType: "stream",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+      }
+    );
+
+    const answer = await extractCompletionText(response.data);
+    const parsed = parseRumorCheckPayload(answer);
+    if (!parsed) {
+      return {
+        ...fallback,
+        model: env.ASK_MURUS_LLM_MODEL,
+        guardrail: "LLM returned no usable rumor-check JSON; deterministic official-alert match used.",
+      };
+    }
+
+    return normalizeRumorCheckResult(parsed, officialAlerts, fallback);
+  } catch (error) {
+    if (error instanceof ConfigurationError || error instanceof BadRequestError) throw error;
+    const message = axios.isAxiosError(error) ? error.message : String(error);
+    throw new UpstreamApiError("Ask MURUS rumor check request failed.", { message });
+  }
+}
+
 function buildAskMurusSystemPrompt() {
   return [
     "You are Ask MURUS, a resident safety assistant for Singapore crisis alerts.",
@@ -170,14 +323,36 @@ function buildAskMurusSystemPrompt() {
     "If an emergency contact is provided, you may suggest contacting them or sharing status with them; do not expose the contact phone unless the resident asks for their saved contact.",
     "Do not invent closures, rescue details, casualty numbers, shelter availability, road status, train status, agency orders, or new incident facts.",
     "Never say a transport service, road, station, or route is operating, open, closed, safe, or clear unless the official alert explicitly says so.",
+    "You may still give conditional guidance such as 'only use MRT if station staff confirm the route is clear'; that is not the same as claiming the route is clear.",
     "If the official alert does not confirm something, say it is not confirmed by the current MURUS alert.",
     "Format the final answer as four short labelled lines exactly: Situation, Your context, What to do now, Check-in. Keep each line concise, specific, and practical.",
     "In 'Your context', connect the alert to the resident's current area, home, destination, saved places, mobility need, transport mode, and support notes where available.",
-    "For evacuation questions, mention a nearest shelter only if resident_context.nearestShelter is present; otherwise say MURUS has not confirmed a shelter for this alert.",
+    "For evacuation questions, use resident_context.evacuationGuide when present. It is a generated route preview, not an official clearance.",
+    "If evacuationGuide.destination.type is 'shelter', call it a possible shelter candidate and say entry still needs staff or MURUS confirmation.",
+    "If evacuationGuide.destination.type is 'away-waypoint', say it is a generated move-away waypoint, not an official shelter.",
+    "Mention evacuationGuide.routeConfidence.reasons when they affect the resident's next move, especially if routeLabel is 'Check route' or routeTone is warning/caution.",
+    "If evacuationGuide.skippedCandidates exists, do not recommend those skipped candidates; they were rejected for the listed reasons.",
+    "For evacuation questions without evacuationGuide, mention a nearest shelter only if resident_context.nearestShelter is present; otherwise say MURUS has not confirmed a shelter for this alert.",
     "Mention exact known places from the resident context when relevant, such as current area, home, work, school, or family location. Do not reveal raw latitude/longitude.",
     "Use a calm Singapore public-safety tone. Plain English, no markdown bullets, no emojis.",
     "Answer directly. Do not include analysis, hidden reasoning, or step-by-step deliberation in the final answer.",
     "For evacuation, medical, rescue, police, or life-threatening uncertainty, tell the resident to follow official emergency services and avoid the affected area.",
+  ].join("\n");
+}
+
+function buildRumorCheckSystemPrompt() {
+  return [
+    "You are Ask MURUS rumor checker for Singapore resident crisis alerts.",
+    "Your job is to decide whether a resident's forwarded claim is supported by the current official MURUS alerts.",
+    "Use only the claim, official_alerts JSON, resident_context JSON, and deterministic_fallback_result provided by MURUS.",
+    "Do not use outside knowledge. Do not invent closures, all-clears, casualties, agency statements, transport status, road status, shelter availability, or route safety.",
+    "Return JSON only, with no markdown and no extra text.",
+    "The JSON shape must be: {\"status\":\"verified|partial|unverified\",\"label\":\"short label\",\"message\":\"one or two short resident-facing sentences\",\"matchedAlertId\":\"id or null\",\"matchedAlertTitle\":\"title or null\",\"confidence\":\"high|medium|low\"}.",
+    "Use status verified only when the claim is directly supported by an official alert field.",
+    "Use status partial when the claim mentions a similar location, hazard, or action but adds details that are not confirmed.",
+    "Use status unverified when no official alert supports the claim, when it contradicts current alerts, or when it claims a closure, all-clear, evacuation order, route safety, or transport status not explicitly stated.",
+    "Prefer labels like 'Likely true from MURUS', 'Partly related, not confirmed', or 'Not confirmed by MURUS'.",
+    "The message must be practical and cautious: tell the resident to follow official MURUS or agency updates when the claim is not fully verified.",
   ].join("\n");
 }
 
@@ -222,6 +397,52 @@ function summarizeResidentContext(context: ResidentAskMurusInput["residentContex
           address: context.nearestShelter.address,
           distanceMeters: context.nearestShelter.distanceMeters ?? null,
           source: context.nearestShelter.source,
+        }
+      : null,
+    evacuationGuide: context?.evacuationGuide
+      ? {
+          heading: context.evacuationGuide.heading,
+          summary: context.evacuationGuide.summary,
+          detail: context.evacuationGuide.detail,
+          routeBasis: context.evacuationGuide.routeBasis,
+          riskLabel: context.evacuationGuide.riskLabel,
+          routeLabel: context.evacuationGuide.routeLabel,
+          routeTone: context.evacuationGuide.routeTone,
+          destination: context.evacuationGuide.destination
+            ? {
+                label: context.evacuationGuide.destination.label,
+                address: context.evacuationGuide.destination.address,
+                type: context.evacuationGuide.destination.type,
+                confidenceLabel: context.evacuationGuide.destination.confidenceLabel,
+                kind: context.evacuationGuide.destination.kind,
+                distanceMeters: context.evacuationGuide.destination.distanceMeters ?? null,
+              }
+            : null,
+          route: context.evacuationGuide.route
+            ? {
+                source: context.evacuationGuide.route.source,
+                distanceMeters: context.evacuationGuide.route.distanceMeters ?? null,
+                durationSeconds: context.evacuationGuide.route.durationSeconds ?? null,
+                pointCount: context.evacuationGuide.route.pointCount,
+              }
+            : undefined,
+          routeConfidence: context.evacuationGuide.routeConfidence
+            ? {
+                label: context.evacuationGuide.routeConfidence.label,
+                tone: context.evacuationGuide.routeConfidence.tone,
+                reasons: (context.evacuationGuide.routeConfidence.reasons ?? []).slice(0, 6),
+              }
+            : undefined,
+          skippedCandidates: (context.evacuationGuide.skippedCandidates ?? []).slice(0, 3).map((candidate) => ({
+            label: candidate.label,
+            reasons: (candidate.reasons ?? []).slice(0, 4),
+          })),
+          steps: (context.evacuationGuide.steps ?? []).slice(0, 5).map((step) => ({
+            title: step.title,
+            instruction: step.instruction,
+            distanceLabel: step.distanceLabel,
+            tone: step.tone,
+          })),
         }
       : null,
     savedPlaces,
@@ -322,20 +543,51 @@ function stripTrailingPunctuation(value = "") {
   return value.replace(/[.!?]+$/g, "").trim();
 }
 
-function violatesResidentSafetyGuardrails(answer: string) {
-  const transportClaim =
-    /\b(?:mrt|train|bus|road|route|station|travel)\b.{0,60}\b(?:safe|clear|open|operating|available|possible)\b/i.test(
-      answer
-    ) ||
-    /\b(?:safe|clear|open|operating|available|possible)\b.{0,60}\b(?:mrt|train|bus|road|route|station|travel)\b/i.test(
-      answer
-    ) ||
-    /\bboard\b.{0,40}\b(?:train|mrt|bus)\b/i.test(answer);
+export function violatesResidentSafetyGuardrails(answer: string) {
+  const sentences = guardrailSentences(answer);
+  return sentences.some((sentence) => {
+    if (hasCautiousConfirmationContext(sentence)) return false;
 
-  const inventedCertainty =
-    /\b(?:confirmed safe|confirmed clear|no danger|safe to proceed|you can travel|you may travel)\b/i.test(answer);
+    const transportStatusClaim =
+      hasTransportSubject(sentence) && hasUnconfirmedStatusWord(sentence);
+    const boardingInstruction = /\bboard\b.{0,40}\b(?:train|mrt|bus)\b/i.test(sentence);
+    const inventedCertainty =
+      /\b(?:confirmed safe|confirmed clear|no danger|safe to proceed|you can travel|you may travel)\b/i.test(
+        sentence
+      );
 
-  return transportClaim || inventedCertainty;
+    return transportStatusClaim || boardingInstruction || inventedCertainty;
+  });
+}
+
+function guardrailSentences(answer: string) {
+  return answer
+    .replace(/\r\n/g, "\n")
+    .split(/(?:[.!?]\s+|\n+)/)
+    .map((sentence) => sentence.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+}
+
+function hasTransportSubject(sentence: string) {
+  return /\b(?:mrt|train|bus|road|route|station|travel|transport)\b/i.test(sentence);
+}
+
+function hasUnconfirmedStatusWord(sentence: string) {
+  return /\b(?:safe|clear|open|closed|operating|available)\b/i.test(sentence);
+}
+
+function hasCautiousConfirmationContext(sentence: string) {
+  return (
+    /\b(?:not confirmed|not currently confirmed|not yet confirmed|has not confirmed|have not confirmed|cannot confirm|can't confirm)\b/i.test(
+      sentence
+    ) ||
+    /\b(?:do not|don't|should not|must not|avoid|wait for|check with|confirm with|follow)\b.{0,120}\b(?:staff|murus|official|agency|emergency services|station staff)\b/i.test(
+      sentence
+    ) ||
+    /\b(?:only if|unless|until|after|when)\b.{0,120}\b(?:staff|murus|official|agency|emergency services|station staff)\b.{0,80}\b(?:confirm|confirms|confirmed|say|says|direct|directs|instruct|instructs)\b/i.test(
+      sentence
+    )
+  );
 }
 
 function normalizeAlert(alert?: Partial<ResidentAlert>) {
@@ -422,4 +674,161 @@ function clampAnswer(answer: string) {
   const clipped = normalized.slice(0, 1200);
   const sentenceEnd = Math.max(clipped.lastIndexOf("."), clipped.lastIndexOf("?"), clipped.lastIndexOf("!"));
   return sentenceEnd > 500 ? clipped.slice(0, sentenceEnd + 1) : `${clipped.trimEnd()}...`;
+}
+
+function normalizeRumorAlerts(alerts: ResidentRumorCheckInput["officialAlerts"]) {
+  return (alerts ?? []).slice(0, 12).map((alert, index) => ({
+    id: alert.id ?? `alert-${index + 1}`,
+    title: alert.title ?? "MURUS alert",
+    body: alert.body ?? "",
+    publicAction: alert.publicAction ?? "",
+    severity: alert.severity ?? "warning",
+    status: alert.status ?? "active",
+    locationLabel: alert.locationLabel ?? "",
+  }));
+}
+
+function buildRumorFallback(
+  result: ResidentRumorCheckInput["deterministicResult"],
+  officialAlerts: ReturnType<typeof normalizeRumorAlerts>
+): ResidentRumorCheckAnswer {
+  const status = normalizeRumorStatus(result?.status);
+  const matchedAlert =
+    resolveRumorAlert(result?.matchedAlert, officialAlerts) ??
+    (status === "unverified" ? null : officialAlerts[0] ?? null);
+
+  return {
+    status,
+    label: cleanSingleLine(result?.label) || labelForRumorStatus(status),
+    message:
+      cleanSingleLine(result?.message, 420) ||
+      "Ask MURUS could not verify this from the current official alerts. Treat it as unconfirmed.",
+    matchedAlert: matchedAlert
+      ? {
+          id: matchedAlert.id,
+          title: matchedAlert.title,
+          locationLabel: matchedAlert.locationLabel,
+        }
+      : null,
+    confidence: status === "verified" ? "medium" : status === "partial" ? "medium" : "low",
+    mode: "fallback",
+    model: env.ASK_MURUS_LLM_MODEL,
+    guardrail: "Deterministic official-alert match used.",
+  };
+}
+
+function parseRumorCheckPayload(answer: string) {
+  const jsonText = extractJsonObject(answer);
+  if (!jsonText) return null;
+
+  try {
+    const parsed = rumorCheckPayloadSchema.safeParse(JSON.parse(jsonText));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+function extractJsonObject(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fenced?.[1]?.trim() ?? trimmed;
+  const start = candidate.indexOf("{");
+  const end = candidate.lastIndexOf("}");
+  if (start < 0 || end <= start) return "";
+  return candidate.slice(start, end + 1);
+}
+
+function normalizeRumorCheckResult(
+  parsed: z.infer<typeof rumorCheckPayloadSchema>,
+  officialAlerts: ReturnType<typeof normalizeRumorAlerts>,
+  fallback: ResidentRumorCheckAnswer
+): ResidentRumorCheckAnswer {
+  let status = normalizeRumorStatus(parsed.status);
+  const matchedAlert = resolveRumorAlert(
+    {
+      id: parsed.matchedAlertId ?? undefined,
+      title: parsed.matchedAlertTitle ?? undefined,
+    },
+    officialAlerts
+  );
+
+  if (status === "verified" && !matchedAlert) {
+    status = "partial";
+  }
+  if (officialAlerts.length === 0) {
+    status = "unverified";
+  }
+
+  const message =
+    cleanSingleLine(parsed.message, 420) ||
+    fallback.message ||
+    "MURUS could not verify this claim from the current official alerts.";
+
+  return {
+    status,
+    label: cleanSingleLine(parsed.label, 90) || labelForRumorStatus(status),
+    message,
+    matchedAlert: matchedAlert
+      ? {
+          id: matchedAlert.id,
+          title: matchedAlert.title,
+          locationLabel: matchedAlert.locationLabel,
+        }
+      : status === "unverified"
+        ? null
+        : fallback.matchedAlert ?? null,
+    confidence: normalizeRumorConfidence(parsed.confidence, fallback.confidence),
+    mode: "llm",
+    model: env.ASK_MURUS_LLM_MODEL,
+    guardrail: "Grounded in current official alert fields; unconfirmed details remain marked as not confirmed.",
+  };
+}
+
+function resolveRumorAlert(
+  alert: Partial<ResidentAlert> | { id?: string; title?: string | null } | null | undefined,
+  officialAlerts: ReturnType<typeof normalizeRumorAlerts>
+) {
+  if (!alert) return null;
+  const id = alert.id?.toString().trim();
+  const title = alert.title?.toString().trim().toLowerCase();
+  return (
+    officialAlerts.find((candidate) => candidate.id === id) ??
+    officialAlerts.find((candidate) => candidate.title.toLowerCase() === title) ??
+    null
+  );
+}
+
+function normalizeRumorStatus(status: string | undefined): ResidentRumorCheckAnswer["status"] {
+  const normalized = status?.toLowerCase().replace(/[\s-]+/g, "_");
+  if (normalized === "verified" || normalized === "true" || normalized === "likely_true") {
+    return "verified";
+  }
+  if (normalized === "partial" || normalized === "partly_true" || normalized === "partly_verified") {
+    return "partial";
+  }
+  return "unverified";
+}
+
+function normalizeRumorConfidence(
+  confidence: string | undefined,
+  fallback: ResidentRumorCheckAnswer["confidence"]
+): ResidentRumorCheckAnswer["confidence"] {
+  const normalized = confidence?.toLowerCase();
+  if (normalized === "high" || normalized === "medium" || normalized === "low") return normalized;
+  return fallback;
+}
+
+function labelForRumorStatus(status: ResidentRumorCheckAnswer["status"]) {
+  if (status === "verified") return "Likely true from MURUS";
+  if (status === "partial") return "Partly related, not confirmed";
+  return "Not confirmed by MURUS";
+}
+
+function cleanSingleLine(value: string | undefined, maxLength = 180) {
+  const cleaned = value?.replace(/\s+/g, " ").trim() ?? "";
+  if (cleaned.length <= maxLength) return cleaned;
+  return `${cleaned.slice(0, maxLength - 3).trimEnd()}...`;
 }

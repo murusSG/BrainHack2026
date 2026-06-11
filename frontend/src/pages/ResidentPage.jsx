@@ -1,10 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Accordion, Tabs } from '@mantine/core';
+import {
+  IconAlertTriangle,
+  IconChecklist,
+  IconHelpCircle,
+  IconMap2,
+  IconMapPin,
+  IconUserCircle,
+} from '@tabler/icons-react';
 import { Link } from 'react-router-dom';
 import { AppLogo } from '../components/AppLogo';
 import { CrisisMap } from '../components/CrisisMap';
 import { LoadingSkeleton, MapLoadingSkeleton } from '../components/LoadingSkeleton';
 import { MapErrorBoundary } from '../components/MapErrorBoundary';
-import { ResidentAlertVisualGuide } from '../components/ResidentAlertVisualGuide';
+import { ResidentSourceBadge } from '../components/ResidentSourceBadge';
+import {
+  buildResidentEvacuationGuideContext,
+  ResidentAlertVisualGuide,
+} from '../components/ResidentAlertVisualGuide';
 import { PublicDashboardPage } from './PublicDashboardPage';
 import { useEvents } from '../hooks/useEvents';
 import { api } from '../services/api';
@@ -91,6 +104,26 @@ const MOBILITY_NEEDS = [
   { id: 'child', label: 'With young child' },
 ];
 
+const RESIDENT_TABS = [
+  { id: 'alerts', label: 'Alerts' },
+  { id: 'profile', label: 'Profile' },
+  { id: 'impact', label: 'Impact' },
+  { id: 'preparedness', label: 'Preparedness' },
+  { id: 'rumor', label: 'Rumor check' },
+  { id: 'map', label: 'Map' },
+];
+
+const RESIDENT_TAB_ICONS = {
+  alerts: IconAlertTriangle,
+  profile: IconUserCircle,
+  impact: IconMapPin,
+  preparedness: IconChecklist,
+  rumor: IconHelpCircle,
+  map: IconMap2,
+};
+
+const RESIDENT_ALERT_SECTION_DEFAULTS = ['guidance', 'route', 'ask', 'checkin'];
+
 const DEFAULT_RESIDENT_DETAILS = {
   displayName: 'Resident',
   homeAddress: 'Tampines St 21',
@@ -129,6 +162,29 @@ function formatGpsPoint(lat, lng, accuracyMeters) {
     ? `, accuracy about ${Math.round(accuracyMeters)}m`
     : '';
   return `GPS ${lat.toFixed(5)}, ${lng.toFixed(5)}${accuracy}`;
+}
+
+function cleanLocationPart(value) {
+  if (value == null) return '';
+  const text = String(value).trim();
+  if (!text || text.toUpperCase() === 'NIL') return '';
+  return text;
+}
+
+function oneMapLocationLabel(location) {
+  return (
+    cleanLocationPart(location.building) ||
+    cleanLocationPart(location.road_name) ||
+    cleanLocationPart(location.address) ||
+    'Typed location'
+  );
+}
+
+function oneMapLocationAddress(location) {
+  const address = cleanLocationPart(location.address);
+  const postal = cleanLocationPart(location.postal_code);
+  if (address && postal && !address.includes(postal)) return `${address} Singapore ${postal}`;
+  return address || postal || 'OneMap search result';
 }
 
 function mergeImpactPoints(savedPlaces) {
@@ -249,7 +305,7 @@ function createSavedPlaceDraft() {
 
 export function ResidentPage({ session }) {
   const { events, status, error } = useEvents();
-  const [activeResidentTab, setActiveResidentTab] = useState('brief');
+  const [activeResidentView, setActiveResidentView] = useState('brief');
   const [activePoint, setActivePoint] = useState(DEFAULT_SAVED_PLACES[0].id);
   const [activeProfile, setActiveProfile] = useState(RESIDENT_PROFILES[0].id);
   const [shelterNote, setShelterNote] = useState(null);
@@ -263,11 +319,13 @@ export function ResidentPage({ session }) {
   const [checkInStatuses, setCheckInStatuses] = useState({});
   const [rumorText, setRumorText] = useState('');
   const [rumorCheck, setRumorCheck] = useState(null);
+  const [rumorCheckStatus, setRumorCheckStatus] = useState('idle');
   const [impactPointId, setImpactPointId] = useState('current');
   const [impactTransport, setImpactTransport] = useState('walking');
   const [impactMobility, setImpactMobility] = useState('none');
   const [impactResult, setImpactResult] = useState(null);
   const [simpleMode, setSimpleMode] = useState(false);
+  const [activeResidentTab, setActiveResidentTab] = useState('alerts');
   const [preparedItemIds, setPreparedItemIds] = useState(() => new Set());
   const [statusMessageCopied, setStatusMessageCopied] = useState(false);
   const [residentDetails, setResidentDetails] = useState(DEFAULT_RESIDENT_DETAILS);
@@ -280,6 +338,10 @@ export function ResidentPage({ session }) {
   const [persistedPlaces, setPersistedPlaces] = useState([]);
   const [liveLocation, setLiveLocation] = useState(null);
   const [liveLocationStatus, setLiveLocationStatus] = useState('idle');
+  const [locationSearchText, setLocationSearchText] = useState('');
+  const [locationSearchStatus, setLocationSearchStatus] = useState('idle');
+  const [locationSearchMessage, setLocationSearchMessage] = useState('');
+  const [locationSearchResults, setLocationSearchResults] = useState([]);
   const isLoading = status === 'loading';
   const demoEventCount = events.filter((event) => event.isDemo).length;
   const liveEventCount = events.length - demoEventCount;
@@ -475,7 +537,27 @@ export function ResidentPage({ session }) {
   async function handleAskCopilot(alert, point, question) {
     const trimmedQuestion = question.trim();
     if (!trimmedQuestion) return;
-    const nearestShelter = await findNearestShelterForQuestion(trimmedQuestion, point);
+    const intent = detectResidentQuestionIntent(trimmedQuestion);
+    const homePoint = impactPoints.find((candidate) => candidate.id === 'home');
+    const evacuationGuide =
+      intent === 'evacuate'
+        ? await buildAskMurusEvacuationContext({
+            alert,
+            point,
+            homePoint,
+            transportMode: impactTransport,
+            mobilityNeed: impactMobility,
+            profileLabel: activeProfileMeta.label,
+          })
+        : null;
+    const nearestShelter = evacuationGuide?.destination?.type === 'shelter'
+      ? {
+          name: evacuationGuide.destination.label,
+          address: evacuationGuide.destination.address,
+          distanceMeters: evacuationGuide.destination.distanceMeters,
+          source: 'Filtered evacuation guide',
+        }
+      : await findNearestShelterForQuestion(trimmedQuestion, point);
     const fallbackAnswer = answerResidentQuestion(trimmedQuestion, alert, point, activeProfile, {
       residentDetails,
       impactPoints,
@@ -536,6 +618,7 @@ export function ResidentPage({ session }) {
                   : null,
             },
             nearestShelter,
+            evacuationGuide,
             savedPlaces: buildResidentContextPlaces(impactPoints, officialAlerts),
             emergencyPack: {
               readyCount: preparedCount,
@@ -578,6 +661,70 @@ export function ResidentPage({ session }) {
           status: 'fallback',
         },
       }));
+    }
+  }
+
+  async function handleCheckResidentRumor() {
+    const claim = rumorText.trim();
+    const deterministicResult = checkResidentRumor(claim, officialAlerts);
+
+    if (!claim) {
+      setRumorCheck(deterministicResult);
+      setRumorCheckStatus('idle');
+      return;
+    }
+
+    setRumorCheck({
+      ...deterministicResult,
+      label: 'Ask MURUS is checking this',
+      message: 'Comparing the claim with current official alerts...',
+      mode: 'loading',
+    });
+    setRumorCheckStatus('loading');
+
+    try {
+      const result = await api.checkResidentRumor(
+        {
+          claim,
+          officialAlerts: officialAlerts.map((alert) => ({
+            id: alert.id,
+            title: alert.title,
+            body: alert.body,
+            publicAction: alert.publicAction,
+            severity: alert.severity,
+            status: alert.status,
+            locationLabel: alert.locationLabel,
+          })),
+          residentContext: {
+            profile: activeProfile,
+            profileLabel: activeProfileMeta.label,
+            pointLabel: activeAlerts?.point?.label ?? active?.point?.label,
+            pointSublabel: activeAlerts?.point?.sublabel ?? active?.point?.sublabel,
+            transportMode: optionLabel(TRANSPORT_MODES, impactTransport),
+            mobilityNeed: optionLabel(MOBILITY_NEEDS, impactMobility),
+          },
+          deterministicResult,
+        },
+        ...(session?.token ? [session.token] : [])
+      );
+
+      setRumorCheck({
+        status: result.status ?? deterministicResult.status,
+        label: result.label ?? deterministicResult.label,
+        message: result.message ?? deterministicResult.message,
+        matchedAlert: result.matchedAlert ?? deterministicResult.matchedAlert,
+        confidence: result.confidence,
+        mode: result.mode ?? 'llm',
+        guardrail: result.guardrail,
+      });
+      setRumorCheckStatus(result.mode === 'fallback' ? 'fallback' : 'ready');
+    } catch (err) {
+      setRumorCheck({
+        ...deterministicResult,
+        mode: 'fallback',
+        guardrail: `Ask MURUS rumor checker unavailable: ${err.message}`,
+      });
+      setRumorCheckStatus('fallback');
     }
   }
 
@@ -716,6 +863,111 @@ export function ResidentPage({ session }) {
     }
   }
 
+  async function buildAskMurusEvacuationContext({
+    alert,
+    point,
+    homePoint,
+    transportMode,
+    mobilityNeed,
+    profileLabel,
+  }) {
+    try {
+      return await buildResidentEvacuationGuideContext({
+        alert,
+        point,
+        homePoint,
+        transportMode,
+        mobilityNeed,
+        profileLabel,
+      });
+    } catch (err) {
+      return {
+        heading: 'Evacuation route preview unavailable',
+        summary: 'MURUS could not generate an evacuation route preview for this question.',
+        detail: err instanceof Error ? err.message : 'Route context unavailable.',
+        riskLabel: 'Needs staff confirmation',
+        routeLabel: 'Check route',
+        routeTone: 'warning',
+        destination: null,
+        route: {
+          source: 'unavailable',
+          distanceMeters: null,
+          durationSeconds: null,
+          pointCount: 0,
+        },
+        routeConfidence: {
+          label: 'Needs staff confirmation',
+          tone: 'warning',
+          reasons: ['Route preview was unavailable, so Ask MURUS should rely on the official alert and resident context.'],
+        },
+        skippedCandidates: [],
+        steps: [],
+      };
+    }
+  }
+
+  async function handleSearchTypedLocation(event) {
+    event.preventDefault();
+    const query = locationSearchText.trim();
+    if (!query) {
+      setLocationSearchStatus('error');
+      setLocationSearchMessage('Type a building, road, postal code, or nearby landmark first.');
+      setLocationSearchResults([]);
+      return;
+    }
+
+    setLocationSearchStatus('loading');
+    setLocationSearchMessage('Searching OneMap for this location...');
+    try {
+      const results = await api.oneMapSearch(query);
+      const usableResults = (Array.isArray(results) ? results : [])
+        .filter((location) => Number.isFinite(location.latitude) && Number.isFinite(location.longitude))
+        .slice(0, 4);
+      if (usableResults.length === 0) {
+        setLocationSearchStatus('error');
+        setLocationSearchMessage('No OneMap result found. Try a postal code, building name, or road name.');
+        setLocationSearchResults([]);
+        return;
+      }
+      setLocationSearchResults(usableResults);
+      setLocationSearchStatus('ready');
+      setLocationSearchMessage('Choose the matching result to use it as your current location.');
+    } catch (err) {
+      setLocationSearchStatus('error');
+      setLocationSearchMessage(`Could not search OneMap: ${err.message}`);
+      setLocationSearchResults([]);
+    }
+  }
+
+  function handleUseSearchedLocation(location) {
+    const label = oneMapLocationLabel(location);
+    const address = oneMapLocationAddress(location);
+    const point = {
+      id: 'typed',
+      label: 'Typed location',
+      sublabel: `${label}${address && address !== label ? `, ${address}` : ''}`,
+      lat: Number(location.latitude),
+      lng: Number(location.longitude),
+    };
+
+    setLiveLocation({
+      point,
+      accuracyMeters: undefined,
+      capturedAt: new Date().toISOString(),
+      source: 'ONEMAP_SEARCH',
+    });
+    setActivePoint('typed');
+    setImpactPointId('typed');
+    setResidentDetails((current) => ({
+      ...current,
+      currentLocationNote: `Typed location selected via OneMap: ${point.sublabel}`,
+    }));
+    setLiveLocationStatus('ready');
+    setLocationSearchStatus('selected');
+    setLocationSearchResults([]);
+    setLocationSearchMessage(`Using ${point.sublabel} as your current location and evacuation route start.`);
+  }
+
   function handleUseLiveLocation() {
     if (!navigator.geolocation) {
       setLiveLocationStatus('unsupported');
@@ -785,24 +1037,24 @@ export function ResidentPage({ session }) {
         <button
           type="button"
           role="tab"
-          aria-selected={activeResidentTab === 'brief'}
-          className={`resident-view-tab ${activeResidentTab === 'brief' ? 'is-active' : ''}`}
-          onClick={() => setActiveResidentTab('brief')}
+          aria-selected={activeResidentView === 'brief'}
+          className={`resident-view-tab ${activeResidentView === 'brief' ? 'is-active' : ''}`}
+          onClick={() => setActiveResidentView('brief')}
         >
           Safety Brief
         </button>
         <button
           type="button"
           role="tab"
-          aria-selected={activeResidentTab === 'public'}
-          className={`resident-view-tab ${activeResidentTab === 'public' ? 'is-active' : ''}`}
-          onClick={() => setActiveResidentTab('public')}
+          aria-selected={activeResidentView === 'public'}
+          className={`resident-view-tab ${activeResidentView === 'public' ? 'is-active' : ''}`}
+          onClick={() => setActiveResidentView('public')}
         >
           Public Dashboard
         </button>
       </div>
 
-      {activeResidentTab === 'public' ? (
+      {activeResidentView === 'public' ? (
         <section className="resident-public-dashboard-tab" role="tabpanel" aria-label="Public dashboard">
           <PublicDashboardPage embedded mobileView showBackButton={false} />
         </section>
@@ -833,7 +1085,41 @@ export function ResidentPage({ session }) {
         })}
       </div>
 
-      <section className="resident-persona-panel" aria-label="Personalized guidance profile">
+      <Tabs
+        value={activeResidentTab}
+        onChange={(value) => {
+          if (value) setActiveResidentTab(value);
+        }}
+        variant="pills"
+        radius="xl"
+        className="resident-tabs"
+      >
+        <Tabs.List className="resident-tab-list" aria-label="Resident safety features">
+          {RESIDENT_TABS.map((tab) => {
+            const TabIcon = RESIDENT_TAB_ICONS[tab.id];
+            return (
+              <Tabs.Tab
+                key={tab.id}
+                value={tab.id}
+                id={`resident-tab-${tab.id}`}
+                className={`resident-tab-button ${activeResidentTab === tab.id ? 'is-active' : ''}`}
+                leftSection={TabIcon ? <TabIcon size={15} stroke={1.8} aria-hidden="true" /> : null}
+              >
+                {tab.label}
+              </Tabs.Tab>
+            );
+          })}
+        </Tabs.List>
+      </Tabs>
+
+      {activeResidentTab === 'profile' && (
+      <section
+        className="resident-persona-panel"
+        role="tabpanel"
+        id="resident-panel-profile"
+        aria-labelledby="resident-tab-profile"
+        aria-label="Personalized guidance profile"
+      >
         <div>
           <p className="resident-persona-title">Personalize this alert</p>
           <p className="resident-persona-copy">
@@ -842,10 +1128,49 @@ export function ResidentPage({ session }) {
           <button type="button" className="resident-location-button" onClick={handleUseLiveLocation}>
             {liveLocationStatus === 'loading' ? 'Getting live location...' : 'Use my live location'}
           </button>
+          <form className="resident-location-search" onSubmit={handleSearchTypedLocation}>
+            <label htmlFor="resident-location-search">
+              <span>Or type your current location</span>
+              <div>
+                <input
+                  id="resident-location-search"
+                  value={locationSearchText}
+                  onChange={(event) => setLocationSearchText(event.target.value)}
+                  placeholder="Example: Orchard Gateway or 238858"
+                />
+                <button type="submit" disabled={locationSearchStatus === 'loading'}>
+                  {locationSearchStatus === 'loading' ? 'Searching...' : 'Search'}
+                </button>
+              </div>
+            </label>
+          </form>
+          {locationSearchMessage && (
+            <p className={`resident-location-status is-${locationSearchStatus}`}>
+              {locationSearchMessage}
+            </p>
+          )}
+          {locationSearchResults.length > 0 && (
+            <div className="resident-location-results" aria-label="OneMap location search results">
+              {locationSearchResults.map((location) => {
+                const label = oneMapLocationLabel(location);
+                const address = oneMapLocationAddress(location);
+                return (
+                  <button
+                    key={`${location.latitude}-${location.longitude}-${address}`}
+                    type="button"
+                    onClick={() => handleUseSearchedLocation(location)}
+                  >
+                    <strong>{label}</strong>
+                    <span>{address}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {liveLocationStatus !== 'idle' && (
             <p className={`resident-location-status is-${liveLocationStatus}`}>
               {liveLocationStatus === 'ready'
-                ? `Live location active: ${liveLocation.point.sublabel}`
+                ? `Current location active: ${liveLocation.point.sublabel}`
                 : liveLocationStatus === 'unsupported'
                   ? 'Live location is not available in this browser.'
                   : liveLocationStatus === 'error'
@@ -853,6 +1178,12 @@ export function ResidentPage({ session }) {
                     : 'Requesting permission from your browser.'}
             </p>
           )}
+          <p className="resident-current-route-start">
+            Evacuation guides start from: <strong>{activeAlerts?.point?.label ?? active?.point?.label ?? 'selected area'}</strong>
+            {(activeAlerts?.point?.sublabel ?? active?.point?.sublabel)
+              ? ` (${activeAlerts?.point?.sublabel ?? active?.point?.sublabel})`
+              : ''}
+          </p>
         </div>
         <div className="resident-persona-list">
           {RESIDENT_PROFILES.map((profile) => (
@@ -1023,7 +1354,15 @@ export function ResidentPage({ session }) {
           </>
         )}
       </section>
+      )}
 
+      {activeResidentTab === 'impact' && (
+      <div
+        className="resident-tab-panel resident-tab-panel-stack"
+        role="tabpanel"
+        id="resident-panel-impact"
+        aria-labelledby="resident-tab-impact"
+      >
       <section className="resident-evacuation-panel" aria-label="Personalized evacuation route">
         <div className="resident-evacuation-head">
           <div>
@@ -1179,8 +1518,17 @@ export function ResidentPage({ session }) {
         </div>
         <p className="resident-family-message">{savedPlacesImpact.familyMessage}</p>
       </section>
+      </div>
+      )}
 
-      <section className="resident-preparedness-panel" aria-label="Emergency pack readiness">
+      {activeResidentTab === 'preparedness' && (
+      <section
+        className="resident-preparedness-panel"
+        role="tabpanel"
+        id="resident-panel-preparedness"
+        aria-labelledby="resident-tab-preparedness"
+        aria-label="Emergency pack readiness"
+      >
         <div className="resident-preparedness-head">
           <div>
             <p className="resident-persona-title">Emergency pack mode</p>
@@ -1240,8 +1588,16 @@ export function ResidentPage({ session }) {
           </button>
         </div>
       </section>
+      )}
 
-      <section className="resident-rumor-panel" aria-label="Rumor check">
+      {activeResidentTab === 'rumor' && (
+      <section
+        className="resident-rumor-panel"
+        role="tabpanel"
+        id="resident-panel-rumor"
+        aria-labelledby="resident-tab-rumor"
+        aria-label="Rumor check"
+      >
         <div>
           <p className="resident-persona-title">Rumor check</p>
           <p className="resident-persona-copy">
@@ -1260,12 +1616,13 @@ export function ResidentPage({ session }) {
         <button
           type="button"
           className="resident-rumor-button"
-          onClick={() => setRumorCheck(checkResidentRumor(rumorText, officialAlerts))}
+          onClick={handleCheckResidentRumor}
+          disabled={rumorCheckStatus === 'loading'}
         >
-          Check against official alerts
+          {rumorCheckStatus === 'loading' ? 'Checking with Ask MURUS...' : 'Check with Ask MURUS'}
         </button>
         {rumorCheck && (
-          <div className={`resident-rumor-result is-${rumorCheck.status}`}>
+          <div className={`resident-rumor-result is-${rumorCheck.status} ${rumorCheck.mode ? `is-${rumorCheck.mode}` : ''}`}>
             <strong>{rumorCheck.label}</strong>
             <p>{rumorCheck.message}</p>
             {rumorCheck.matchedAlert && (
@@ -1273,10 +1630,29 @@ export function ResidentPage({ session }) {
                 Matched official alert: {rumorCheck.matchedAlert.title} / {rumorCheck.matchedAlert.locationLabel}
               </span>
             )}
+            {rumorCheck.mode && rumorCheck.mode !== 'loading' && (
+              <div className="resident-source-row">
+                <ResidentSourceBadge tone={rumorCheck.mode === 'llm' ? 'ai' : 'fallback'}>
+                  {rumorCheck.mode === 'llm' ? 'Ask MURUS AI guidance' : 'Fallback guidance'}
+                </ResidentSourceBadge>
+                <ResidentSourceBadge tone="official">Compared with official alerts</ResidentSourceBadge>
+              </div>
+            )}
+            {rumorCheck.confidence && rumorCheck.mode !== 'loading' && (
+              <span>Confidence: {rumorCheck.confidence}</span>
+            )}
           </div>
         )}
       </section>
+      )}
 
+      {activeResidentTab === 'alerts' && (
+      <div
+        className="resident-tab-panel resident-tab-panel-stack"
+        role="tabpanel"
+        id="resident-panel-alerts"
+        aria-labelledby="resident-tab-alerts"
+      >
       <section className={`resident-crisis-card is-${activeTone}`}>
         {isLoading || residentAlertStatus === 'loading' ? (
           <>
@@ -1318,6 +1694,7 @@ export function ResidentPage({ session }) {
                 return (
                 <article key={alert.id} className={`resident-alert-card ${acknowledged ? 'is-read' : ''}`}>
                   <div className="resident-alert-meta">
+                    <ResidentSourceBadge tone="official">Official alert</ResidentSourceBadge>
                     <span className={`resident-alert-source is-${alert.sourceType}`}>
                       {alert.sourceType === 'command_broadcast' ? 'Command alert' : 'Incident active'}
                     </span>
@@ -1340,7 +1717,28 @@ export function ResidentPage({ session }) {
                       </ul>
                     </section>
                   )}
+                  <Accordion
+                    multiple
+                    defaultValue={RESIDENT_ALERT_SECTION_DEFAULTS}
+                    className="resident-alert-accordion"
+                    classNames={{
+                      item: 'resident-alert-accordion-item',
+                      control: 'resident-alert-accordion-control',
+                      panel: 'resident-alert-accordion-panel',
+                      content: 'resident-alert-accordion-content',
+                      chevron: 'resident-alert-accordion-chevron',
+                    }}
+                  >
+                    <Accordion.Item value="guidance">
+                      <Accordion.Control icon={<IconUserCircle size={16} stroke={1.8} aria-hidden="true" />}>
+                        Personalized guidance
+                      </Accordion.Control>
+                      <Accordion.Panel>
                   <section className="resident-guidance-card" aria-label={`Personalized guidance for ${alert.title}`}>
+                    <div className="resident-source-row">
+                      <ResidentSourceBadge tone="official">Official alert basis</ResidentSourceBadge>
+                      <ResidentSourceBadge tone="generated">Generated profile guidance</ResidentSourceBadge>
+                    </div>
                     <div className="resident-guidance-head">
                       <div>
                         <p className="resident-guidance-label">Next safe action</p>
@@ -1355,6 +1753,28 @@ export function ResidentPage({ session }) {
                     </ol>
                     <p>{guidance.reassurance}</p>
                   </section>
+                      </Accordion.Panel>
+                    </Accordion.Item>
+                    <Accordion.Item value="route">
+                      <Accordion.Control icon={<IconMap2 size={16} stroke={1.8} aria-hidden="true" />}>
+                        Evacuation guide
+                      </Accordion.Control>
+                      <Accordion.Panel>
+                  <ResidentAlertVisualGuide
+                    alert={alert}
+                    point={activeAlerts.point}
+                    homePoint={impactPoints.find((candidate) => candidate.id === 'home')}
+                    transportMode={impactTransport}
+                    mobilityNeed={impactMobility}
+                    profileLabel={activeProfileMeta.label}
+                  />
+                      </Accordion.Panel>
+                    </Accordion.Item>
+                    <Accordion.Item value="ask">
+                      <Accordion.Control icon={<IconHelpCircle size={16} stroke={1.8} aria-hidden="true" />}>
+                        Ask MURUS guidance
+                      </Accordion.Control>
+                      <Accordion.Panel>
                   <section className="resident-copilot-card" aria-label={`Ask MURUS about ${alert.title}`}>
                     <div>
                       <p className="resident-guidance-label">Ask MURUS</p>
@@ -1396,6 +1816,12 @@ export function ResidentPage({ session }) {
                     </form>
                     {copilotAnswer && (
                       <div className="resident-copilot-answer" role="status">
+                        <div className="resident-source-row">
+                          <ResidentSourceBadge tone={copilotAnswer.mode === 'llm' ? 'ai' : 'fallback'}>
+                            {copilotAnswer.mode === 'llm' ? 'Ask MURUS AI guidance' : 'Fallback guidance'}
+                          </ResidentSourceBadge>
+                          <ResidentSourceBadge tone="official">Grounded in official alert</ResidentSourceBadge>
+                        </div>
                         <span>
                           You asked: {copilotAnswer.question}
                           {copilotAnswer.status === 'thinking'
@@ -1408,6 +1834,13 @@ export function ResidentPage({ session }) {
                       </div>
                     )}
                   </section>
+                      </Accordion.Panel>
+                    </Accordion.Item>
+                    <Accordion.Item value="checkin">
+                      <Accordion.Control icon={<IconChecklist size={16} stroke={1.8} aria-hidden="true" />}>
+                        Resident check-in
+                      </Accordion.Control>
+                      <Accordion.Panel>
                   <section className="resident-checkin-card" aria-label={`Resident check-in for ${alert.title}`}>
                     <div>
                       <p className="resident-guidance-label">Check in with command</p>
@@ -1435,6 +1868,9 @@ export function ResidentPage({ session }) {
                       </p>
                     )}
                   </section>
+                      </Accordion.Panel>
+                    </Accordion.Item>
+                  </Accordion>
                   <div className="resident-card-actions">
                     <Link to="/incident-map" className="resident-primary-button resident-button-link">
                       View on map
@@ -1484,8 +1920,17 @@ export function ResidentPage({ session }) {
           Resident alert channel unavailable ({residentAlertError}). Showing event-derived alerts.
         </p>
       )}
+      </div>
+      )}
 
-      <section className="resident-map-shell" aria-label="Nearby crisis map">
+      {activeResidentTab === 'map' && (
+      <section
+        className="resident-map-shell"
+        role="tabpanel"
+        id="resident-panel-map"
+        aria-labelledby="resident-tab-map"
+        aria-label="Nearby crisis map"
+      >
         {isLoading ? (
           <MapLoadingSkeleton label="Syncing nearby hazards" />
         ) : (
@@ -1494,6 +1939,7 @@ export function ResidentPage({ session }) {
           </MapErrorBoundary>
         )}
       </section>
+      )}
         </>
       )}
     </div>
