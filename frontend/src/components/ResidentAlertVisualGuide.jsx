@@ -81,6 +81,7 @@ export function ResidentAlertVisualGuide({
         <ResidentSourceBadge tone="generated">Generated route preview</ResidentSourceBadge>
         <ResidentSourceBadge tone="current">From current location</ResidentSourceBadge>
         <ResidentSourceBadge tone="visual">Visual aid, not clearance</ResidentSourceBadge>
+      </div>
 
       <div className="resident-route-map" aria-label="Emergency route map preview">
         <MapContainer
@@ -649,9 +650,6 @@ function useResidentVisualGuide({ alert, point, homePoint, transportMode, mobili
       setGuide((current) => ({ ...current, routeStatus: 'loading' }));
       const destination = await selectRouteDestination({ alert, point, homePoint });
       const target = destination.target;
-      const shelters = await fetchNearbyShelters(point);
-      const shelter = pickSafeShelter(shelters, alert);
-      const target = shelter ?? homePoint ?? null;
       const route = target
         ? await findRoute({
             start: point,
@@ -762,7 +760,6 @@ async function selectRouteDestination({ alert, point, homePoint }) {
 }
 
 async function findNearestShelters(point) {
-async function fetchNearbyShelters(point) {
   try {
     const nearest = await api.scdfNearest(point.lat, point.lng, 'SHELTER');
     if (!Array.isArray(nearest)) return [];
@@ -779,25 +776,9 @@ async function fetchNearbyShelters(point) {
         kind: 'shelter',
       }))
       .filter((shelter) => Number.isFinite(shelter.lat) && Number.isFinite(shelter.lng));
-        distanceMeters: shelter.distance_meters,
-      }));
   } catch {
     return [];
   }
-}
-
-// Prefer the nearest shelter that sits OUTSIDE the active danger radius so the
-// evacuation target moves people away from the hazard. Fall back to the closest
-// shelter when none are clear (the route preview then flags the crossing).
-function pickSafeShelter(shelters, alert) {
-  if (!shelters.length) return null;
-  if (alert?.lat == null || alert?.lng == null) return shelters[0];
-  const alertPoint = { lat: Number(alert.lat), lng: Number(alert.lng) };
-  const radius = alert.radiusMeters ?? 500;
-  const outside = shelters.find(
-    (shelter) => distanceMeters({ lat: shelter.lat, lng: shelter.lng }, alertPoint) > radius
-  );
-  return outside ?? shelters[0];
 }
 
 async function findRoute({ start, target, transportMode }) {
@@ -1015,8 +996,6 @@ function buildGuide({ alert, point, homePoint, transportMode, mobilityNeed, prof
     destinationType: resolvedDestination.type,
   });
 
-  const hasAlert = alert?.lat != null && alert?.lng != null;
-
   return {
     heading: target ? `Route preview to ${target.label}` : `Move away from ${alert.locationLabel ?? 'the alert area'}`,
     routeTone,
@@ -1027,13 +1006,6 @@ function buildGuide({ alert, point, homePoint, transportMode, mobilityNeed, prof
         ? 'Inside alert radius: move away carefully'
         : 'Outside alert radius: keep away from the alert',
     visualLabel: route?.routePoints?.length >= 2 ? 'Generated route schematic' : 'Blueprint-style fallback',
-    heading: shelter
-      ? `Route preview to ${shelter.label}`
-      : hasAlert
-        ? `Move away from ${alert.locationLabel ?? 'the alert area'}`
-        : `Know your route from ${point.label}`,
-    routeTone: routeCrossesAlert ? 'warning' : shelter ? 'ready' : 'caution',
-    routeLabel: routeCrossesAlert ? 'Check route' : shelter ? 'Shelter lookup' : 'Guidance preview',
     target,
     destination: resolvedDestination,
     routeConfidence: {
@@ -1045,13 +1017,6 @@ function buildGuide({ alert, point, homePoint, transportMode, mobilityNeed, prof
     routePoints,
     summary: routeSummary({ routeIssues, destination: resolvedDestination }),
     routeBasis,
-    summary: routeCrossesAlert
-      ? 'This preview may cross the affected radius.'
-      : shelter
-        ? hasAlert
-          ? 'Nearest shelter clear of the alert area found as a possible destination.'
-          : 'Nearest shelter found — know this route before an emergency.'
-        : 'No confirmed shelter route is available yet.',
     detail: travelMeta
       ? `${travelMeta}. Confirm with MURUS or staff before moving.`
       : 'Confirm with MURUS, staff, or emergency services before moving.',
